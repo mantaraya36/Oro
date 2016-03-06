@@ -1,0 +1,1 @@
+When you just checked out the project, run initproject.sh to initialize build scripts as well as git fat and submodules. Later, to update only submodules, run update_submodule.sh.
