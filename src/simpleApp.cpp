@@ -52,6 +52,7 @@ Lance Putnam, 6/2011, putnam.lance@gmail.com
 #include "Gamma/Noise.h"
 #include "Gamma/Filter.h"
 #include "Gamma/SoundFile.h"
+#include "Gamma/Oscillator.h"
 
 //#define SURROUND
 using namespace al;
@@ -153,6 +154,7 @@ public:
 
 	Granulator granX, granY, granZ;
 	Granulator background;
+	gam::SineR<float> fluctuation1, fluctuation2;
 
 	// This constructor is where we initialize the application
 	MyApp(): phase(0), mVideoDomain(30),
@@ -223,6 +225,9 @@ public:
 			b.freq(0.3);
 		}
 
+		fluctuation1.freq(0.2f);
+		fluctuation2.freq(0.3f);
+
 		std::cout << "Constructor done" << std::endl;
 	}
 
@@ -239,6 +244,8 @@ public:
 		float mouseSpeedScale = 50.0f;
 		while(io()){
 			//float in = io.in(0);
+			float fluct1 = fluctuation1();
+			float fluct2 = fluctuation2();
 
 			float out1 = granX() * mSpeedX.get() * mouseSpeedScale;
 			float out2 = granY() * mSpeedY.get() * mouseSpeedScale;
@@ -246,11 +253,11 @@ public:
 			float bg = background() * 0.3;
 
 #ifdef SURROUND
-			io.out(2) = out1 + bg;
-			io.out(3) = out2 + bg;
+			io.out(2) = out1 + (bg * (1 + fluct1)/2.0);
+			io.out(3) = out2 + (bg * (1 + fluct2)/2.0);
 
-			io.out(6) = bg;
-			io.out(7) = bg;
+			io.out(6) = (bg * (1 - fluct2)/2.0);
+			io.out(7) = (bg * (1 - fluct1)/2.0);
 #else
 			io.out(0) = out1 + bg;
 			io.out(1) = out2 + bg;
