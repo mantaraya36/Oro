@@ -231,11 +231,12 @@ public:
 		// Things here occur at block rate...
 
 		// This is the sample loop
+		float mouseSpeedScale = 50.0f;
 		while(io()){
 			//float in = io.in(0);
 
-			float out1 = granX() * mSpeedX.get();
-			float out2 = granY() * mSpeedY.get();
+			float out1 = granX() * mSpeedX.get() * mouseSpeedScale;
+			float out2 = granY() * mSpeedY.get() * mouseSpeedScale;
 
 			float bg = background() * 0.3;
 
