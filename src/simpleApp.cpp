@@ -253,15 +253,15 @@ public:
 		if(phase >= 1.) phase -= 1.;
 		float mousex = (window().mouse().x() - (float)window().width()/2)/(float)window().width();
 		float mousey = -(window().mouse().y() - (float)window().height()/2)/(float)window().height();
-		float speedx = window().mouse().dx();
-		float speedy = window().mouse().dy();
+		float speedx = window().mouse().dx()/(float)window().width();
+		float speedy = window().mouse().dy()/(float)window().height();
 		float speedz = 0;
-		float mouseSpeed = sqrt(speedx * speedx + speedy * speedy);
+		float mouseSpeed = 100.0 * sqrt(speedx * speedx + speedy * speedy + speedz* speedz);
 		mSpeedX.set(speedx);
 		mSpeedY.set(speedy);
 		mSpeedZ.set(speedz);
 		if (mouseSpeed > 2) {
-			mChaos.set(mouseSpeed/15.0);
+			mChaos.set(mouseSpeed/10.0);
 			if (mInteractionPoints.size() > 0) {
 				const Vec4d &lastPoint = mInteractionPoints.back();
 				if (lastPoint.x != mousex && lastPoint.y != mousey) {
