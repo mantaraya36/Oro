@@ -53,6 +53,7 @@ Lance Putnam, 6/2011, putnam.lance@gmail.com
 #include "Gamma/Filter.h"
 #include "Gamma/SoundFile.h"
 
+//#define SURROUND
 using namespace al;
 
 // Fog vertex shader
@@ -177,9 +178,13 @@ public:
 
 		// Set background color
 		//stereo().clearColor(HSV(0,0,1));
-
+#ifdef SURROUND
+		audioIO().device(5);
+		initAudio(48000, 256, 8, 0);
+#else
 		audioIO().device(10);
 		initAudio(48000, 64, 2, 0);
+#endif
 
 		mGridSize = 16;
 		mGrid.resize(mGridSize * mGridSize * mGridSize);
@@ -240,8 +245,16 @@ public:
 
 			float bg = background() * 0.3;
 
+#ifdef SURROUND
+			io.out(2) = out1 + bg;
+			io.out(3) = out2 + bg;
+
+			io.out(6) = bg;
+			io.out(7) = bg;
+#else
 			io.out(0) = out1 + bg;
 			io.out(1) = out2 + bg;
+#endif
 		}
 	}
 
