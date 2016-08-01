@@ -35,7 +35,7 @@ For the camera, the coordinate conventions are:
 	+x is right
 	-y is down
 	+y is up
-	-z is forward 
+	-z is forward
 	+z is backward
 
 Author:
@@ -43,13 +43,15 @@ Lance Putnam, 6/2011, putnam.lance@gmail.com
 */
 
 #include <iostream>
+#include <memory>
 
 #include "allocore/io/al_App.hpp"
 #include "allocore/graphics/al_Shapes.hpp"
-#include "allocore/system/al_Parameter.hpp"
+#include "allocore/ui/al_Parameter.hpp"
 
 #include "Gamma/Noise.h"
 #include "Gamma/Filter.h"
+#include "Gamma/SoundFile.h"
 
 using namespace al;
 
@@ -86,9 +88,47 @@ static const char * fogVert = R"(
 		}
 	)";
 
+class Granulator {
+public:
+	Granulator(std::string path, int maxOverlap = 10):
+	    mSamples(nullptr), mFrameCounter(0), mMaxOverlap(maxOverlap) {
+		gam::SoundFile file(path);
+		if (file.openRead()) {
+			mNumChannels = file.channels();
+			mNumFrames = file.frames();
+			std::unique_ptr<float[]> samples(new float[mNumChannels * mNumFrames], std::default_delete<float[]>() );
+			file.readAll(samples.get());
+			mSamples = (float **) calloc((size_t) mNumChannels, sizeof(float *));
+			for (int i = 0; i < mNumChannels; i++) {
+				mSamples[i] = (float *) calloc((size_t) mNumFrames, sizeof(float));
+				for (int samp = 0; samp < mNumFrames; samp++) {
+					mSamples[i][samp] = samples[samp * mNumChannels + i];
+				}
+			}
+		} else {
+			std::cout << "Error opening '" << path << "' for reading." << std::endl;
+		}
+	}
+
+	float operator()(int index = 0) {
+		float out = mSamples[index][mFrameCounter++];
+		if (mFrameCounter == mNumFrames) {
+			mFrameCounter = 0;
+		}
+		return out;
+	}
+
+private:
+	float **mSamples;
+	int mNumChannels;
+	int mNumFrames;
+
+	int mFrameCounter;
+	int mMaxOverlap;
+};
 
 // We inherit from App to create our own custom application
-class MyApp : public App{
+class MyApp : public App {
 public:
 
 	double phase;
@@ -101,15 +141,30 @@ public:
 	std::vector<Mesh> mGrid;
 	std::vector<Mesh> mGridVertical;
 	std::vector<Mesh> mGridHorizontal;
+	Mesh mInteractionLine;
 	Parameter mChaos;
+	Parameter mSpeedX, mSpeedY, mSpeedZ;
 
+	std::list<Vec4d> mInteractionPoints;
+	std::list<al_sec> mInteractionTimes;
 	Light light;			// Necessary to light objects in the scene
 	Material material;		// Necessary for specular highlights
 
+	Granulator granX, granY, granZ;
+	Granulator background;
+
 	// This constructor is where we initialize the application
 	MyApp(): phase(0), mVideoDomain(30),
-	    mChaos("chaos", "", 0)
+	    mChaos("chaos", "", 0),
+	    mSpeedX("speedX", "", 0),
+	    mSpeedY("speedY", "", 0),
+	    mSpeedZ("speedZ", "", 0),
+	    granX("Bounced Files/Piezas oro 1.wav"),
+	    granY("Bounced Files/Piezas oro 2.wav"),
+	    granZ("Bounced Files/Piezas oro 2.wav"),
+	    background("Bounced Files/Bajo agua.wav")
 	{
+		AudioDevice::printAll();
 
 		// Configure the camera lens
 		lens().near(0.1).far(25).fovy(45);
@@ -119,11 +174,12 @@ public:
 		nav().quat().fromAxisAngle(0.*M_2PI, 0,1,0);
 
 		initWindow(Window::Dim(0,0, 600,400), "Untitled", 30);
-		
+
 		// Set background color
 		//stereo().clearColor(HSV(0,0,1));
 
-		initAudio(44100, 512, 2, 1);
+		audioIO().device(10);
+		initAudio(48000, 64, 2, 0);
 
 		mGridSize = 16;
 		mGrid.resize(mGridSize * mGridSize * mGridSize);
@@ -159,7 +215,7 @@ public:
 		}
 		for (gam::Biquad<> &b:mFilters) {
 			b.domain(mVideoDomain);
-			b.freq(2);
+			b.freq(0.3);
 		}
 
 		std::cout << "Constructor done" << std::endl;
@@ -171,38 +227,96 @@ public:
 
 	// This is the audio callback
 	virtual void onSound(AudioIOData& io){
-	
+
 		// Things here occur at block rate...
-	
+
 		// This is the sample loop
 		while(io()){
 			//float in = io.in(0);
-			
-			float out1 = 0;
-			float out2 = 0;
-			
-			io.out(0) = out1;
-			io.out(1) = out2;
+
+			float out1 = granX() * mSpeedX.get();
+			float out2 = granY() * mSpeedY.get();
+
+			float bg = background() * 0.3;
+
+			io.out(0) = out1 + bg;
+			io.out(1) = out2 + bg;
 		}
 	}
 
 	virtual void onAnimate(double dt){
 		// The phase will ramp from 0 to 1 over 1 second. We will use it to
 		// animate the color of a sphere.
+
+		al_sec curTime = al_steady_time();
 		phase += dt/10.0;
 		if(phase >= 1.) phase -= 1.;
+		float mousex = (window().mouse().x() - (float)window().width()/2)/(float)window().width();
+		float mousey = -(window().mouse().y() - (float)window().height()/2)/(float)window().height();
+		float speedx = window().mouse().dx();
+		float speedy = window().mouse().dy();
+		float speedz = 0;
+		float mouseSpeed = sqrt(speedx * speedx + speedy * speedy);
+		mSpeedX.set(speedx);
+		mSpeedY.set(speedy);
+		mSpeedZ.set(speedz);
+		if (mouseSpeed > 2) {
+			mChaos.set(mouseSpeed/15.0);
+			if (mInteractionPoints.size() > 0) {
+				const Vec4d &lastPoint = mInteractionPoints.back();
+				if (lastPoint.x != mousex && lastPoint.y != mousey) {
+					Vec4d newPoint(mousex, mousey, 0, mouseSpeed);
+					mInteractionPoints.push_back(newPoint);
+					mInteractionTimes.push_back(curTime);
+				}
+				if (mInteractionPoints.size() > 512) {
+					mInteractionPoints.pop_front();
+					mInteractionTimes.pop_front();
+				}
+			} else {
+				Vec4d newPoint(mousex, mousey, 0, sqrt(speedx * speedx + speedy * speedy));
+				mInteractionPoints.push_back(newPoint);
+				mInteractionTimes.push_back(curTime);
+			}
+		} else {
+			mChaos.set(0.0);
+		}
+		int removeCounter = 0;
+		for (auto it = mInteractionTimes.begin(); it != mInteractionTimes.end(); it++) {
+			if (curTime - *it > 5.0) {
+				removeCounter++;
+			} else {
+				break;
+			}
+		}
+		for (int i = 0; i < removeCounter; i++) {
+			mInteractionPoints.pop_front();
+			mInteractionTimes.pop_front();
+		}
+
+		mInteractionLine.reset();
+		float widths[512];
+		float *width_ponter = widths;
+		for (auto it = mInteractionPoints.begin(); it != mInteractionPoints.end(); it++) {
+			mInteractionLine.vertex(it->x, it->y, 0);
+			*width_ponter++ = sqrt((*it)[3]) * 0.1;
+			mInteractionLine.color(HSV(0.14, 0.5, (*it)[3]/20));
+		}
+		mInteractionLine.primitive(Graphics::TRIANGLE_STRIP);
+		mInteractionLine.ribbonize(widths);
+		mInteractionLine.smooth();
 	}
 
 	virtual void onDraw(Graphics& g, const Viewpoint& v){
 		g.depthTesting(true);
 		g.enable(Graphics::FOG);
-//		g.blending(true);
+		g.blending(true);
 		g.nicest();
 //		background(Color(0.9, 0.9, 0.9, 0.1));
 //		g.clearColor(0.1, 0.1, 0.1, 1.0);
 		g.clearColor(0.9, 0.9, 0.9, 0.1);
 //		g.clear(Graphics::DEPTH_BUFFER_BIT | Graphics::COLOR_BUFFER_BIT);
-		lens().far(10).near(0.01);
+		lens().far(15).near(0.01);
 		g.fog(lens().far(), lens().near()+1, background());
 		g.lighting(true);
 
@@ -232,7 +346,7 @@ public:
 
 		// Render
 //		mShader.begin();
-		
+
 		// Graphics has a Mesh for temporary use
 //		Mesh& m = g.mesh();
 
@@ -257,7 +371,7 @@ public:
 				g.pushMatrix();
 				g.translate(0, y-dev/2, 0);
 				for (int z = 0; z < mGridSize; z++) {
-					dev = mFilters[count](mNoise[count]() * mChaos.get() * 5.0);
+					dev = mFilters[count](mNoise[count]() * (mChaos.get() * 5.0));
 					g.pushMatrix();
 					g.translate(-dev/2, 0, -z + dev);
 					g.draw(mGrid[count]);
@@ -280,13 +394,19 @@ public:
 		}
 
 		g.popMatrix();
+
+		g.pushMatrix();
+		g.scale(3.0);
+		g.translate(0,0, -0.05);
+		g.draw(mInteractionLine);
+		g.popMatrix();
 //		mShader.end();
 	}
 
 
 	// This is called whenever a key is pressed.
 	virtual void onKeyDown(const ViewpointWindow& w, const Keyboard& k){
-	
+
 		// Use a switch to do something when a particular key is pressed
 		switch(k.key()){
 
@@ -298,7 +418,7 @@ public:
 		case ' ': printf("Pressed space bar.\n");
 			mChaos.set(mChaos.get() > 1.0 ? 0.0 : mChaos.get() + 0.1);
 			break;
-		
+
 		// For non-printable keys, we have to use the enums described in the
 		// Keyboard class:
 		case Keyboard::RETURN: printf("Pressed return.\n"); break;
@@ -315,7 +435,7 @@ public:
 		case Mouse::MIDDLE: printf("Pressed middle mouse button.\n"); break;
 		}
 	}
-	
+
 	// This is called whenever the mouse is dragged.
 	virtual void onMouseDrag(const ViewpointWindow& w, const Mouse& m){
 		// Get mouse coordinates, in pixels, relative to top-left corner of window
@@ -323,7 +443,7 @@ public:
 		int y = m.y();
 		printf("Mouse dragged: %3d, %3d\n", x,y);
 	}
-	
+
 	// *****************************************************
 	// NOTE: check the App class for more callback functions
 

@@ -4,3 +4,6 @@
 [submodule "AlloSystem"]
 	path = AlloSystem
 	url = https://github.com/AlloSphere-Research-Group/AlloSystem.git
+[submodule "Gamma"]
+	path = Gamma
+	url = https://github.com/AlloSphere-Research-Group/Gamma
