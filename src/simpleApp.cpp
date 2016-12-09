@@ -153,8 +153,14 @@ public:
 	Material material;		// Necessary for specular highlights
 
 	Granulator granX, granY, granZ;
-	Granulator background;
+	Granulator background1;
+	Granulator background2;
+	Granulator background3;
 	gam::SineR<float> fluctuation1, fluctuation2;
+
+	Parameter gainBackground1;
+	Parameter gainBackground2;
+	Parameter gainBackground3;
 
 	// This constructor is where we initialize the application
 	MyApp(): phase(0), mVideoDomain(30),
@@ -165,7 +171,12 @@ public:
 	    granX("Bounced Files/Piezas oro 1.wav"),
 	    granY("Bounced Files/Piezas oro 2.wav"),
 	    granZ("Bounced Files/Piezas oro 2.wav"),
-	    background("Bounced Files/Bajo agua.wav")
+	    background1("Bounced Files/Bajo agua.wav"),
+	    background2("Bounced Files/Bajo agua.wav"),
+	    background3("Bounced Files/Bajo agua.wav"),
+	    gainBackground1("background1", "", 0.2),
+	    gainBackground2("background2", "", 0.2),
+	    gainBackground3("background3", "", 0.2)
 	{
 		AudioDevice::printAll();
 
@@ -250,17 +261,19 @@ public:
 			float out1 = granX() * mSpeedX.get() * mouseSpeedScale;
 			float out2 = granY() * mSpeedY.get() * mouseSpeedScale;
 
-			float bg = background() * 0.3;
+			float bg1 = background1() * gainBackground1.get();
+			float bg2 = background2() * gainBackground2.get();
+			float bg3 = background3() * gainBackground3.get();
 
 #ifdef SURROUND
-			io.out(2) = out1 + (bg * (1 + fluct1)/2.0);
-			io.out(3) = out2 + (bg * (1 + fluct2)/2.0);
+			io.out(2) = out1 + (bg1 * (1 - fluct2)/2.0) + (bg2 * (1 - fluct2)/2.0) + (bg3 * (1 - fluct2)/2.0);
+			io.out(3) = out2 + (bg1 * (1 - fluct1)/2.0) + (bg2 * (1 - fluct1)/2.0) + (bg3 * (1 - fluct1)/2.0);
 
-			io.out(6) = (bg * (1 - fluct2)/2.0);
-			io.out(7) = (bg * (1 - fluct1)/2.0);
+			io.out(6) = (bg1 * (1 - fluct2)/2.0) + (bg2 * (1 - fluct2)/2.0) + (bg3 * (1 - fluct2)/2.0);
+			io.out(7) = (bg1 * (1 - fluct1)/2.0) + (bg2 * (1 - fluct2)/2.0) + (bg3 * (1 - fluct2)/2.0);
 #else
-			io.out(0) = out1 + bg;
-			io.out(1) = out2 + bg;
+			io.out(0) = out1 + (bg1 * (1 - fluct2)/2.0) + (bg2 * (1 - fluct2)/2.0) + (bg3 * (1 - fluct2)/2.0);
+			io.out(1) = out2 + (bg1 * (1 - fluct1)/2.0) + (bg2 * (1 - fluct1)/2.0) + (bg3 * (1 - fluct1)/2.0);
 #endif
 		}
 	}
@@ -338,7 +351,7 @@ public:
 		g.clearColor(0.9, 0.9, 0.9, 0.1);
 //		g.clear(Graphics::DEPTH_BUFFER_BIT | Graphics::COLOR_BUFFER_BIT);
 		lens().far(15).near(0.01);
-		g.fog(lens().far(), lens().near()+1, background());
+		g.fog(lens().far(), lens().near()+1, App::background());
 		g.lighting(true);
 
 		mLightPhase += 1./1800; if(mLightPhase > 1) mLightPhase -= 1;
