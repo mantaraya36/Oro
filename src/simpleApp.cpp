@@ -48,6 +48,7 @@ Lance Putnam, 6/2011, putnam.lance@gmail.com
 #include "allocore/io/al_App.hpp"
 #include "allocore/graphics/al_Shapes.hpp"
 #include "allocore/ui/al_Parameter.hpp"
+#include "alloGLV/al_ParameterGUI.hpp"
 
 #include "Gamma/Noise.h"
 #include "Gamma/Filter.h"
@@ -158,9 +159,11 @@ public:
 	Granulator background3;
 	gam::SineR<float> fluctuation1, fluctuation2;
 
-	Parameter gainBackground1;
-	Parameter gainBackground2;
-	Parameter gainBackground3;
+	Parameter gainBackground1 {"background1", "", 0.2f, "", 0.0f, 1.0f};
+	Parameter gainBackground2 {"background2", "", 0.2f, "", 0.0f, 1.0f};
+	Parameter gainBackground3 {"background3", "", 0.2f, "", 0.0f, 1.0f};
+
+	ParameterGUI mParameterGUI;
 
 	// This constructor is where we initialize the application
 	MyApp(): phase(0), mVideoDomain(30),
@@ -173,10 +176,7 @@ public:
 	    granZ("Bounced Files/Piezas oro 2.wav"),
 	    background1("Bounced Files/Bajo agua.wav"),
 	    background2("Bounced Files/Bajo agua.wav"),
-	    background3("Bounced Files/Bajo agua.wav"),
-	    gainBackground1("background1", "", 0.2),
-	    gainBackground2("background2", "", 0.2),
-	    gainBackground3("background3", "", 0.2)
+	    background3("Bounced Files/Bajo agua.wav")
 	{
 		AudioDevice::printAll();
 
@@ -195,7 +195,7 @@ public:
 		audioIO().device(5);
 		initAudio(48000, 256, 8, 0);
 #else
-		audioIO().device(10);
+		audioIO().device(0);
 		initAudio(48000, 64, 2, 0);
 #endif
 
@@ -238,6 +238,10 @@ public:
 
 		fluctuation1.freq(0.2f);
 		fluctuation2.freq(0.3f);
+
+		mParameterGUI.setParentApp(this);
+		mParameterGUI << new glv::Label("Parameter GUI example");
+		mParameterGUI << gainBackground1 << gainBackground2 << gainBackground3;
 
 		std::cout << "Constructor done" << std::endl;
 	}
