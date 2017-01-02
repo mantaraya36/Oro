@@ -7,3 +7,6 @@
 [submodule "Gamma"]
 	path = Gamma
 	url = https://github.com/AlloSphere-Research-Group/Gamma
+[submodule "GLV"]
+	path = GLV
+	url = https://github.com/AlloSphere-Research-Group/GLV
