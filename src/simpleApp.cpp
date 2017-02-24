@@ -45,10 +45,10 @@ Lance Putnam, 6/2011, putnam.lance@gmail.com
 #include <iostream>
 #include <memory>
 
-#include "allocore/io/al_App.hpp"
 #include "allocore/graphics/al_Shapes.hpp"
 #include "allocore/ui/al_Parameter.hpp"
 #include "alloGLV/al_ParameterGUI.hpp"
+#include "alloutil/al_OmniApp.hpp"
 
 #include "Gamma/Noise.h"
 #include "Gamma/Filter.h"
@@ -130,89 +130,47 @@ private:
 	int mMaxOverlap;
 };
 
-// We inherit from App to create our own custom application
-class MyApp : public App {
+#define GRID_SIZE 16
+#define INTERACTION_POINTS 512
+
+typedef struct {
+    double lightPhase;
+    float dev[GRID_SIZE * GRID_SIZE * GRID_SIZE];
+
+    Vec4f interactionPoints[INTERACTION_POINTS];
+	al_sec interactionTimes[INTERACTION_POINTS];
+    unsigned int interactionEnd = 0;
+    unsigned int interactionBegin = 0;
+} SharedState;
+
+
+class SharedPainter {
 public:
 
-	double phase;
-	double mLightPhase;
-	int mGridSize;
-	ShaderProgram mShader;
-	std::vector<gam::NoiseBrown<> > mNoise;
-	gam::Domain mVideoDomain;
-	std::vector<gam::Biquad<> > mFilters;
-	std::vector<Mesh> mGrid;
-	std::vector<Mesh> mGridVertical;
-	std::vector<Mesh> mGridHorizontal;
-	Mesh mInteractionLine;
-	Parameter mChaos;
-	Parameter mSpeedX, mSpeedY, mSpeedZ;
-
-	std::list<Vec4d> mInteractionPoints;
-	std::list<al_sec> mInteractionTimes;
-	Light light;			// Necessary to light objects in the scene
+    Light light;			// Necessary to light objects in the scene
 	Material material;		// Necessary for specular highlights
 
-	Granulator granX, granY, granZ;
-	Granulator background1;
-	Granulator background2;
-	Granulator background3;
-	gam::SineR<float> fluctuation1, fluctuation2;
+    std::vector<Mesh> mGrid;
+	std::vector<Mesh> mGridVertical;
+	std::vector<Mesh> mGridHorizontal;
 
-	Parameter gainBackground1 {"background1", "", 0.2f, "", 0.0f, 1.0f};
-	Parameter gainBackground2 {"background2", "", 0.2f, "", 0.0f, 1.0f};
-	Parameter gainBackground3 {"background3", "", 0.2f, "", 0.0f, 1.0f};
+    Mesh mInteractionLine;
 
-	ParameterGUI mParameterGUI;
+    SharedPainter(SharedState *state) {
+        mState = state;
 
-	// This constructor is where we initialize the application
-	MyApp(): phase(0), mVideoDomain(30),
-	    mChaos("chaos", "", 0),
-	    mSpeedX("speedX", "", 0),
-	    mSpeedY("speedY", "", 0),
-	    mSpeedZ("speedZ", "", 0),
-	    granX("Bounced Files/Piezas oro 1.wav"),
-	    granY("Bounced Files/Piezas oro 2.wav"),
-	    granZ("Bounced Files/Piezas oro 2.wav"),
-	    background1("Bounced Files/Bajo agua.wav"),
-	    background2("Bounced Files/Bajo agua.wav"),
-	    background3("Bounced Files/Bajo agua.wav")
-	{
-		AudioDevice::printAll();
 
-		// Configure the camera lens
-		lens().near(0.1).far(25).fovy(45);
+        mGrid.resize(GRID_SIZE * GRID_SIZE * GRID_SIZE);
+		mGridVertical.resize(GRID_SIZE * GRID_SIZE * GRID_SIZE);
+		mGridHorizontal.resize(GRID_SIZE * GRID_SIZE * GRID_SIZE);
 
-		// Set navigation position and orientation
-		nav().pos(0,0,4);
-		nav().quat().fromAxisAngle(0.*M_2PI, 0,1,0);
-
-		initWindow(Window::Dim(0,0, 600,400), "Untitled", 30);
-
-		// Set background color
-		//stereo().clearColor(HSV(0,0,1));
-#ifdef SURROUND
-		audioIO().device(5);
-		initAudio(48000, 256, 8, 0);
-#else
-		audioIO().device(0);
-		initAudio(48000, 64, 2, 0);
-#endif
-
-		mGridSize = 16;
-		mGrid.resize(mGridSize * mGridSize * mGridSize);
-		mGridVertical.resize(mGridSize * mGridSize * mGridSize);
-		mGridHorizontal.resize(mGridSize * mGridSize * mGridSize);
-
-		mNoise.resize(mGrid.size());
-		mFilters.resize(mNoise.size());
 		for (Mesh &m: mGrid) {
 //			addCylinder(m, 0.01, 1);
 			addSphere(m, 0.07);
 			m.generateNormals();
 			int cylinderVertices = m.vertices().size();
 			for(int i = 0; i < cylinderVertices; i++) {
-				m.color(HSV(0.16, 0.5, al::fold(phase + 0.5/(mGridSize * mGridSize * mGridSize), 0.5)+0.5));
+				m.color(HSV(0.16, 0.5, al::fold(0.5/(GRID_SIZE * GRID_SIZE * GRID_SIZE), 0.5)+0.5));
 			}
 		}
 		for (Mesh &m: mGridVertical) {
@@ -220,7 +178,7 @@ public:
 			m.generateNormals();
 			int cylinderVertices = m.vertices().size();
 			for(int i = 0; i < cylinderVertices; i++) {
-				m.color(HSV(0.13, 0.5, al::fold(phase + 0.5/(mGridSize * mGridSize * mGridSize), 0.5)+0.5));
+				m.color(HSV(0.13, 0.5, al::fold(0.5/(GRID_SIZE * GRID_SIZE * GRID_SIZE), 0.5)+0.5));
 			}
 		}
 		for (Mesh &m: mGridHorizontal) {
@@ -228,124 +186,12 @@ public:
 			m.generateNormals();
 			int cylinderVertices = m.vertices().size();
 			for(int i = 0; i < cylinderVertices; i++) {
-				m.color(HSV(0.14, 0.5, al::fold(phase + 0.5/(mGridSize * mGridSize * mGridSize), 0.5)+0.5));
+				m.color(HSV(0.14, 0.5, al::fold(0.5/(GRID_SIZE * GRID_SIZE * GRID_SIZE), 0.5)+0.5));
 			}
 		}
-		for (gam::Biquad<> &b:mFilters) {
-			b.domain(mVideoDomain);
-			b.freq(0.3);
-		}
+    }
 
-		fluctuation1.freq(0.2f);
-		fluctuation2.freq(0.3f);
-
-		mParameterGUI.setParentApp(this);
-		mParameterGUI << new glv::Label("Parameter GUI example");
-		mParameterGUI << gainBackground1 << gainBackground2 << gainBackground3;
-
-		std::cout << "Constructor done" << std::endl;
-	}
-
-	void onCreate(const ViewpointWindow& win){
-		mShader.compile(fogVert, fogFrag);
-	}
-
-	// This is the audio callback
-	virtual void onSound(AudioIOData& io){
-
-		// Things here occur at block rate...
-
-		// This is the sample loop
-		float mouseSpeedScale = 50.0f;
-		while(io()){
-			//float in = io.in(0);
-			float fluct1 = fluctuation1();
-			float fluct2 = fluctuation2();
-
-			float out1 = granX() * mSpeedX.get() * mouseSpeedScale;
-			float out2 = granY() * mSpeedY.get() * mouseSpeedScale;
-
-			float bg1 = background1() * gainBackground1.get();
-			float bg2 = background2() * gainBackground2.get();
-			float bg3 = background3() * gainBackground3.get();
-
-#ifdef SURROUND
-			io.out(2) = out1 + (bg1 * (1 - fluct2)/2.0) + (bg2 * (1 - fluct2)/2.0) + (bg3 * (1 - fluct2)/2.0);
-			io.out(3) = out2 + (bg1 * (1 - fluct1)/2.0) + (bg2 * (1 - fluct1)/2.0) + (bg3 * (1 - fluct1)/2.0);
-
-			io.out(6) = (bg1 * (1 - fluct2)/2.0) + (bg2 * (1 - fluct2)/2.0) + (bg3 * (1 - fluct2)/2.0);
-			io.out(7) = (bg1 * (1 - fluct1)/2.0) + (bg2 * (1 - fluct2)/2.0) + (bg3 * (1 - fluct2)/2.0);
-#else
-			io.out(0) = out1 + (bg1 * (1 - fluct2)/2.0) + (bg2 * (1 - fluct2)/2.0) + (bg3 * (1 - fluct2)/2.0);
-			io.out(1) = out2 + (bg1 * (1 - fluct1)/2.0) + (bg2 * (1 - fluct1)/2.0) + (bg3 * (1 - fluct1)/2.0);
-#endif
-		}
-	}
-
-	virtual void onAnimate(double dt){
-		// The phase will ramp from 0 to 1 over 1 second. We will use it to
-		// animate the color of a sphere.
-
-		al_sec curTime = al_steady_time();
-		phase += dt/10.0;
-		if(phase >= 1.) phase -= 1.;
-		float mousex = (window().mouse().x() - (float)window().width()/2)/(float)window().width();
-		float mousey = -(window().mouse().y() - (float)window().height()/2)/(float)window().height();
-		float speedx = window().mouse().dx()/(float)window().width();
-		float speedy = window().mouse().dy()/(float)window().height();
-		float speedz = 0;
-		float mouseSpeed = 100.0 * sqrt(speedx * speedx + speedy * speedy + speedz* speedz);
-		mSpeedX.set(speedx);
-		mSpeedY.set(speedy);
-		mSpeedZ.set(speedz);
-		if (mouseSpeed > 2) {
-			mChaos.set(mouseSpeed/10.0);
-			if (mInteractionPoints.size() > 0) {
-				const Vec4d &lastPoint = mInteractionPoints.back();
-				if (lastPoint.x != mousex && lastPoint.y != mousey) {
-					Vec4d newPoint(mousex, mousey, 0, mouseSpeed);
-					mInteractionPoints.push_back(newPoint);
-					mInteractionTimes.push_back(curTime);
-				}
-				if (mInteractionPoints.size() > 512) {
-					mInteractionPoints.pop_front();
-					mInteractionTimes.pop_front();
-				}
-			} else {
-				Vec4d newPoint(mousex, mousey, 0, sqrt(speedx * speedx + speedy * speedy));
-				mInteractionPoints.push_back(newPoint);
-				mInteractionTimes.push_back(curTime);
-			}
-		} else {
-			mChaos.set(0.0);
-		}
-		int removeCounter = 0;
-		for (auto it = mInteractionTimes.begin(); it != mInteractionTimes.end(); it++) {
-			if (curTime - *it > 5.0) {
-				removeCounter++;
-			} else {
-				break;
-			}
-		}
-		for (int i = 0; i < removeCounter; i++) {
-			mInteractionPoints.pop_front();
-			mInteractionTimes.pop_front();
-		}
-
-		mInteractionLine.reset();
-		float widths[512];
-		float *width_ponter = widths;
-		for (auto it = mInteractionPoints.begin(); it != mInteractionPoints.end(); it++) {
-			mInteractionLine.vertex(it->x, it->y, 0);
-			*width_ponter++ = sqrt((*it)[3]) * 0.1;
-			mInteractionLine.color(HSV(0.14, 0.5, (*it)[3]/20));
-		}
-		mInteractionLine.primitive(Graphics::TRIANGLE_STRIP);
-		mInteractionLine.ribbonize(widths);
-		mInteractionLine.smooth();
-	}
-
-	virtual void onDraw(Graphics& g, const Viewpoint& v){
+    void onDraw(Graphics& g){
 		g.depthTesting(true);
 		g.enable(Graphics::FOG);
 		g.blending(true);
@@ -354,14 +200,12 @@ public:
 //		g.clearColor(0.1, 0.1, 0.1, 1.0);
 		g.clearColor(0.9, 0.9, 0.9, 0.1);
 //		g.clear(Graphics::DEPTH_BUFFER_BIT | Graphics::COLOR_BUFFER_BIT);
-		lens().far(15).near(0.01);
-		g.fog(lens().far(), lens().near()+1, App::background());
 		g.lighting(true);
 
-		mLightPhase += 1./1800; if(mLightPhase > 1) mLightPhase -= 1;
-		float x = cos(7*mLightPhase*2*M_PI);
-		float y = sin(11*mLightPhase*2*M_PI);
-		float z = cos(mLightPhase*2*M_PI)*0.5 - 0.6;
+		state().lightPhase += 1./1800; if(state().lightPhase > 1) state().lightPhase -= 1;
+		float x = cos(7*state().lightPhase*2*M_PI);
+		float y = sin(11*state().lightPhase*2*M_PI);
+		float z = cos(state().lightPhase*2*M_PI)*0.5 - 0.6;
 
 		light.pos(x,y,z);
 
@@ -397,33 +241,53 @@ public:
 //		g.draw(m);
 
 //		g.fog(0.05, 20, Color(0,0,0, 0.2));
+
+
+        mInteractionLine.reset();
+		float widths[512];
+		float *width_ponter = widths;
+        Vec4f *points = state().interactionPoints + state().interactionBegin;
+        for (unsigned int i = state().interactionBegin; i != state().interactionEnd; i++) {
+            if (i == INTERACTION_POINTS) {
+                i = 0;
+                points = state().interactionPoints;
+            }
+			mInteractionLine.vertex(points->x, points->y, 0);
+			*width_ponter++ = std::sqrt((*points)[3]) * 0.1f;
+			mInteractionLine.color(HSV(0.14f, 0.5f, (*points)[3]/20.0f));
+            points++;
+		}
+		mInteractionLine.primitive(Graphics::TRIANGLE_STRIP);
+		mInteractionLine.ribbonize(widths);
+		mInteractionLine.smooth();
+
 		g.pushMatrix();
 
-		g.translate(- mGridSize/2,- mGridSize/4, 0);
-		int count = 0;
-		float dev = 0.0;
-		for (int x = 0; x < mGridSize; x++) {
+		g.translate(- GRID_SIZE/2,- GRID_SIZE/4, 0);
+		unsigned int count = 0;
+		float *dev = state().dev;
+		for (int x = 0; x < GRID_SIZE; x++) {
 			g.pushMatrix();
-			g.translate(x, 0, -dev/2);
-			for (int y = 0; y < mGridSize; y++) {
+			g.translate(x, 0, -*dev/2);
+			for (int y = 0; y < GRID_SIZE; y++) {
 				g.pushMatrix();
-				g.translate(0, y-dev/2, 0);
-				for (int z = 0; z < mGridSize; z++) {
-					dev = mFilters[count](mNoise[count]() * (mChaos.get() * 5.0));
+				g.translate(0, y-*dev/2, 0);
+				for (int z = 0; z < GRID_SIZE; z++) {
 					g.pushMatrix();
-					g.translate(-dev/2, 0, -z + dev);
+					g.translate(*dev/-2.0f, 0.0f, -z + *dev);
 					g.draw(mGrid[count]);
 					g.pushMatrix();
 					g.rotate(90, 0, 1, 0);
-					g.translate(0, dev, 0);
+					g.translate(0, *dev, 0);
 					g.draw(mGridVertical[count]);
 					g.popMatrix();
 					g.pushMatrix();
 					g.rotate(90,1, 0, 0);
-					g.translate(dev, dev, 0);
+					g.translate(*dev, *dev, 0);
 					g.draw(mGridHorizontal[count]);
 					g.popMatrix();
 					g.popMatrix();
+                    dev++;
 					count++;
 				}
 				g.popMatrix();
@@ -441,9 +305,190 @@ public:
 //		mShader.end();
 	}
 
+    SharedState &state() {return *mState;}
+    SharedState *mState;
+};
+
+// We inherit from App to create our own custom application
+class MyApp : public OmniApp {
+public:
+
+    SharedState mState;
+    SharedPainter mPainter;
+
+    SharedState& state() {return mState;}
+
+    int mMouseX, mMouseY;
+
+	ShaderProgram mShader;
+	std::vector<gam::NoiseBrown<> > mNoise;
+	gam::Domain mVideoDomain;
+	std::vector<gam::Biquad<> > mFilters;
+	Parameter mChaos;
+	Parameter mSpeedX, mSpeedY, mSpeedZ;
+
+	Granulator granX, granY, granZ;
+	Granulator background1;
+	Granulator background2;
+	Granulator background3;
+	gam::SineR<float> fluctuation1, fluctuation2;
+
+	Parameter gainBackground1 {"background1", "", 0.2f, "", 0.0f, 1.0f};
+	Parameter gainBackground2 {"background2", "", 0.2f, "", 0.0f, 1.0f};
+	Parameter gainBackground3 {"background3", "", 0.2f, "", 0.0f, 1.0f};
+
+	ParameterGUI mParameterGUI;
+
+	// This constructor is where we initialize the application
+	MyApp(): mVideoDomain(30),
+	    mChaos("chaos", "", 0),
+	    mSpeedX("speedX", "", 0),
+	    mSpeedY("speedY", "", 0),
+	    mSpeedZ("speedZ", "", 0),
+	    granX("Bounced Files/Piezas oro 1.wav"),
+	    granY("Bounced Files/Piezas oro 2.wav"),
+	    granZ("Bounced Files/Piezas oro 2.wav"),
+	    background1("Bounced Files/Bajo agua.wav"),
+	    background2("Bounced Files/Bajo agua.wav"),
+	    background3("Bounced Files/Bajo agua.wav"),
+        mPainter(&mState)
+	{
+		AudioDevice::printAll();
+
+		// Configure the camera lens
+		lens().near(0.1).far(25).fovy(45);
+
+		// Set navigation position and orientation
+
+		initWindow(Window::Dim(0,0, 600,400), "Untitled", 30);
+
+		// Set background color
+		//stereo().clearColor(HSV(0,0,1));
+#ifdef SURROUND
+		audioIO().device(5);
+		initAudio(48000, 256, 8, 0);
+#else
+		audioIO().device(0);
+		initAudio("default", 48000, 64, 0, 2);
+#endif
+
+        mNoise.resize(GRID_SIZE * GRID_SIZE * GRID_SIZE);
+		mFilters.resize(GRID_SIZE * GRID_SIZE * GRID_SIZE);
+
+		for (gam::Biquad<> &b:mFilters) {
+			b.domain(mVideoDomain);
+			b.freq(0.3);
+		}
+
+		fluctuation1.freq(0.2f);
+		fluctuation2.freq(0.3f);
+
+//		mParameterGUI.setParentApp(this);
+//		mParameterGUI << new glv::Label("Parameter GUI example");
+//		mParameterGUI << gainBackground1 << gainBackground2 << gainBackground3;
+
+		std::cout << "Constructor done" << std::endl;
+	}
+
+	virtual bool onCreate() override {
+		mShader.compile(fogVert, fogFrag);
+        OmniApp::onCreate();
+
+        nav().pos(0,0,10);
+		nav().quat().fromAxisAngle(0.*M_2PI, 0,1,0);
+        return true;
+	}
+
+	virtual void onSound(AudioIOData& io) override {
+
+		// Things here occur at block rate...
+
+		float mouseSpeedScale = 50.0f;
+		while(io()){
+			//float in = io.in(0);
+			float fluct1 = fluctuation1();
+			float fluct2 = fluctuation2();
+
+			float out1 = granX() * mSpeedX.get() * mouseSpeedScale;
+			float out2 = granY() * mSpeedY.get() * mouseSpeedScale;
+
+			float bg1 = background1() * gainBackground1.get();
+			float bg2 = background2() * gainBackground2.get();
+			float bg3 = background3() * gainBackground3.get();
+
+#ifdef SURROUND
+			io.out(2) = out1 + (bg1 * (1 - fluct2)/2.0) + (bg2 * (1 - fluct2)/2.0) + (bg3 * (1 - fluct2)/2.0);
+			io.out(3) = out2 + (bg1 * (1 - fluct1)/2.0) + (bg2 * (1 - fluct1)/2.0) + (bg3 * (1 - fluct1)/2.0);
+
+			io.out(6) = (bg1 * (1 - fluct2)/2.0) + (bg2 * (1 - fluct2)/2.0) + (bg3 * (1 - fluct2)/2.0);
+			io.out(7) = (bg1 * (1 - fluct1)/2.0) + (bg2 * (1 - fluct2)/2.0) + (bg3 * (1 - fluct2)/2.0);
+#else
+			io.out(0) = out1 + (bg1 * (1 - fluct2)/2.0) + (bg2 * (1 - fluct2)/2.0) + (bg3 * (1 - fluct2)/2.0);
+			io.out(1) = out2 + (bg1 * (1 - fluct1)/2.0) + (bg2 * (1 - fluct1)/2.0) + (bg3 * (1 - fluct1)/2.0);
+#endif
+		}
+	}
+
+	virtual void onAnimate(double dt) override {
+
+		al_sec curTime = al_steady_time();
+		float mouseSpeed = 100.0 * sqrt(mSpeedX.get() * mSpeedX.get() + mSpeedY.get() * mSpeedY.get() + mSpeedZ.get() * mSpeedZ.get());
+		if (mouseSpeed > 2) {
+			mChaos.set(mouseSpeed/10.0);
+			if ((int) state().interactionEnd - (int) state().interactionBegin != -1) {
+				const Vec4d &lastPoint = state().interactionPoints[state().interactionEnd];
+				if (lastPoint.x != mMouseX && lastPoint.y != mMouseY) {
+					Vec4d newPoint(mMouseX, mMouseY, 0, mouseSpeed);
+                    state().interactionEnd++;
+                    if (state().interactionEnd == INTERACTION_POINTS) {
+                        state().interactionEnd = 0;
+                    }
+					state().interactionPoints[state().interactionEnd] = newPoint;
+					state().interactionTimes[state().interactionEnd] = curTime;
+				}
+			}
+		} else {
+			mChaos.set(0.0);
+		}
+        float timeOut = 5.0;
+		for (int it = state().interactionBegin; it != state().interactionEnd; it++) {
+            if (it == INTERACTION_POINTS) {
+                it = 0;
+            }
+			if (curTime - state().interactionTimes[it] > timeOut) {
+				state().interactionBegin++;
+                if (state().interactionBegin == INTERACTION_POINTS) {
+                    state().interactionBegin = 0;
+                }
+			} else {
+				break;
+			}
+
+		}
+
+        float * dev_ = state().dev;
+        unsigned int count = 0;
+        for (int x = 0; x < GRID_SIZE; x++) {
+			for (int y = 0; y < GRID_SIZE; y++) {
+				for (int z = 0; z < GRID_SIZE; z++) {
+					*dev_++ = mFilters[count](mNoise[count]() * (mChaos.get() * 5.0f));
+					count++;
+				}
+			}
+		}
+	}
+
+	virtual void onDraw(Graphics& g) override {
+        lens().far(15).near(0.01);
+        Color bgColor(0.1f, 0.1f, 0.1f, 0.1f);
+		g.fog(lens().far(), lens().near()+1, bgColor);
+
+        mPainter.onDraw(g);
+	}
+
 
 	// This is called whenever a key is pressed.
-	virtual void onKeyDown(const ViewpointWindow& w, const Keyboard& k){
+	virtual bool onKeyDown(const Keyboard& k) override {
 
 		// Use a switch to do something when a particular key is pressed
 		switch(k.key()){
@@ -463,24 +508,36 @@ public:
 		case Keyboard::DELETE: printf("Pressed delete.\n"); break;
 		case Keyboard::F1: printf("Pressed F1.\n"); break;
 		}
+        return true;
 	}
 
 	// This is called whenever a mouse button is pressed.
-	virtual void onMouseDown(const ViewpointWindow& w, const Mouse& m){
+	virtual bool onMouseDown(const Mouse& m) override {
 		switch(m.button()){
 		case Mouse::LEFT: printf("Pressed left mouse button.\n"); break;
 		case Mouse::RIGHT: printf("Pressed right mouse button.\n"); break;
 		case Mouse::MIDDLE: printf("Pressed middle mouse button.\n"); break;
 		}
+        return true;
 	}
 
 	// This is called whenever the mouse is dragged.
-	virtual void onMouseDrag(const ViewpointWindow& w, const Mouse& m){
+	virtual bool onMouseDrag(const Mouse& m) override {
 		// Get mouse coordinates, in pixels, relative to top-left corner of window
 		int x = m.x();
 		int y = m.y();
 		printf("Mouse dragged: %3d, %3d\n", x,y);
+        return true;
 	}
+    virtual bool onMouseMove(const Mouse &m) override {
+        mMouseX = (m.x() - (float)width()/2)/(float)width();
+        mMouseY = -(m.y() - (float)height()/2)/(float)height();
+
+        mSpeedX.set(m.dx()/(float)width());
+		mSpeedY.set(m.dy()/(float)height());
+        return true;
+    }
+
 
 	// *****************************************************
 	// NOTE: check the App class for more callback functions
