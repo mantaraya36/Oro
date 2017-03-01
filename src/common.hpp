@@ -397,7 +397,8 @@ class Simulator {
 public:
     Simulator(SharedState *state) :
         mChaos("chaos", "", 0),
-        mVideoDomain(30) //,
+	mVideoDomain(30),
+	mMaker("192.168.10.255") //,
 //	    mSpeedX("speedX", "", 0),
 //	    mSpeedY("speedY", "", 0),
 //	    mSpeedZ("speedZ", "", 0)
