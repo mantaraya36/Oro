@@ -25,7 +25,7 @@
 using namespace al;
 using namespace std;
 
-#define GRID_SIZE 16
+#define GRID_SIZE 9
 #define INTERACTION_POINTS 64
 #define NUM_OFRENDAS 8
 
@@ -427,7 +427,7 @@ public:
         mChaos.set(mChaos.get() > 1.0f ? 0.0f : mChaos.get() + 0.1f);
     }
     void setMousePosition(float x, float y) {
-        mMouseSpeed = 100.0f * sqrt(x * x + y * y);
+	mMouseSpeed = 10.0f * sqrt(x * x + y * y);
         mMouseX = x;
         mMouseY = y;
     }
