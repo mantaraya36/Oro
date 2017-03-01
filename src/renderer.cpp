@@ -107,7 +107,7 @@ public:
 
 	{
 		AudioDevice::printAll();
-	omni().resolution(1024);
+	omni().resolution(2048);
 		// Configure the camera lens
 //		lens().near(0.1).far(25).fovy(45);
 

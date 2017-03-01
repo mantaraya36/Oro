@@ -25,8 +25,8 @@
 using namespace al;
 using namespace std;
 
-#define GRID_SIZE 9
-#define INTERACTION_POINTS 64
+#define GRID_SIZE 7
+#define INTERACTION_POINTS 32
 #define NUM_OFRENDAS 8
 
 struct Ofrenda {
@@ -242,6 +242,7 @@ public:
 		mInteractionLine.smooth();
 
 		g.pushMatrix();
+		g.scale(2);
 		g.translate(- GRID_SIZE/2,- GRID_SIZE/4, -4.0);
 		unsigned int count = 0;
 		float *dev = state().dev;
@@ -277,8 +278,8 @@ public:
 
         // Interaction line
 		g.pushMatrix();
+		g.translate(0,0, 4);
 		g.scale(0.5);
-		g.translate(0,0, -0.05);
 		g.draw(mInteractionLine);
 		g.popMatrix();
 
@@ -416,7 +417,7 @@ public:
 		}
 
         for (unsigned int i = 0; i < NUM_OFRENDAS; i++) {
-            mOfrendas.ofrendas[i].envelope.decay(300.0);
+	    mOfrendas.ofrendas[i].envelope.decay(700.0);
             mOfrendas.ofrendas[i].envelope.value(i/(float)NUM_OFRENDAS);
         }
         /* States */
@@ -484,13 +485,13 @@ public:
         for (unsigned int i = 0; i < NUM_OFRENDAS; i++) {
             float env = mOfrendas.ofrendas[i].envelope();
             if (mOfrendas.ofrendas[i].envelope.done(0.1)) {
-                state().posOfrendas[i].x = rnd::gaussian();
+		state().posOfrendas[i].x = rnd::gaussian()* 1.4;
                 mOfrendas.ofrendas[i].envelope.reset();
             } else {
                 state().posOfrendas[i].y = env * 36.0f - 18.0f;
                 float randomVal = rnd::gaussian();
-                state().posOfrendas[i].x += randomVal * 0.01f;
-                state().posOfrendas[i][3] += randomVal * 1.0f;
+		state().posOfrendas[i].x += randomVal * 0.05f;
+		state().posOfrendas[i][3] += randomVal * 1.5f;
             }
         }
         /* States */
