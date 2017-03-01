@@ -66,142 +66,17 @@ Lance Putnam, 6/2011, putnam.lance@gmail.com
 using namespace al;
 using namespace std;
 
-class Simulator {
-public:
-    Simulator(SharedState *state) :
-        mVideoDomain(30),
-        mChaos("chaos", "", 0) //,
-//	    mSpeedX("speedX", "", 0),
-//	    mSpeedY("speedY", "", 0),
-//	    mSpeedZ("speedZ", "", 0)
-    {
-        mState = state;
-
-        /* States */
-
-        mNoise.resize(GRID_SIZE * GRID_SIZE * GRID_SIZE);
-		mFilters.resize(GRID_SIZE * GRID_SIZE * GRID_SIZE);
-
-		for (gam::Biquad<> &b:mFilters) {
-			b.domain(mVideoDomain);
-			b.freq(0.3);
-		}
-
-        for (unsigned int i = 0; i < NUM_OFRENDAS; i++) {
-            mOfrendas.ofrendas[i].envelope.decay(300.0);
-            mOfrendas.ofrendas[i].envelope.value(i/(float)NUM_OFRENDAS);
-        }
-        /* States */
-    }
-
-    void addChaos() {
-        mChaos.set(mChaos.get() > 1.0 ? 0.0 : mChaos.get() + 0.1);
-    }
-    void setMousePosition(float x, float y) {
-        mMouseSpeed = 100.0f * sqrt(x * x + y * y);
-        mMouseX = x;
-        mMouseY = y;
-    }
-
-    void onAnimate(double dt) {
-
-        al_sec curTime = al_steady_time();
-		if (mMouseSpeed > 2) {
-			mChaos.set(mMouseSpeed/10.0f);
-			if ((int) state().interactionEnd - (int) state().interactionBegin != -1) {
-				const Vec4d &lastPoint = state().interactionPoints[state().interactionEnd];
-				if (lastPoint.x != mMouseX && lastPoint.y != mMouseY) {
-					Vec4d newPoint(mMouseX, mMouseY, 0, mMouseSpeed);
-                    state().interactionEnd++;
-                    if (state().interactionEnd == INTERACTION_POINTS) {
-                        state().interactionEnd = 0;
-                    }
-					state().interactionPoints[state().interactionEnd] = newPoint;
-					state().interactionTimes[state().interactionEnd] = curTime;
-				}
-			}
-		} else {
-			mChaos.set(0.0);
-		}
-
-        float timeOut = 5.0;
-		for (int it = state().interactionBegin; it != state().interactionEnd; it++) {
-            if (it == INTERACTION_POINTS) {
-                it = 0;
-            }
-			if (curTime - state().interactionTimes[it] > timeOut) {
-				state().interactionBegin++;
-                if (state().interactionBegin == INTERACTION_POINTS) {
-                    state().interactionBegin = 0;
-                }
-			} else {
-				break;
-			}
-
-		}
-
-        float * dev_ = state().dev;
-        unsigned int count = 0;
-        for (int x = 0; x < GRID_SIZE; x++) {
-			for (int y = 0; y < GRID_SIZE; y++) {
-				for (int z = 0; z < GRID_SIZE; z++) {
-					*dev_++ = mFilters[count](mNoise[count]() * (mChaos.get() * 5.0f));
-					count++;
-				}
-			}
-		}
-
-        /* States */
-        for (unsigned int i = 0; i < NUM_OFRENDAS; i++) {
-            float env = mOfrendas.ofrendas[i].envelope();
-            if (mOfrendas.ofrendas[i].envelope.done(0.1)) {
-                state().posOfrendas[i].x = rnd::gaussian();
-                mOfrendas.ofrendas[i].envelope.reset();
-            } else {
-                state().posOfrendas[i].y = env * 36.0f - 18.0f;
-                float randomVal = rnd::gaussian();
-                state().posOfrendas[i].x += randomVal * 0.01f;
-                state().posOfrendas[i][3] += randomVal * 1.0f;
-            }
-        }
-        /* States */
-
-        mMaker.set(state());
-    }
-
-    Parameter mChaos;
-//	Parameter mSpeedX, mSpeedY, mSpeedZ;
-    /* Simulation states and data */
-    SharedState *mState; // To renderers
-
-    // From controllers
-    float mMouseSpeed;
-    float mMouseX, mMouseY;
-
-    // For onAnimate computation
-    gam::Domain mVideoDomain; // Simulation frame rate
-    Ofrenda_Data mOfrendas;
-    std::vector<gam::Biquad<> > mFilters;
-    std::vector<gam::NoiseBrown<> > mNoise;
-
-    cuttlebone::Maker<SharedState> mMaker;
-    /* End Simulation states and data */
-
-    SharedState &state() {return *mState;}
-};
-
 
 class MyApp : public OmniApp {
 public:
 
     SharedState mState;
     SharedPainter mPainter;
-    Simulator mSimulator;
 
     cuttlebone::Taker<SharedState> mTaker;
     SharedState& state() {return mState;}
 
-    int mMouseX, mMouseY;
+    float mMouseX, mMouseY;
     float mSpeedX, mSpeedY;
 
 	ShaderProgram mShader;
@@ -223,7 +98,6 @@ public:
 
 	// This constructor is where we initialize the application
 	MyApp(): mPainter(&mState, &shader()),
-        mSimulator(&mState),
 	    granX("Bounced Files/Piezas oro 1.wav"),
 	    granY("Bounced Files/Piezas oro 2.wav"),
 	    granZ("Bounced Files/Piezas oro 2.wav"),
@@ -233,7 +107,6 @@ public:
 
 	{
 		AudioDevice::printAll();
-
 //        omni().resolution(256);
 		// Configure the camera lens
 //		lens().near(0.1).far(25).fovy(45);
@@ -254,11 +127,10 @@ public:
 //		initAudio("default", 48000, 64, 0, 2);
 #endif
 
-
 //		mParameterGUI.setParentApp(this);
 //		mParameterGUI << new glv::Label("Parameter GUI example");
 //		mParameterGUI << gainBackground1 << gainBackground2 << gainBackground3;
-
+        mTaker.start();
 		std::cout << "Constructor done" << std::endl;
 	}
 
@@ -296,15 +168,10 @@ public:
           setup();
           first_frame = false;
         }
-        mSimulator.onAnimate(dt); // State could be shared here when simulator is local
 //        state().nav = nav();
 	}
 
 	virtual void onDraw(Graphics& g) override {
-//        nav().pos() = state().nav;
-//        lens().far(15).near(0.01);
-//        Color bgColor(0.1f, 0.1f, 0.1f, 0.1f);
-//		g.fog(lens().far(), lens().near()+1, bgColor);
 
         mPainter.onDraw(g);
 	}
@@ -341,28 +208,28 @@ public:
 	}
 
 	// This is called whenever a key is pressed.
-	virtual bool onKeyDown(const Keyboard& k) override {
+//	virtual bool onKeyDown(const Keyboard& k) override {
 
-		// Use a switch to do something when a particular key is pressed
-		switch(k.key()){
+//		// Use a switch to do something when a particular key is pressed
+//		switch(k.key()){
 
-		// For printable keys, we just use its character symbol:
-		case '1': printf("Pressed 1.\n"); break;
-		case 'y': printf("Pressed y.\n"); break;
-		case 'n': printf("Pressed n.\n"); break;
-		case '.': printf("Pressed period.\n"); break;
-		case ' ': printf("Pressed space bar.\n");
-			mSimulator.addChaos();
-			break;
+//		// For printable keys, we just use its character symbol:
+//		case '1': printf("Pressed 1.\n"); break;
+//		case 'y': printf("Pressed y.\n"); break;
+//		case 'n': printf("Pressed n.\n"); break;
+//		case '.': printf("Pressed period.\n"); break;
+//		case ' ': printf("Pressed space bar.\n");
+//			mSimulator.addChaos();
+//			break;
 
-		// For non-printable keys, we have to use the enums described in the
-		// Keyboard class:
-		case Keyboard::RETURN: printf("Pressed return.\n"); break;
-		case Keyboard::DELETE: printf("Pressed delete.\n"); break;
-		case Keyboard::F1: printf("Pressed F1.\n"); break;
-		}
-        return true;
-	}
+//		// For non-printable keys, we have to use the enums described in the
+//		// Keyboard class:
+//		case Keyboard::RETURN: printf("Pressed return.\n"); break;
+//		case Keyboard::DELETE: printf("Pressed delete.\n"); break;
+//		case Keyboard::F1: printf("Pressed F1.\n"); break;
+//		}
+//        return true;
+//	}
 
 //	// This is called whenever a mouse button is pressed.
 //	virtual bool onMouseDown(const Mouse& m) override {
@@ -383,17 +250,17 @@ public:
 //        return true;
 //	}
 
-    virtual bool onMouseMove(const Mouse &m) override {
+//    virtual bool onMouseMove(const Mouse &m) override {
 //        std::cout << "mousr" << m.x() << "-" << width() << std::endl;
-        mMouseX = (m.x() - (float)width()/2)/(float)width();
-        mMouseY = -(m.y() - (float)height()/2)/(float)height();
+//        mMouseX = (m.x() - (float)width()/2)/(float)width();
+//        mMouseY = -(m.y() - (float)height()/2)/(float)height();
 
-        mSpeedX = m.dx()/(float)width();
-        mSpeedY = m.dy()/(float)height();
+//        mSpeedX = m.dx()/(float)width();
+//        mSpeedY = m.dy()/(float)height();
 
-        mSimulator.setMousePosition(mMouseX, mMouseY);
-        return true;
-    }
+//        mSimulator.setMousePosition(mMouseX, mMouseY);
+//        return true;
+//    }
 
     virtual std::string vertexCode() override;
     virtual std::string fragmentCode() override;
@@ -406,85 +273,12 @@ public:
 
 
 inline std::string MyApp::vertexCode() {
-  return R"(varying vec4 color; varying vec3 normal, lightDir, eyeVec;
-         uniform float fogCurve;
-
-          uniform int enableFog;
-         /* The fog amount in [0,1] passed to the fragment shader. */
-         varying float fogFactor;
-
-         void main() {
-    color = gl_Color;
-    vec4 vertex = gl_ModelViewMatrix * gl_Vertex;
-    normal = gl_NormalMatrix * gl_Normal;
-    vec3 V = vertex.xyz;
-    eyeVec = normalize(-V);
-    lightDir = normalize(vec3(gl_LightSource[0].position.xyz - V));
-    gl_TexCoord[0] = gl_MultiTexCoord0;
-    gl_Position = omni_render(vertex);
-
-          if (enableFog == 1) {
-         float z = gl_Position.z;
-         //float z = gl_FragCoord.z / gl_FragCoord.w; /* per-frament fog would use this */
-         fogFactor = (z - gl_Fog.start) * gl_Fog.scale;
-         fogFactor = clamp(fogFactor, 0., 1.);
-         if(fogCurve != 0.){
-             fogFactor = (1. - exp(-fogCurve*fogFactor))/(1. - exp(-fogCurve));
-         }
-         }
-  })";
+  return vertexShader;
 }
 
 inline std::string MyApp::fragmentCode() {
-  return R"(uniform float lighting; uniform float texture;
-                      uniform sampler2D texture0; varying vec4 color;
-                      varying vec3 normal, lightDir, eyeVec;
-         varying float fogFactor;
-          uniform vec4 fogColor;
-         uniform int enableFog;
-         void main() {
-
-    vec4 colorMixed;
-    if (texture > 0.0) {
-      vec4 textureColor = texture2D(texture0, gl_TexCoord[0].st);
-      colorMixed = mix(color, textureColor, texture);
-    } else {
-      colorMixed = color;
-    }
-
-    vec4 final_color = colorMixed * gl_LightSource[0].ambient;
-    vec3 N = normalize(normal);
-    vec3 L = lightDir;
-    float lambertTerm = max(dot(N, L), 0.0);
-    final_color += gl_LightSource[0].diffuse * colorMixed * lambertTerm;
-    vec3 E = eyeVec;
-    vec3 R = reflect(-L, N);
-    float spec = pow(max(dot(R, E), 0.0), 0.9 + 1e-20);
-    final_color += gl_LightSource[0].specular * spec;
-    gl_FragColor = mix(colorMixed, final_color, lighting);
-
-         // fog
-         if (enableFog == 1) {
-         float c = fogFactor;
-         c = (3. - 2.*c) * c*c;		// smooth step
-         // c *= c;					// smooth step sqr, lighter fog
-         // c = c-1.; c = 1. - c*c;	// parabolic, denser fog
-
-         // vec4 fogCol = texture2D(texture0, fog_xy);
-         // vec4 fogCol = vec4(0.0, 0.0, 0.0, 1.0);
-         vec4 fogCol = fogColor;
-
-//         // This is required if we want blending to work
-//         if(gl_FragColor.a < 0.9999){
-//             gl_FragColor.a = gl_FragColor.a * (1.-c);
-//             // gl_FragColor = vec4(1,0,0,1); return;
-//         }
-                               gl_FragColor.rgb = mix(gl_FragColor.rgb, fogCol.rgb, c);
-          }
-         })";
+  return fragmentShader;
 }
-
-
 
 
 int main(){

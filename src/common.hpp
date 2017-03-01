@@ -18,6 +18,9 @@
 #include "Gamma/Oscillator.h"
 #include "Gamma/Envelope.h"
 
+
+#include "Cuttlebone/Cuttlebone.hpp"
+
 //#define SURROUND
 using namespace al;
 using namespace std;
@@ -189,9 +192,9 @@ public:
 
         shader().uniform("lighting", 1.0);
         shader().uniform("fogCurve", 1.0);
-        g.fog(30, 2, Color(0,0,0, 0.2));
         float fogColor[4] = {0.0f, 0.0f, 0.0f, 0.2f};
         shader().uniform4("fogColor", fogColor, 4);
+        g.fog(30, 2, Color(0,0,0, 0.2));
 
 
 		state().lightPhase += 1./1800; if(state().lightPhase > 1) state().lightPhase -= 1;
@@ -230,7 +233,7 @@ public:
                 points = state().interactionPoints;
             }
 			mInteractionLine.vertex(points->x, points->y, 0);
-			*width_ponter++ = std::sqrt((*points)[3]) * 0.1f;
+			*width_ponter++ = std::sqrt((*points)[3]) * 0.001f;
 			mInteractionLine.color(HSV(0.14f, 0.5f, (*points)[3]/20.0f));
             points++;
 		}
@@ -239,9 +242,7 @@ public:
 		mInteractionLine.smooth();
 
 		g.pushMatrix();
-
 		g.translate(- GRID_SIZE/2,- GRID_SIZE/4, -4.0);
-
 		unsigned int count = 0;
 		float *dev = state().dev;
 		for (int x = 0; x < GRID_SIZE; x++) {
@@ -272,11 +273,11 @@ public:
 			}
 			g.popMatrix();
 		}
-
 		g.popMatrix();
 
+        // Interaction line
 		g.pushMatrix();
-		g.scale(3.0);
+		g.scale(0.5);
 		g.translate(0,0, -0.05);
 		g.draw(mInteractionLine);
 		g.popMatrix();
@@ -292,11 +293,11 @@ public:
             if (state().ofrendas[i]) {
                 g.pushMatrix();
 
-                g.scale(0.3);
                 Vec4f posOfrenda = state().posOfrendas[i];
-                g.translate(posOfrenda[0], posOfrenda[1], posOfrenda[2] - 12 + 4* i/(float)NUM_OFRENDAS );
+                g.translate(posOfrenda[0], posOfrenda[1], posOfrenda[2] - 4 + i/(float)NUM_OFRENDAS );
                 g.rotate(posOfrenda[3], 0, 0, 1);
 
+                g.scale(0.3);
                 textureOfrendas[i].bind(0);
                 g.draw(mQuad);
                 textureOfrendas[i].unbind();
@@ -313,6 +314,208 @@ public:
 
     ShaderProgram &shader() {return *mShader;}
     ShaderProgram *mShader;
+};
+
+static const char* vertexShader = R"(varying vec4 color; varying vec3 normal, lightDir, eyeVec;
+         uniform float fogCurve;
+
+          uniform int enableFog;
+         /* The fog amount in [0,1] passed to the fragment shader. */
+         varying float fogFactor;
+
+         void main() {
+    color = gl_Color;
+    vec4 vertex = gl_ModelViewMatrix * gl_Vertex;
+    normal = gl_NormalMatrix * gl_Normal;
+    vec3 V = vertex.xyz;
+    eyeVec = normalize(-V);
+    lightDir = normalize(vec3(gl_LightSource[0].position.xyz - V));
+    gl_TexCoord[0] = gl_MultiTexCoord0;
+    gl_Position = omni_render(vertex);
+
+          if (enableFog == 1) {
+         float z = gl_Position.z;
+         //float z = gl_FragCoord.z / gl_FragCoord.w; /* per-frament fog would use this */
+         fogFactor = (z - gl_Fog.start) * gl_Fog.scale;
+         fogFactor = clamp(fogFactor, 0., 1.);
+         if(fogCurve != 0.){
+             fogFactor = (1. - exp(-fogCurve*fogFactor))/(1. - exp(-fogCurve));
+         }
+         }
+  })";
+
+
+static const char* fragmentShader = R"(uniform float lighting; uniform float texture;
+                      uniform sampler2D texture0; varying vec4 color;
+                      varying vec3 normal, lightDir, eyeVec;
+         varying float fogFactor;
+          uniform vec4 fogColor;
+         uniform int enableFog;
+         void main() {
+
+    vec4 colorMixed;
+    if (texture > 0.0) {
+      vec4 textureColor = texture2D(texture0, gl_TexCoord[0].st);
+      colorMixed = mix(color, textureColor, texture);
+    } else {
+      colorMixed = color;
+    }
+
+    vec4 final_color = colorMixed * gl_LightSource[0].ambient;
+    vec3 N = normalize(normal);
+    vec3 L = lightDir;
+    float lambertTerm = max(dot(N, L), 0.0);
+    final_color += gl_LightSource[0].diffuse * colorMixed * lambertTerm;
+    vec3 E = eyeVec;
+    vec3 R = reflect(-L, N);
+    float spec = pow(max(dot(R, E), 0.0), 0.9 + 1e-20);
+    final_color += gl_LightSource[0].specular * spec;
+    gl_FragColor = mix(colorMixed, final_color, lighting);
+
+         // fog
+         if (enableFog == 1) {
+         float c = fogFactor;
+         c = (3. - 2.*c) * c*c;		// smooth step
+         // c *= c;					// smooth step sqr, lighter fog
+         // c = c-1.; c = 1. - c*c;	// parabolic, denser fog
+
+         // vec4 fogCol = texture2D(texture0, fog_xy);
+         // vec4 fogCol = vec4(0.0, 0.0, 0.0, 1.0);
+         vec4 fogCol = fogColor;
+
+//         // This is required if we want blending to work
+//         if(gl_FragColor.a < 0.9999){
+//             gl_FragColor.a = gl_FragColor.a * (1.-c);
+//             // gl_FragColor = vec4(1,0,0,1); return;
+//         }
+                               gl_FragColor.rgb = mix(gl_FragColor.rgb, fogCol.rgb, c);
+          }
+         })";
+
+
+class Simulator {
+public:
+    Simulator(SharedState *state) :
+        mChaos("chaos", "", 0),
+        mVideoDomain(30) //,
+//	    mSpeedX("speedX", "", 0),
+//	    mSpeedY("speedY", "", 0),
+//	    mSpeedZ("speedZ", "", 0)
+    {
+        mState = state;
+
+        /* States */
+
+        mNoise.resize(GRID_SIZE * GRID_SIZE * GRID_SIZE);
+		mFilters.resize(GRID_SIZE * GRID_SIZE * GRID_SIZE);
+
+		for (gam::Biquad<> &b:mFilters) {
+			b.domain(mVideoDomain);
+			b.freq(0.3);
+		}
+
+        for (unsigned int i = 0; i < NUM_OFRENDAS; i++) {
+            mOfrendas.ofrendas[i].envelope.decay(300.0);
+            mOfrendas.ofrendas[i].envelope.value(i/(float)NUM_OFRENDAS);
+        }
+        /* States */
+        mMaker.start();
+    }
+
+    void addChaos() {
+        mChaos.set(mChaos.get() > 1.0f ? 0.0f : mChaos.get() + 0.1f);
+    }
+    void setMousePosition(float x, float y) {
+        mMouseSpeed = 100.0f * sqrt(x * x + y * y);
+        mMouseX = x;
+        mMouseY = y;
+    }
+
+    void onAnimate(double dt) {
+
+        al_sec curTime = al_steady_time();
+		if (mMouseSpeed > 2) {
+			mChaos.set(mMouseSpeed/10.0f);
+			if ((int) state().interactionEnd - (int) state().interactionBegin != -1) {
+				const Vec4d &lastPoint = state().interactionPoints[state().interactionEnd];
+				if (lastPoint.x != mMouseX && lastPoint.y != mMouseY) {
+					Vec4d newPoint(mMouseX, mMouseY, 0, mMouseSpeed);
+                    state().interactionEnd++;
+                    if (state().interactionEnd == INTERACTION_POINTS) {
+                        state().interactionEnd = 0;
+                    }
+					state().interactionPoints[state().interactionEnd] = newPoint;
+					state().interactionTimes[state().interactionEnd] = curTime;
+				}
+			}
+		} else {
+			mChaos.set(0.0);
+		}
+
+        float timeOut = 5.0;
+		for (int it = state().interactionBegin; it != state().interactionEnd; it++) {
+            if (it == INTERACTION_POINTS) {
+                it = 0;
+            }
+			if (curTime - state().interactionTimes[it] > timeOut) {
+				state().interactionBegin++;
+                if (state().interactionBegin == INTERACTION_POINTS) {
+                    state().interactionBegin = 0;
+                }
+			} else {
+				break;
+			}
+
+		}
+
+        float * dev_ = state().dev;
+        unsigned int count = 0;
+        for (int x = 0; x < GRID_SIZE; x++) {
+			for (int y = 0; y < GRID_SIZE; y++) {
+				for (int z = 0; z < GRID_SIZE; z++) {
+					*dev_++ = mFilters[count](mNoise[count]() * (mChaos.get() * 5.0f));
+					count++;
+				}
+			}
+		}
+
+        /* States */
+        for (unsigned int i = 0; i < NUM_OFRENDAS; i++) {
+            float env = mOfrendas.ofrendas[i].envelope();
+            if (mOfrendas.ofrendas[i].envelope.done(0.1)) {
+                state().posOfrendas[i].x = rnd::gaussian();
+                mOfrendas.ofrendas[i].envelope.reset();
+            } else {
+                state().posOfrendas[i].y = env * 36.0f - 18.0f;
+                float randomVal = rnd::gaussian();
+                state().posOfrendas[i].x += randomVal * 0.01f;
+                state().posOfrendas[i][3] += randomVal * 1.0f;
+            }
+        }
+        /* States */
+
+        mMaker.set(state());
+    }
+
+    Parameter mChaos;
+//	Parameter mSpeedX, mSpeedY, mSpeedZ;
+    /* Simulation states and data */
+    SharedState *mState; // To renderers
+
+    // From controllers
+    float mMouseSpeed;
+    float mMouseX, mMouseY;
+
+    // For onAnimate computation
+    gam::Domain mVideoDomain; // Simulation frame rate
+    Ofrenda_Data mOfrendas;
+    std::vector<gam::Biquad<> > mFilters;
+    std::vector<gam::NoiseBrown<> > mNoise;
+
+    cuttlebone::Maker<SharedState> mMaker;
+    /* End Simulation states and data */
+
+    SharedState &state() {return *mState;}
 };
 
 
