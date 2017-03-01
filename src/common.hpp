@@ -25,9 +25,9 @@
 using namespace al;
 using namespace std;
 
-#define GRID_SIZE 16
-#define INTERACTION_POINTS 512
-#define NUM_OFRENDAS 32
+#define GRID_SIZE 10
+#define INTERACTION_POINTS 256
+#define NUM_OFRENDAS 20
 
 struct Ofrenda {
     gam::Decay<float> envelope;
