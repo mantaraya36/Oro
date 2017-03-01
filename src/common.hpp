@@ -25,7 +25,7 @@
 using namespace al;
 using namespace std;
 
-#define GRID_SIZE 10
+#define GRID_SIZE 16
 #define INTERACTION_POINTS 64
 #define NUM_OFRENDAS 8
 
