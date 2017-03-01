@@ -46,6 +46,8 @@ Lance Putnam, 6/2011, putnam.lance@gmail.com
 #include <memory>
 
 #include "allocore/graphics/al_Shapes.hpp"
+#include "allocore/graphics/al_Image.hpp"
+#include "allocore/graphics/al_Texture.hpp"
 #include "allocore/ui/al_Parameter.hpp"
 #include "alloGLV/al_ParameterGUI.hpp"
 #include "alloutil/al_OmniApp.hpp"
@@ -57,6 +59,7 @@ Lance Putnam, 6/2011, putnam.lance@gmail.com
 
 //#define SURROUND
 using namespace al;
+using namespace std;
 
 // Fog vertex shader
 static const char * fogVert = R"(
@@ -132,6 +135,7 @@ private:
 
 #define GRID_SIZE 16
 #define INTERACTION_POINTS 512
+#define NUM_OFRENDAS 32
 
 typedef struct {
     double lightPhase;
@@ -141,23 +145,44 @@ typedef struct {
 	al_sec interactionTimes[INTERACTION_POINTS];
     unsigned int interactionEnd = 0;
     unsigned int interactionBegin = 0;
+
+    Vec4f posOfrendas[NUM_OFRENDAS];
+    bool ofrendas[NUM_OFRENDAS]; //if ofrendas are on or off
+    Nav nav;
 } SharedState;
 
 
 class SharedPainter {
 public:
 
-    Light light;			// Necessary to light objects in the scene
-	Material material;		// Necessary for specular highlights
+    Light mLight;			// Necessary to light objects in the scene
+	Material mMaterial;		// Necessary for specular highlights
 
-    std::vector<Mesh> mGrid;
-	std::vector<Mesh> mGridVertical;
-	std::vector<Mesh> mGridHorizontal;
+    vector<Mesh> mGrid;
+	vector<Mesh> mGridVertical;
+	vector<Mesh> mGridHorizontal;
 
     Mesh mInteractionLine;
 
+    Image imagesOfrendas[NUM_OFRENDAS];
+    Texture textureOfrendas[NUM_OFRENDAS];
+
     SharedPainter(SharedState *state) {
         mState = state;
+
+        vector<string> ofrendaImageFiles;
+
+        int counter = 0;
+        for (string filename: ofrendaImageFiles) {
+            if (imagesOfrendas[counter].load(filename)) {
+//                printf("Read image from %s\n", filename);
+                textureOfrendas[counter].allocate(imagesOfrendas[counter].array());
+            } else {
+//                printf("Failed to read image from %s!  Quitting.\n", filename);
+                exit(-1);
+            }
+            counter++;
+        }
 
 
         mGrid.resize(GRID_SIZE * GRID_SIZE * GRID_SIZE);
@@ -207,24 +232,24 @@ public:
 		float y = sin(11*state().lightPhase*2*M_PI);
 		float z = cos(state().lightPhase*2*M_PI)*0.5 - 0.6;
 
-		light.pos(x,y,z);
+		mLight.pos(x,y,z);
 
 		// Set up light
-		light.globalAmbient(RGB(0.1));	// Ambient reflection for all lights
-		light.ambient(RGB(0));			// Ambient reflection for this light
-		light.diffuse(RGB(1,1,1));	// Light scattered directly from light
-		light.attenuation(1,1,0);		// Inverse distance attenuation
+		mLight.globalAmbient(RGB(0.1));	// Ambient reflection for all lights
+		mLight.ambient(RGB(0));			// Ambient reflection for this light
+		mLight.diffuse(RGB(1,1,1));	// Light scattered directly from light
+		mLight.attenuation(1,1,0);		// Inverse distance attenuation
 //		light.attenuation(1,0,1);		// Inverse-squared distance attenuation
 
 		// Activate light
-		light();
+		mLight();
 
 		// Set up material (i.e., specularity)
-		material.specular(light.diffuse()*0.9); // Specular highlight, "shine"
-		material.shininess(50);			// Concentration of specular component [0,128]
+		mMaterial.specular(mLight.diffuse()*0.9); // Specular highlight, "shine"
+		mMaterial.shininess(50);			// Concentration of specular component [0,128]
 
 		// Activate material
-		material();
+		mMaterial();
 
 		// Render
 //		mShader.begin();
@@ -263,7 +288,7 @@ public:
 
 		g.pushMatrix();
 
-		g.translate(- GRID_SIZE/2,- GRID_SIZE/4, 0);
+		g.translate(- GRID_SIZE/2,- GRID_SIZE/4, -4.0);
 		unsigned int count = 0;
 		float *dev = state().dev;
 		for (int x = 0; x < GRID_SIZE; x++) {
@@ -302,6 +327,19 @@ public:
 		g.translate(0,0, -0.05);
 		g.draw(mInteractionLine);
 		g.popMatrix();
+
+        for (unsigned int i = 0; i < NUM_OFRENDAS; i++) {
+            if (state().ofrendas[i]) {
+                g.pushMatrix();
+
+                Vec4f posOfrenda = state().posOfrendas[i];
+                g.translate(posOfrenda[0], posOfrenda[1], posOfrenda[2]);
+
+                textureOfrendas[i].quad(g, 200, 200, 0, 0, 0);
+
+                g.popMatrix();
+            }
+        }
 //		mShader.end();
 	}
 
@@ -355,6 +393,7 @@ public:
 	{
 		AudioDevice::printAll();
 
+//        omni().resolution(256);
 		// Configure the camera lens
 		lens().near(0.1).far(25).fovy(45);
 
@@ -394,8 +433,8 @@ public:
 		mShader.compile(fogVert, fogFrag);
         OmniApp::onCreate();
 
-        nav().pos(0,0,10);
-		nav().quat().fromAxisAngle(0.*M_2PI, 0,1,0);
+        nav().pos().set(0,0,10);
+//		nav().quat().fromAxisAngle(0.*M_2PI, 0,1,0);
         return true;
 	}
 
@@ -476,9 +515,11 @@ public:
 				}
 			}
 		}
+//        state().nav = nav();
 	}
 
 	virtual void onDraw(Graphics& g) override {
+//        nav().pos() = state().nav;
         lens().far(15).near(0.01);
         Color bgColor(0.1f, 0.1f, 0.1f, 0.1f);
 		g.fog(lens().far(), lens().near()+1, bgColor);
