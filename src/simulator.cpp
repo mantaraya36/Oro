@@ -65,6 +65,7 @@ Lance Putnam, 6/2011, putnam.lance@gmail.com
 //#define SURROUND
 using namespace al;
 using namespace std;
+#define BUILDING_FOR_ALLOSPHERE
 
 
 class MyApp : public OmniApp {
@@ -102,12 +103,13 @@ public:
 	    granX("Bounced Files/Piezas oro 1.wav"),
 	    granY("Bounced Files/Piezas oro 2.wav"),
 	    granZ("Bounced Files/Piezas oro 2.wav"),
-	    background1("Bounced Files/Bajo agua.wav"),
-	    background2("Bounced Files/Bajo agua.wav"),
+	    background1("Bounced Files/Modal.csd-000.wav"),
+	    background2("Bounced Files/Modal.csd-000.wav"),
 	    background3("Bounced Files/Bajo agua.wav")
 
 	{
 		AudioDevice::printAll();
+		mSpeedX = mSpeedY = 0;
 //        omni().resolution(256);
 		// Configure the camera lens
 //		lens().near(0.1).far(25).fovy(45);
@@ -120,12 +122,18 @@ public:
 
         fluctuation1.freq(0.2f);
 		fluctuation2.freq(0.3f);
+#ifdef BUILDING_FOR_ALLOSPHERE
+
+//		audioIO().device("ECHO X5");
+		initAudio("ECHO X5", 48000, 64, 0, 60);
+#else
 #ifdef SURROUND
 		audioIO().device(5);
 		initAudio(48000, 256, 8, 0);
 #else
 		audioIO().device(0);
-//		initAudio("default", 48000, 64, 0, 2);
+		initAudio("ECHO X5", 48000, 64, 0, 60);
+#endif
 #endif
 
 //		mParameterGUI.setParentApp(this);
@@ -195,7 +203,19 @@ public:
 			float bg1 = background1() * gainBackground1.get();
 			float bg2 = background2() * gainBackground2.get();
 			float bg3 = background3() * gainBackground3.get();
+#ifdef BUILDING_FOR_ALLOSPHERE
+			io.out(19) = out1 + (bg1 * (1 - fluct2)/2.0) + (bg2 * (1 - fluct2)/2.0) + (bg3 * (1 - fluct2)/2.0);
+			io.out(27) = out2 + (bg1 * (1 - fluct1)/2.0) + (bg2 * (1 - fluct1)/2.0) + (bg3 * (1 - fluct1)/2.0);
 
+			io.out(45) = (bg1 * (1 - fluct2)/2.0) + (bg2 * (1 - fluct2)/2.0) + (bg3 * (1 - fluct2)/2.0);
+			io.out(31) = (bg1 * (1 - fluct1)/2.0) + (bg2 * (1 - fluct2)/2.0) + (bg3 * (1 - fluct2)/2.0);
+			io.out(40) = out1 + (bg1 * (1 - fluct2)/2.0) + (bg2 * (1 - fluct2)/2.0) + (bg3 * (1 - fluct2)/2.0);
+			io.out(36) = out2 + (bg1 * (1 - fluct1)/2.0) + (bg2 * (1 - fluct1)/2.0) + (bg3 * (1 - fluct1)/2.0);
+
+			float sw = io.out(45) + io.out(31);
+			io.out(47) = sw * 0.07;
+
+#else
 #ifdef SURROUND
 			io.out(2) = out1 + (bg1 * (1 - fluct2)/2.0) + (bg2 * (1 - fluct2)/2.0) + (bg3 * (1 - fluct2)/2.0);
 			io.out(3) = out2 + (bg1 * (1 - fluct1)/2.0) + (bg2 * (1 - fluct1)/2.0) + (bg3 * (1 - fluct1)/2.0);
@@ -205,6 +225,7 @@ public:
 #else
 			io.out(0) = out1 + (bg1 * (1 - fluct2)/2.0) + (bg2 * (1 - fluct2)/2.0) + (bg3 * (1 - fluct2)/2.0);
 			io.out(1) = out2 + (bg1 * (1 - fluct1)/2.0) + (bg2 * (1 - fluct1)/2.0) + (bg3 * (1 - fluct1)/2.0);
+#endif
 #endif
 		}
 	}

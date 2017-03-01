@@ -405,6 +405,9 @@ public:
 //	    mSpeedZ("speedZ", "", 0)
     {
         mState = state;
+	mMouseSpeed = 0;
+	mMouseX = 0;
+	mMouseY = 0;
 
         /* States */
 
@@ -417,7 +420,7 @@ public:
 		}
 
         for (unsigned int i = 0; i < NUM_OFRENDAS; i++) {
-	    mOfrendas.ofrendas[i].envelope.decay(700.0);
+	    mOfrendas.ofrendas[i].envelope.decay(2500.0);
             mOfrendas.ofrendas[i].envelope.value(i/(float)NUM_OFRENDAS);
         }
         /* States */
@@ -428,33 +431,31 @@ public:
         mChaos.set(mChaos.get() > 1.0f ? 0.0f : mChaos.get() + 0.1f);
     }
     void setMousePosition(float x, float y) {
-	mMouseSpeed = 10.0f * sqrt(x * x + y * y);
+	mMouseSpeed = 5.0f * sqrt(x * x + y * y);
         mMouseX = x;
         mMouseY = y;
     }
 
     void onAnimate(double dt) {
-
+	mChaos.set(mChaos.get()* 0.997);
         al_sec curTime = al_steady_time();
-		if (mMouseSpeed > 2) {
-			mChaos.set(mMouseSpeed/10.0f);
-			if ((int) state().interactionEnd - (int) state().interactionBegin != -1) {
-				const Vec4d &lastPoint = state().interactionPoints[state().interactionEnd];
-				if (lastPoint.x != mMouseX && lastPoint.y != mMouseY) {
-					Vec4d newPoint(mMouseX, mMouseY, 0, mMouseSpeed);
-                    state().interactionEnd++;
-                    if (state().interactionEnd == INTERACTION_POINTS) {
-                        state().interactionEnd = 0;
-                    }
-					state().interactionPoints[state().interactionEnd] = newPoint;
-					state().interactionTimes[state().interactionEnd] = curTime;
-				}
-			}
-		} else {
-			mChaos.set(0.0);
+	if (mMouseSpeed > 2) {
+	    mChaos.set(mMouseSpeed/10.0f);
+	    if ((int) state().interactionEnd - (int) state().interactionBegin != -1) {
+		const Vec4d &lastPoint = state().interactionPoints[state().interactionEnd];
+		if (lastPoint.x != mMouseX && lastPoint.y != mMouseY) {
+		    Vec4d newPoint(mMouseX, mMouseY, 0, mMouseSpeed);
+		    state().interactionEnd++;
+		    if (state().interactionEnd == INTERACTION_POINTS) {
+			state().interactionEnd = 0;
+		    }
+		    state().interactionPoints[state().interactionEnd] = newPoint;
+		    state().interactionTimes[state().interactionEnd] = curTime;
 		}
+	    }
+	}
 
-        float timeOut = 5.0;
+	float timeOut = 3.0;
 		for (int it = state().interactionBegin; it != state().interactionEnd; it++) {
             if (it == INTERACTION_POINTS) {
                 it = 0;
@@ -485,13 +486,13 @@ public:
         for (unsigned int i = 0; i < NUM_OFRENDAS; i++) {
             float env = mOfrendas.ofrendas[i].envelope();
             if (mOfrendas.ofrendas[i].envelope.done(0.1)) {
-		state().posOfrendas[i].x = rnd::gaussian()* 1.4;
+		state().posOfrendas[i].x = rnd::gaussian()* 0.9;
                 mOfrendas.ofrendas[i].envelope.reset();
             } else {
                 state().posOfrendas[i].y = env * 36.0f - 18.0f;
                 float randomVal = rnd::gaussian();
-		state().posOfrendas[i].x += randomVal * 0.05f;
-		state().posOfrendas[i][3] += randomVal * 1.5f;
+		state().posOfrendas[i].x += randomVal * 0.03f;
+		state().posOfrendas[i][3] += randomVal * 1.1f;
             }
         }
         /* States */
