@@ -119,7 +119,7 @@ public:
 
 		for (Mesh &m: mGrid) {
 //			addCylinder(m, 0.01, 1);
-			addSphere(m, 0.07);
+			addSphere(m, 0.09);
 			m.generateNormals();
 			int cylinderVertices = m.vertices().size();
 			for(int i = 0; i < cylinderVertices; i++) {
@@ -127,7 +127,7 @@ public:
 			}
 		}
 		for (Mesh &m: mGridVertical) {
-			addCylinder(m, 0.01, 1, 24);
+			addCylinder(m, 0.02, 1, 24);
 			m.generateNormals();
 			int cylinderVertices = m.vertices().size();
 			for(int i = 0; i < cylinderVertices; i++) {
