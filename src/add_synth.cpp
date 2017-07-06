@@ -34,6 +34,8 @@ public:
     float mFundamental;
     float mCumulativeDelay;
     float mAttackTimes[NUM_VOICES];
+    float mDecayTimes[NUM_VOICES];
+    float mSustainLevels[NUM_VOICES];
     float mReleaseTimes[NUM_VOICES];
     float mFrequencyFactors[NUM_VOICES];
     float mAmplitudes[NUM_VOICES];
@@ -47,9 +49,9 @@ public:
 class AddSynth {
 public:
     AddSynth(){
-        float envLevels[5] = {0.0, 0.0, 1.0, 1.0, 0.0};
+        float envLevels[6] = {0.0, 0.0, 1.0, 0.7, 0.7, 0.0};
         for (int i = 0; i < NUM_VOICES; i++) {
-            mEnvelopes[i].levels(envLevels, 5).sustainPoint(2);
+            mEnvelopes[i].levels(envLevels, 6).sustainPoint(3);
         }
         setCurvature(-4);
         release();
@@ -65,6 +67,8 @@ public:
 
         for (int i = 0; i < NUM_VOICES; i++) {
             setAttackTime(params.mAttackTimes[i], i);
+            setDecayTime(params.mDecayTimes[i], i);
+            setSustainLevel(params.mSustainLevels[i], i);
             setReleaseTime(params.mReleaseTimes[i], i);
             mEnvelopes[i].reset();
         }
@@ -97,9 +101,20 @@ public:
         mEnvelopes[i].lengths()[1] = attackTime;
     }
 
+    void setDecayTime(float decayTime, int i)
+    {
+        mEnvelopes[i].lengths()[2] = decayTime;
+    }
+
+    void setSustainLevel(float sustainLevel, int i)
+    {
+        mEnvelopes[i].levels()[3] = sustainLevel;
+        mEnvelopes[i].levels()[4] = sustainLevel;
+    }
+
     void setReleaseTime(float releaseTime, int i)
     {
-        mEnvelopes[i].lengths()[3] = releaseTime;
+        mEnvelopes[i].lengths()[4] = releaseTime;
     }
 
     void setCurvature(float curvature)
@@ -120,7 +135,7 @@ public:
         int numSpeakers = outputRouting.size();
         for (int i = 0; i < NUM_VOICES; i++) {
             mOutMap[i] = outputRouting[fmod(((arcStart + (arcSpan * i/(float) (NUM_VOICES))) * numSpeakers ), numSpeakers)];
-            std::cout << mOutMap[i] << std::endl;
+//            std::cout << mOutMap[i] << std::endl;
         }
     }
 
@@ -130,7 +145,7 @@ private:
 
     // Synthesis
     gam::Sine<> mOscillators[NUM_VOICES];
-    gam::Env<4> mEnvelopes[NUM_VOICES]; // First segment determines envelope delay
+    gam::Env<5> mEnvelopes[NUM_VOICES]; // First segment determines envelope delay
 
     float mLevel = 0;
     float mFrequencyFactors[NUM_VOICES];
@@ -226,6 +241,42 @@ private:
         {"Attack15", "", 0.1f, "", 0.0, 20.0},
         {"Attack16", "", 0.1f, "", 0.0, 20.0}
                                               };
+    vector<Parameter> mDecayTimes = {
+        {"Decay1", "", 0.1f, "", 0.0, 20.0},
+        {"Decay2", "", 0.1f, "", 0.0, 20.0},
+        {"Decay3", "", 0.1f, "", 0.0, 20.0},
+        {"Decay4", "", 0.1f, "", 0.0, 20.0},
+        {"Decay5", "", 0.1f, "", 0.0, 20.0},
+        {"Decay6", "", 0.1f, "", 0.0, 20.0},
+        {"Decay7", "", 0.1f, "", 0.0, 20.0},
+        {"Decay8", "", 0.1f, "", 0.0, 20.0},
+        {"Decay9", "", 0.1f, "", 0.0, 20.0},
+        {"Decay10", "", 0.1f, "", 0.0, 20.0},
+        {"Decay11", "", 0.1f, "", 0.0, 20.0},
+        {"Decay12", "", 0.1f, "", 0.0, 20.0},
+        {"Decay13", "", 0.1f, "", 0.0, 20.0},
+        {"Decay14", "", 0.1f, "", 0.0, 20.0},
+        {"Decay15", "", 0.1f, "", 0.0, 20.0},
+        {"Decay16", "", 0.1f, "", 0.0, 20.0}
+                                              };
+    vector<Parameter> mSustainLevels = {
+        {"Sustain1", "", 0.7f, "", 0.0, 1.0},
+        {"Sustain2", "", 0.7f, "", 0.0, 1.0},
+        {"Sustain3", "", 0.7f, "", 0.0, 1.0},
+        {"Sustain4", "", 0.7f, "", 0.0, 1.0},
+        {"Sustain5", "", 0.7f, "", 0.0, 1.0},
+        {"Sustain6", "", 0.7f, "", 0.0, 1.0},
+        {"Sustain7", "", 0.7f, "", 0.0, 1.0},
+        {"Sustain8", "", 0.7f, "", 0.0, 1.0},
+        {"Sustain9", "", 0.7f, "", 0.0, 1.0},
+        {"Sustain10", "", 0.7f, "", 0.0, 1.0},
+        {"Sustain11", "", 0.7f, "", 0.0, 1.0},
+        {"Sustain12", "", 0.7f, "", 0.0, 1.0},
+        {"Sustain13", "", 0.7f, "", 0.0, 1.0},
+        {"Sustain14", "", 0.7f, "", 0.0, 1.0},
+        {"Sustain15", "", 0.7f, "", 0.0, 1.0},
+        {"Sustain16", "", 0.7f, "", 0.0, 1.0}
+                                              };
     vector<Parameter> mReleaseTimes = {
         {"Release1", "", 1.0f, "", 0.0, 20.0},
         {"Release2", "", 1.0f, "", 0.0, 20.0},
@@ -295,6 +346,8 @@ private:
     glv::Box harmonicsBox {glv::Direction::S};
     glv::Box amplitudesBox {glv::Direction::S};
     glv::Box attackTimesBox {glv::Direction::S};
+    glv::Box decayTimesBox {glv::Direction::S};
+    glv::Box sustainLevelsBox {glv::Direction::S};
     glv::Box releaseTimesBox {glv::Direction::S};
     GLVDetachable controlView;
 
@@ -316,6 +369,8 @@ void AddSynthApp::initializeValues()
     mCumulativeDelay.set(0.0);
     for (int i = 0; i < NUM_VOICES; i++) {
         mAttackTimes[i].set(0.1);
+        mDecayTimes[i].set(0.1);
+        mSustainLevels[i].set(0.7);
         mReleaseTimes[i].set(2.0);
     }
 }
@@ -386,7 +441,7 @@ void AddSynthApp::initializeGui()
     harmonicsBox.fit();
     harmonicsBox.enable(glv::DrawBack);
     harmonicsBox.anchor(glv::Place::TR);
-    harmonicsBox.set(-360, 30, harmonicsBox.width(), harmonicsBox.height());
+    harmonicsBox.set(-1300, 30, harmonicsBox.width(), harmonicsBox.height());
     controlView << harmonicsBox;
 
     // Amplitudes
@@ -433,8 +488,7 @@ void AddSynthApp::initializeGui()
     amplitudesBox.fit();
     amplitudesBox.enable(glv::DrawBack);
     amplitudesBox.anchor(glv::Place::TR);
-    amplitudesBox.set(-360, 30, amplitudesBox.width(), amplitudesBox.height());
-    amplitudesBox.disable(glv::Property::Visible);
+    amplitudesBox.set(-1150, 30, amplitudesBox.width(), amplitudesBox.height());
     controlView << amplitudesBox;
 
     for (int i = 0; i < NUM_VOICES; i++) {
@@ -443,9 +497,26 @@ void AddSynthApp::initializeGui()
     attackTimesBox.fit();
     attackTimesBox.enable(glv::DrawBack);
     attackTimesBox.anchor(glv::Place::TR);
-    attackTimesBox.set(-360, 30, attackTimesBox.width(), attackTimesBox.height());
-    attackTimesBox.disable(glv::Property::Visible);
+    attackTimesBox.set(-1000, 30, attackTimesBox.width(), attackTimesBox.height());
     controlView << attackTimesBox;
+
+    for (int i = 0; i < NUM_VOICES; i++) {
+        decayTimesBox << ParameterGUI::makeParameterView(mDecayTimes[i]);
+    }
+    decayTimesBox.fit();
+    decayTimesBox.enable(glv::DrawBack);
+    decayTimesBox.anchor(glv::Place::TR);
+    decayTimesBox.set(-850, 30, decayTimesBox.width(), decayTimesBox.height());
+    controlView << decayTimesBox;
+
+    for (int i = 0; i < NUM_VOICES; i++) {
+        sustainLevelsBox << ParameterGUI::makeParameterView(mSustainLevels[i]);
+    }
+    sustainLevelsBox.fit();
+    sustainLevelsBox.enable(glv::DrawBack);
+    sustainLevelsBox.anchor(glv::Place::TR);
+    sustainLevelsBox.set(-700, 30, sustainLevelsBox.width(), sustainLevelsBox.height());
+    controlView << sustainLevelsBox;
 
     for (int i = 0; i < NUM_VOICES; i++) {
         releaseTimesBox << ParameterGUI::makeParameterView(mReleaseTimes[i]);
@@ -453,39 +524,38 @@ void AddSynthApp::initializeGui()
     releaseTimesBox.fit();
     releaseTimesBox.enable(glv::DrawBack);
     releaseTimesBox.anchor(glv::Place::TR);
-    releaseTimesBox.set(-360, 30, releaseTimesBox.width(), releaseTimesBox.height());
-    releaseTimesBox.disable(glv::Property::Visible);
+    releaseTimesBox.set(-550, 30, releaseTimesBox.width(), releaseTimesBox.height());
     controlView << releaseTimesBox;
 
 
-    viewSelector.addItem("Harmonics").addItem("Amplitudes").addItem("Attack").addItem("Release");
-    viewSelector.attach([](const glv::Notification &n) {
-        glv::DropDown *b = n.sender<glv::DropDown>();
-        AddSynthApp *app = n.receiver<AddSynthApp>();
-        std::cout << "pressed " << b->selectedItem() << std::endl;
-        app->harmonicsBox.disable(glv::Property::Visible);
-        app->amplitudesBox.disable(glv::Property::Visible);
-        app->attackTimesBox.disable(glv::Property::Visible);
-        app->releaseTimesBox.disable(glv::Property::Visible);
-        switch (b->selectedItem()) {
-        case 0:
-            app->harmonicsBox.enable(glv::Property::Visible);
-            break;
-        case 1:
-            app->amplitudesBox.enable(glv::Property::Visible);
-            break;
-        case 2:
-            app->attackTimesBox.enable(glv::Property::Visible);
-            break;
-        case 3:
-            app->releaseTimesBox.enable(glv::Property::Visible);
-            break;
-        }
-    }, glv::Update::Value, this);
-    viewSelector.enable(glv::DrawBack);
-    viewSelector.anchor(glv::Place::TR);
-    viewSelector.set(-360, 0, viewSelector.width(), viewSelector.height());
-    controlView << viewSelector;
+//    viewSelector.addItem("Harmonics").addItem("Amplitudes").addItem("Attack").addItem("Release");
+//    viewSelector.attach([](const glv::Notification &n) {
+//        glv::DropDown *b = n.sender<glv::DropDown>();
+//        AddSynthApp *app = n.receiver<AddSynthApp>();
+//        std::cout << "pressed " << b->selectedItem() << std::endl;
+//        app->harmonicsBox.disable(glv::Property::Visible);
+//        app->amplitudesBox.disable(glv::Property::Visible);
+//        app->attackTimesBox.disable(glv::Property::Visible);
+//        app->releaseTimesBox.disable(glv::Property::Visible);
+//        switch (b->selectedItem()) {
+//        case 0:
+//            app->harmonicsBox.enable(glv::Property::Visible);
+//            break;
+//        case 1:
+//            app->amplitudesBox.enable(glv::Property::Visible);
+//            break;
+//        case 2:
+//            app->attackTimesBox.enable(glv::Property::Visible);
+//            break;
+//        case 3:
+//            app->releaseTimesBox.enable(glv::Property::Visible);
+//            break;
+//        }
+//    }, glv::Update::Value, this);
+//    viewSelector.enable(glv::DrawBack);
+//    viewSelector.anchor(glv::Place::TR);
+//    viewSelector.set(-360, 0, viewSelector.width(), viewSelector.height());
+//    controlView << viewSelector;
 
     controlView.set(300, 0, 300, 400);
 }
@@ -497,7 +567,7 @@ void AddSynthApp::initializePresets()
     mPresetHandler << mArcStart << mArcSpan;
     for (int i = 0; i < NUM_VOICES; i++) {
         mPresetHandler << mFrequencyFactors[i] << mAmplitudes[i];
-        mPresetHandler << mAttackTimes[i] << mReleaseTimes[i];
+        mPresetHandler << mAttackTimes[i] << mDecayTimes[i] << mSustainLevels[i] << mReleaseTimes[i];
     }
     mPresetHandler.print();
 
@@ -523,7 +593,6 @@ void AddSynthApp::onSound(AudioIOData &io)
 
 void AddSynthApp::onKeyDown(const Keyboard &k)
 {
-    std::cout << "down" << std::endl;
     trigger();
 }
 
@@ -605,6 +674,8 @@ void AddSynthApp::trigger()
     params.mOutputRouting = outputRouting;
     for (int i = 0; i < NUM_VOICES; i++) {
         params.mAttackTimes[i] = mAttackTimes[i].get();
+        params.mDecayTimes[i] = mDecayTimes[i].get();
+        params.mSustainLevels[i] = mSustainLevels[i].get();
         params.mReleaseTimes[i] = mReleaseTimes[i].get();
         params.mFrequencyFactors[i] = mFrequencyFactors[i].get();
         params.mAmplitudes[i] = mAmplitudes[i].get();
