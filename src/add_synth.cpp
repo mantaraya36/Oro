@@ -158,8 +158,8 @@ public:
         initAudio(44100, 256, outChans, 0);
         gam::sampleRate(audioIO().fps());
 
+        initializePresets(); // Must be called before initializeGui
         initializeGui();
-        initializePresets();
     }
 
     void initializeValues();
@@ -200,7 +200,7 @@ private:
 
     // Parameters
     Parameter mLevel {"Level", "", 0.25, "", 0.0, 1.0};
-    Parameter mFundamental {"Fundamental", "", 220.0};
+    Parameter mFundamental {"Fundamental", "", 220.0, "", 0.0, 9000.0};
     Parameter mCumulativeDelay{"CumDelay", "", 0.0, "", 0.0, 0.2};
 
     // Spatialization
@@ -284,6 +284,10 @@ private:
     // Presets
     PresetHandler mPresetHandler;
 
+    //Sequencing
+    PresetSequencer sequencer;
+    SequenceRecorder recorder;
+
     // GUI
     ParameterGUI gui;
 
@@ -322,6 +326,8 @@ void AddSynthApp::initializeGui()
     gui << mLevel << mFundamental << mCumulativeDelay;
     gui << mArcStart << mArcSpan;
 
+    gui << SequencerGUI::makeSequencerPlayerView(sequencer)
+        << SequencerGUI::makeRecorderView(recorder);
     // Right side
 
 //    box << ParameterGUI::makeParameterView(mLevel);
@@ -505,6 +511,9 @@ void AddSynthApp::initializePresets()
     presetMIDI.setMorphControl(2, 1, 0.0, 8.0);
     // MIDI preset mapping
     presetMIDI.connectNoteToPreset(1, 0, 48, 24, 71);
+
+    sequencer << mPresetHandler;
+    recorder << mPresetHandler;
 }
 
 void AddSynthApp::onSound(AudioIOData &io)
