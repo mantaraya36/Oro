@@ -576,13 +576,13 @@ void AddSynthApp::initializePresets()
     parameterMIDI.init(midiControllerPort);
     parameterMIDI.connectControl(mCumulativeDelay, 75, 1);
     parameterMIDI.connectControl(mArcStart, 76, 1);
-    parameterMIDI.connectControl(mArcSpan, 92, 1);
+    parameterMIDI.connectControl(mArcSpan, 77, 1);
 
     // MIDI control of presets
     // 74 71 91 93 73 72 5 84 7
-    // 75 76 92 95 10 2 12 13
+    // 75 76 77 78 74 71 24 102
     presetMIDI.init(midiControllerPort, mPresetHandler);
-    presetMIDI.setMorphControl(2, 1, 0.0, 8.0);
+    presetMIDI.setMorphControl(102, 1, 0.0, 8.0);
     // MIDI preset mapping
     presetMIDI.connectNoteToPreset(1, 0, 36, 24, 59);
 
