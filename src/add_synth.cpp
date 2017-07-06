@@ -572,15 +572,19 @@ void AddSynthApp::initializePresets()
     mPresetHandler.print();
 
     // MIDI Control of parameters
-    unsigned int midiControllerPort = 0;
+    unsigned int midiControllerPort = 4;
     parameterMIDI.init(midiControllerPort);
-//    parameterMIDI.connectControl(frequency, 1, 1);
+    parameterMIDI.connectControl(mCumulativeDelay, 75, 1);
+    parameterMIDI.connectControl(mArcStart, 76, 1);
+    parameterMIDI.connectControl(mArcSpan, 92, 1);
 
     // MIDI control of presets
+    // 74 71 91 93 73 72 5 84 7
+    // 75 76 92 95 10 2 12 13
     presetMIDI.init(midiControllerPort, mPresetHandler);
     presetMIDI.setMorphControl(2, 1, 0.0, 8.0);
     // MIDI preset mapping
-    presetMIDI.connectNoteToPreset(1, 0, 48, 24, 71);
+    presetMIDI.connectNoteToPreset(1, 0, 36, 24, 59);
 
     sequencer << mPresetHandler;
     recorder << mPresetHandler;
