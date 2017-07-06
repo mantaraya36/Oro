@@ -181,6 +181,12 @@ public:
     void multiplyPartials(float factor);
     void randomizePartials(float max);
     void harmonicPartials();
+    void oddPartials();
+
+    // Transform amplitudes
+    void setAmpsToOne();
+    void setAmpsOneOverN();
+    void ampSlopeFactor(double factor);
 
     // Envelope
     void trigger();
@@ -280,7 +286,6 @@ private:
 
     // GUI
     ParameterGUI gui;
-    glv::Box layoutBox {glv::Direction::S};
 
     glv::DropDown viewSelector;
     glv::Box harmonicsBox {glv::Direction::S};
@@ -316,14 +321,14 @@ void AddSynthApp::initializeGui()
     gui << SequencerGUI::makePresetHandlerView(mPresetHandler, 1.0, 12, 4);
     gui << mLevel << mFundamental << mCumulativeDelay;
     gui << mArcStart << mArcSpan;
-    for (int i = 0; i < NUM_VOICES; i++) {
-        gui << mFrequencyFactors[i];
-    }
 
     // Right side
 
 //    box << ParameterGUI::makeParameterView(mLevel);
 
+    // View selector
+
+    // Harmonics boxes
     glv::Button *compressButton = new glv::Button;
     compressButton->attach([](const glv::Notification &n) {
         glv::Button *b = n.sender<glv::Button>();
@@ -331,7 +336,7 @@ void AddSynthApp::initializeGui()
         app->multiplyPartials(0.99);
     }, glv::Update::Value, this);
     compressButton->property(glv::Momentary, true);
-    layoutBox << compressButton << new glv::Label("Compress");
+    harmonicsBox << compressButton << new glv::Label("Compress");
 
     glv::Button *expandButton = new glv::Button;
     expandButton->attach([](const glv::Notification &n) {
@@ -340,7 +345,7 @@ void AddSynthApp::initializeGui()
         app->multiplyPartials(1/0.99);
     }, glv::Update::Value, this);
     expandButton->property(glv::Momentary, true);
-    layoutBox << expandButton << new glv::Label("Expand");
+    harmonicsBox << expandButton << new glv::Label("Expand");
 
     glv::Button *randomizeButton = new glv::Button;
     randomizeButton->attach([](const glv::Notification &n) {
@@ -349,7 +354,7 @@ void AddSynthApp::initializeGui()
         app->randomizePartials(10.0);
     }, glv::Update::Value, this);
     randomizeButton->property(glv::Momentary, true);
-    layoutBox << randomizeButton << new glv::Label("Randomize");
+    harmonicsBox << randomizeButton << new glv::Label("Randomize");
 
     glv::Button *harmonicButton = new glv::Button;
     harmonicButton->attach([](const glv::Notification &n) {
@@ -358,16 +363,16 @@ void AddSynthApp::initializeGui()
         app->harmonicPartials();
     }, glv::Update::Value, this);
     harmonicButton->property(glv::Momentary, true);
-    layoutBox << harmonicButton << new glv::Label("Harmonic");
+    harmonicsBox << harmonicButton << new glv::Label("Harmonic");
 
-    layoutBox.fit();
-    layoutBox.enable(glv::DrawBack);
-    layoutBox.anchor(glv::Place::TR);
-    layoutBox.set(-360, 30, layoutBox.width(), layoutBox.height());
-    layoutBox.enable(glv::Property::Visible);
-    controlView << layoutBox;
-
-    // View selector
+    glv::Button *evenButton = new glv::Button;
+    evenButton->attach([](const glv::Notification &n) {
+        glv::Button *b = n.sender<glv::Button>();
+        AddSynthApp *app = n.receiver<AddSynthApp>();
+        app->oddPartials();
+    }, glv::Update::Value, this);
+    evenButton->property(glv::Momentary, true);
+    harmonicsBox << evenButton << new glv::Label("Even only");
 
     for (int i = 0; i < NUM_VOICES; i++) {
         harmonicsBox << ParameterGUI::makeParameterView(mFrequencyFactors[i]);
@@ -376,8 +381,45 @@ void AddSynthApp::initializeGui()
     harmonicsBox.enable(glv::DrawBack);
     harmonicsBox.anchor(glv::Place::TR);
     harmonicsBox.set(-360, 30, harmonicsBox.width(), harmonicsBox.height());
-    harmonicsBox.disable(glv::Property::Visible);
     controlView << harmonicsBox;
+
+    // Amplitudes
+
+    glv::Button *oneButton = new glv::Button;
+    oneButton->attach([](const glv::Notification &n) {
+        glv::Button *b = n.sender<glv::Button>();
+        AddSynthApp *app = n.receiver<AddSynthApp>();
+        app->setAmpsToOne();
+    }, glv::Update::Value, this);
+    oneButton->property(glv::Momentary, true);
+    amplitudesBox << oneButton << new glv::Label("All One");
+
+    glv::Button *oneOverNButton = new glv::Button;
+    oneOverNButton->attach([](const glv::Notification &n) {
+        glv::Button *b = n.sender<glv::Button>();
+        AddSynthApp *app = n.receiver<AddSynthApp>();
+        app->setAmpsOneOverN();
+    }, glv::Update::Value, this);
+    oneOverNButton->property(glv::Momentary, true);
+    amplitudesBox << oneOverNButton << new glv::Label("One over N");
+
+    glv::Button *slopeUpButton = new glv::Button;
+    slopeUpButton->attach([](const glv::Notification &n) {
+        glv::Button *b = n.sender<glv::Button>();
+        AddSynthApp *app = n.receiver<AddSynthApp>();
+        app->ampSlopeFactor(1.005);
+    }, glv::Update::Value, this);
+    slopeUpButton->property(glv::Momentary, true);
+    amplitudesBox << slopeUpButton << new glv::Label("Slope up");
+
+    glv::Button *slopeDownButton = new glv::Button;
+    slopeDownButton->attach([](const glv::Notification &n) {
+        glv::Button *b = n.sender<glv::Button>();
+        AddSynthApp *app = n.receiver<AddSynthApp>();
+        app->ampSlopeFactor(1/1.005);
+    }, glv::Update::Value, this);
+    slopeDownButton->property(glv::Momentary, true);
+    amplitudesBox << slopeDownButton << new glv::Label("Slope down");
 
     for (int i = 0; i < NUM_VOICES; i++) {
         amplitudesBox << ParameterGUI::makeParameterView(mAmplitudes[i]);
@@ -410,30 +452,26 @@ void AddSynthApp::initializeGui()
     controlView << releaseTimesBox;
 
 
-    viewSelector.addItem("Transform").addItem("Harmonics").addItem("Amplitudes").addItem("Attack").addItem("Release");
+    viewSelector.addItem("Harmonics").addItem("Amplitudes").addItem("Attack").addItem("Release");
     viewSelector.attach([](const glv::Notification &n) {
         glv::DropDown *b = n.sender<glv::DropDown>();
         AddSynthApp *app = n.receiver<AddSynthApp>();
         std::cout << "pressed " << b->selectedItem() << std::endl;
-        app->layoutBox.disable(glv::Property::Visible);
         app->harmonicsBox.disable(glv::Property::Visible);
         app->amplitudesBox.disable(glv::Property::Visible);
         app->attackTimesBox.disable(glv::Property::Visible);
         app->releaseTimesBox.disable(glv::Property::Visible);
         switch (b->selectedItem()) {
         case 0:
-            app->layoutBox.enable(glv::Property::Visible);
-            break;
-        case 1:
             app->harmonicsBox.enable(glv::Property::Visible);
             break;
-        case 2:
+        case 1:
             app->amplitudesBox.enable(glv::Property::Visible);
             break;
-        case 3:
+        case 2:
             app->attackTimesBox.enable(glv::Property::Visible);
             break;
-        case 4:
+        case 3:
             app->releaseTimesBox.enable(glv::Property::Visible);
             break;
         }
@@ -516,6 +554,34 @@ void AddSynthApp::harmonicPartials()
 {
     for (int i = 0; i < NUM_VOICES; i++) {
         mFrequencyFactors[i].set(i + 1);
+    }
+}
+
+void AddSynthApp::oddPartials()
+{
+    for (int i = 0; i < NUM_VOICES; i++) {
+        mFrequencyFactors[i].set((i * 2) + 1);
+    }
+}
+
+void AddSynthApp::setAmpsToOne()
+{
+    for (int i = 0; i < NUM_VOICES; i++) {
+        mAmplitudes[i].set(1.0);
+    }
+}
+
+void AddSynthApp::setAmpsOneOverN()
+{
+    for (int i = 0; i < NUM_VOICES; i++) {
+        mAmplitudes[i].set(1.0/ (i + 1));
+    }
+}
+
+void AddSynthApp::ampSlopeFactor(double factor)
+{
+    for (int i = 0; i < NUM_VOICES; i++) {
+        mAmplitudes[i].set(mAmplitudes[i].get() * pow(factor, i));
     }
 }
 
