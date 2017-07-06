@@ -51,7 +51,7 @@ public:
     AddSynth(){
         float envLevels[6] = {0.0, 0.0, 1.0, 0.7, 0.7, 0.0};
         for (int i = 0; i < NUM_VOICES; i++) {
-            mEnvelopes[i].levels(envLevels, 6).sustainPoint(3);
+            mEnvelopes[i].levels(envLevels, 6).sustainPoint(4);
         }
         setCurvature(-4);
         release();
