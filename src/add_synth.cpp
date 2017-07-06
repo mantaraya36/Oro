@@ -24,6 +24,7 @@
 using namespace std;
 using namespace al;
 
+#define SURROUND
 
 #define NUM_VOICES 16
 
@@ -37,9 +38,10 @@ public:
     float mFrequencyFactors[NUM_VOICES];
     float mAmplitudes[NUM_VOICES];
 
-    int mNumSpeakers;
+    // Spatialization
     float mArcStart;
     float mArcSpan;
+    vector<int> mOutputRouting;
 };
 
 class AddSynth {
@@ -55,7 +57,7 @@ public:
 
     void trigger(AddSynthParameters &params) {
         mLevel = params.mLevel;
-        updateOutMap(params.mNumSpeakers, params.mArcStart, params.mArcSpan);
+        updateOutMap(params.mArcStart, params.mArcSpan, params.mOutputRouting);
         memcpy(mFrequencyFactors, params.mFrequencyFactors, sizeof(float) * NUM_VOICES); // Must be called before settinf oscillator fundamental
         setOscillatorFundamental(params.mFundamental);
         setInitialCumulativeDelay(params.mCumulativeDelay);
@@ -114,9 +116,10 @@ public:
         }
     }
 
-    void updateOutMap(int numSpeakers, float arcStart, float arcSpan) {
+    void updateOutMap(float arcStart, float arcSpan, vector<int> outputRouting) {
+        int numSpeakers = outputRouting.size();
         for (int i = 0; i < NUM_VOICES; i++) {
-            mOutMap[i] = fmod(((arcStart + (arcSpan * i/(float) (NUM_VOICES))) * numSpeakers ), numSpeakers);
+            mOutMap[i] = outputRouting[fmod(((arcStart + (arcSpan * i/(float) (NUM_VOICES))) * numSpeakers ), numSpeakers)];
             std::cout << mOutMap[i] << std::endl;
         }
     }
@@ -145,7 +148,14 @@ public:
     {
         initializeValues();
         initWindow();
-        initAudio();
+#ifdef SURROUND
+        int outChans = 8;
+        outputRouting = {4, 3, 7, 6, 2 };
+#else
+        int outChans = 2;
+        outputRouting = {0, 1};
+#endif
+        initAudio(44100, 256, outChans, 0);
         gam::sampleRate(audioIO().fps());
 
         initializeGui();
@@ -285,6 +295,7 @@ private:
 
     // Synthesis
     AddSynth synth;
+    vector<int> outputRouting;
 };
 
 void AddSynthApp::initializeValues()
@@ -504,7 +515,7 @@ void AddSynthApp::randomizePartials(float max)
 void AddSynthApp::harmonicPartials()
 {
     for (int i = 0; i < NUM_VOICES; i++) {
-        mFrequencyFactors[i].set(i);
+        mFrequencyFactors[i].set(i + 1);
     }
 }
 
@@ -516,7 +527,7 @@ void AddSynthApp::trigger()
     params.mCumulativeDelay = mCumulativeDelay.get();
     params.mArcStart = mArcStart.get();
     params.mArcSpan = mArcSpan.get();
-    params.mNumSpeakers = 2;
+    params.mOutputRouting = outputRouting;
     for (int i = 0; i < NUM_VOICES; i++) {
         params.mAttackTimes[i] = mAttackTimes[i].get();
         params.mReleaseTimes[i] = mReleaseTimes[i].get();
