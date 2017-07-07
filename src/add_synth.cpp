@@ -730,7 +730,7 @@ void AddSynthApp::initializeGui()
         }
     }, glv::Update::Value, this);
     attackTimeUpButton->property(glv::Momentary, true);
-    attackTimesBox << attackTimeUpButton << new glv::Label("Faster Attack");
+    attackTimesBox << attackTimeUpButton << new glv::Label("Slower Attack");
 
     glv::Button *attackTimeDownButton = new glv::Button;
     attackTimeDownButton->attach([](const glv::Notification &n) {
@@ -741,7 +741,7 @@ void AddSynthApp::initializeGui()
         }
     }, glv::Update::Value, this);
     attackTimeDownButton->property(glv::Momentary, true);
-    attackTimesBox << attackTimeDownButton << new glv::Label("Slower Attack");
+    attackTimesBox << attackTimeDownButton << new glv::Label("Faster Attack");
 
     glv::Button *attackRampUpButton = new glv::Button;
     attackRampUpButton->attach([](const glv::Notification &n) {
@@ -785,7 +785,7 @@ void AddSynthApp::initializeGui()
         }
     }, glv::Update::Value, this);
     decayTimeUpButton->property(glv::Momentary, true);
-    decayTimesBox << decayTimeUpButton << new glv::Label("Faster Decay");
+    decayTimesBox << decayTimeUpButton << new glv::Label("Slower Decay");
 
     glv::Button *decayTimeDownButton = new glv::Button;
     decayTimeDownButton->attach([](const glv::Notification &n) {
@@ -796,7 +796,7 @@ void AddSynthApp::initializeGui()
         }
     }, glv::Update::Value, this);
     decayTimeDownButton->property(glv::Momentary, true);
-    decayTimesBox << decayTimeDownButton << new glv::Label("Slower Decay");
+    decayTimesBox << decayTimeDownButton << new glv::Label("Faster Decay");
 
     glv::Button *decayRampUpButton = new glv::Button;
     decayRampUpButton->attach([](const glv::Notification &n) {
@@ -840,7 +840,7 @@ void AddSynthApp::initializeGui()
         }
     }, glv::Update::Value, this);
     sustainTimeUpButton->property(glv::Momentary, true);
-    sustainLevelsBox << sustainTimeUpButton << new glv::Label("Faster Release");
+    sustainLevelsBox << sustainTimeUpButton << new glv::Label("Higher Sus");
 
     glv::Button *sustainTimeDownButton = new glv::Button;
     sustainTimeDownButton->attach([](const glv::Notification &n) {
@@ -851,7 +851,7 @@ void AddSynthApp::initializeGui()
         }
     }, glv::Update::Value, this);
     sustainTimeDownButton->property(glv::Momentary, true);
-    sustainLevelsBox << sustainTimeDownButton << new glv::Label("Slower Release");
+    sustainLevelsBox << sustainTimeDownButton << new glv::Label("Lower Sus");
 
     glv::Button *sustainRampUpButton = new glv::Button;
     sustainRampUpButton->attach([](const glv::Notification &n) {
@@ -895,7 +895,7 @@ void AddSynthApp::initializeGui()
         }
     }, glv::Update::Value, this);
     releaseTimeUpButton->property(glv::Momentary, true);
-    releaseTimesBox << releaseTimeUpButton << new glv::Label("Faster Release");
+    releaseTimesBox << releaseTimeUpButton << new glv::Label("Slower Release");
 
     glv::Button *releaseTimeDownButton = new glv::Button;
     releaseTimeDownButton->attach([](const glv::Notification &n) {
@@ -906,7 +906,7 @@ void AddSynthApp::initializeGui()
         }
     }, glv::Update::Value, this);
     releaseTimeDownButton->property(glv::Momentary, true);
-    releaseTimesBox << releaseTimeDownButton << new glv::Label("Slower Release");
+    releaseTimesBox << releaseTimeDownButton << new glv::Label("Faster Release");
 
     glv::Button *releaseRampUpButton = new glv::Button;
     releaseRampUpButton->attach([](const glv::Notification &n) {
