@@ -293,6 +293,9 @@ public:
     void setAmpsOneOverN();
     void ampSlopeFactor(double factor);
 
+    void attackTimeAdd(float value);
+    void attackTimeSlope(float factor);
+
     // Envelope
     void trigger(int id);
     void release(int id);
@@ -710,6 +713,52 @@ void AddSynthApp::initializeGui()
     amplitudesBox.set(-1150, 30, amplitudesBox.width(), amplitudesBox.height());
     controlView << amplitudesBox;
 
+    // Attack Times
+
+    glv::Button *attackTimeUpButton = new glv::Button;
+    attackTimeUpButton->attach([](const glv::Notification &n) {
+        glv::Button *b = n.sender<glv::Button>();
+        AddSynthApp *app = n.receiver<AddSynthApp>();
+        if (b->getValue() == 1) {
+            app->attackTimeAdd(0.05);
+        }
+    }, glv::Update::Value, this);
+    attackTimeUpButton->property(glv::Momentary, true);
+    attackTimesBox << attackTimeUpButton << new glv::Label("Faster Attack");
+
+    glv::Button *attackTimeDownButton = new glv::Button;
+    attackTimeDownButton->attach([](const glv::Notification &n) {
+        glv::Button *b = n.sender<glv::Button>();
+        AddSynthApp *app = n.receiver<AddSynthApp>();
+        if (b->getValue() == 1) {
+            app->attackTimeAdd(-0.05);
+        }
+    }, glv::Update::Value, this);
+    attackTimeDownButton->property(glv::Momentary, true);
+    attackTimesBox << attackTimeDownButton << new glv::Label("Slower Attack");
+
+    glv::Button *attackRampUpButton = new glv::Button;
+    attackRampUpButton->attach([](const glv::Notification &n) {
+        glv::Button *b = n.sender<glv::Button>();
+        AddSynthApp *app = n.receiver<AddSynthApp>();
+        if (b->getValue() == 1) {
+            app->attackTimeSlope(1.01);
+        }
+    }, glv::Update::Value, this);
+    attackRampUpButton->property(glv::Momentary, true);
+    attackTimesBox << attackRampUpButton << new glv::Label("Ramp up");
+
+    glv::Button *attackRampDownButton = new glv::Button;
+    attackRampDownButton->attach([](const glv::Notification &n) {
+        glv::Button *b = n.sender<glv::Button>();
+        AddSynthApp *app = n.receiver<AddSynthApp>();
+        if (b->getValue() == 1) {
+            app->attackTimeSlope(1/1.01);
+        }
+    }, glv::Update::Value, this);
+    attackRampDownButton->property(glv::Momentary, true);
+    attackTimesBox << attackRampDownButton << new glv::Label("Ramp down");
+
     for (int i = 0; i < NUM_VOICES; i++) {
         attackTimesBox << ParameterGUI::makeParameterView(mAttackTimes[i]);
     }
@@ -719,6 +768,7 @@ void AddSynthApp::initializeGui()
     attackTimesBox.set(-1000, 30, attackTimesBox.width(), attackTimesBox.height());
     controlView << attackTimesBox;
 
+    // Decay Times
     for (int i = 0; i < NUM_VOICES; i++) {
         decayTimesBox << ParameterGUI::makeParameterView(mDecayTimes[i]);
     }
@@ -905,6 +955,20 @@ void AddSynthApp::ampSlopeFactor(double factor)
 {
     for (int i = 0; i < NUM_VOICES; i++) {
         mAmplitudes[i].set(mAmplitudes[i].get() * pow(factor, i));
+    }
+}
+
+void AddSynthApp::attackTimeAdd(float value)
+{
+    for (int i = 0; i < NUM_VOICES; i++) {
+        mAttackTimes[i].set(mAttackTimes[i].get() + value);
+    }
+}
+
+void AddSynthApp::attackTimeSlope(float factor)
+{
+    for (int i = 0; i < NUM_VOICES; i++) {
+        mAttackTimes[i].set(mAttackTimes[i].get() * pow(factor, i));
     }
 }
 
