@@ -106,14 +106,14 @@ public:
         srand(time(0));
         for (int i = 0; i < NUM_VOICES; i++) {
             int random_variable = std::rand();
-            float dev = initialDelay *((2.0 * random_variable/(float) RAND_MAX) - 1.0);
+            float dev = randomDev *((2.0 * random_variable/(float) RAND_MAX) - 1.0);
 
             if (initialDelay >= 0) {
                 float length = initialDelay * i + dev;
                 if (length < 0) {length = 0;}
                 mEnvelopes[i].lengths()[0] = length;
             } else {
-                float length = initialDelay * (NUM_VOICES - i - 1) + dev;
+                float length = -initialDelay * (NUM_VOICES - i - 1) + dev;
                 if (length < 0) {length = 0;}
                 mEnvelopes[i].lengths()[0] = length;
             }
