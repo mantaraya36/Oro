@@ -75,7 +75,6 @@ public:
     }
 
     void release() {
-
         for (int i = 0; i < NUM_VOICES; i++) {
             mEnvelopes[i].release();
         }
@@ -155,11 +154,74 @@ private:
 
 };
 
+class PresetKeyboardControl : public NavInputControl {
+public:
+
+	PresetKeyboardControl (Nav &nav) : NavInputControl(nav){ mUseMouse = false;}
+
+	virtual bool onKeyDown(const Keyboard &k) {
+		if (k.ctrl() || k.alt() || k.meta()) {
+			return true;
+		}
+//		if (!presetKeyboardActive) {
+//			return true;
+//		}
+		switch(k.key()){
+		case '1': presets->recallPreset(0); return false;
+		case '2': presets->recallPreset(1); return false;
+		case '3': presets->recallPreset(2); return false;
+		case '4': presets->recallPreset(3); return false;
+		case '5': presets->recallPreset(4); return false;
+		case '6': presets->recallPreset(5); return false;
+		case '7': presets->recallPreset(6); return false;
+		case '8': presets->recallPreset(7); return false;
+		case '9': presets->recallPreset(8); return false;
+		case '0': presets->recallPreset(9); return false;
+		case 'q': presets->recallPreset(10); return false;
+		case 'w': presets->recallPreset(11); return false;
+		case 'e': presets->recallPreset(12); return false;
+		case 'r': presets->recallPreset(13); return false;
+		case 't': presets->recallPreset(14); return false;
+		case 'y': presets->recallPreset(15); return false;
+		case 'u': presets->recallPreset(16); return false;
+		case 'i': presets->recallPreset(17); return false;
+		case 'o': presets->recallPreset(18); return false;
+		case 'p': presets->recallPreset(19); return false;
+		case 'a': presets->recallPreset(20); return false;
+		case 's': presets->recallPreset(21); return false;
+		case 'd': presets->recallPreset(22); return false;
+		case 'f': presets->recallPreset(23); return false;
+		case 'g': presets->recallPreset(24); return false;
+		case 'h': presets->recallPreset(25); return false;
+		case 'j': presets->recallPreset(26); return false;
+		case 'k': presets->recallPreset(27); return false;
+		case 'l': presets->recallPreset(28); return false;
+		case ';': presets->recallPreset(29); return false;
+		case 'z': presets->recallPreset(30); return false;
+		case 'x': presets->recallPreset(31); return false;
+		case 'c': presets->recallPreset(32); return false;
+		case 'v': presets->recallPreset(33); return false;
+		case 'b': presets->recallPreset(34); return false;
+		case 'n': presets->recallPreset(35); return false;
+		case 'm': presets->recallPreset(36); return false;
+		case ',': presets->recallPreset(37); return false;
+		case '.': presets->recallPreset(38); return false;
+		case '/': presets->recallPreset(39); return false;
+		default: break;
+		}
+		return true;
+	}
+
+	virtual bool onKeyUp(const Keyboard &k) {
+		return true;
+	}
+    PresetHandler *presets;
+};
 
 class AddSynthApp: public App
 {
 public:
-    AddSynthApp()
+    AddSynthApp() : mKeyboardPresets(nav())
     {
         initializeValues();
         initWindow();
@@ -185,6 +247,8 @@ public:
         gui.setParentWindow(*windows()[0]);
 
         controlView.parentWindow(*windows()[0]);
+
+        windows()[0]->prepend(mKeyboardPresets);
     }
 
     virtual void onSound(AudioIOData &io) override;
@@ -351,9 +415,34 @@ private:
     glv::Box releaseTimesBox {glv::Direction::S};
     GLVDetachable controlView;
 
+    PresetKeyboardControl mKeyboardPresets;
+
     // MIDI Control
     PresetMIDI presetMIDI;
     ParameterMIDI parameterMIDI;
+
+    MIDIIn midiIn {"USB Oxygen 49"};
+
+
+    class MIDIHandler : public MIDIMessageHandler
+    {
+    public:
+        MIDIHandler() {}
+        virtual ~MIDIHandler(){}
+
+        /// Called when a MIDI message is received
+        virtual void onMIDIMessage(const MIDIMessage& m) {
+            m.print();
+        };
+
+        /// Bind handler to a MIDI input
+    //        void bindTo(MIDIIn& midiIn, unsigned port=0);
+
+    protected:
+    };
+
+    MIDIHandler midiHandler;
+
 
     // Synthesis
     AddSynth synth;
@@ -394,7 +483,9 @@ void AddSynthApp::initializeGui()
     compressButton->attach([](const glv::Notification &n) {
         glv::Button *b = n.sender<glv::Button>();
         AddSynthApp *app = n.receiver<AddSynthApp>();
-        app->multiplyPartials(0.99);
+        if (b->getValue() == 1) {
+            app->multiplyPartials(0.99);
+        }
     }, glv::Update::Value, this);
     compressButton->property(glv::Momentary, true);
     harmonicsBox << compressButton << new glv::Label("Compress");
@@ -403,7 +494,9 @@ void AddSynthApp::initializeGui()
     expandButton->attach([](const glv::Notification &n) {
         glv::Button *b = n.sender<glv::Button>();
         AddSynthApp *app = n.receiver<AddSynthApp>();
-        app->multiplyPartials(1/0.99);
+        if (b->getValue() == 1) {
+            app->multiplyPartials(1/0.99);
+        }
     }, glv::Update::Value, this);
     expandButton->property(glv::Momentary, true);
     harmonicsBox << expandButton << new glv::Label("Expand");
@@ -412,7 +505,9 @@ void AddSynthApp::initializeGui()
     randomizeButton->attach([](const glv::Notification &n) {
         glv::Button *b = n.sender<glv::Button>();
         AddSynthApp *app = n.receiver<AddSynthApp>();
-        app->randomizePartials(10.0);
+        if (b->getValue() == 1) {
+            app->randomizePartials(10.0);
+        }
     }, glv::Update::Value, this);
     randomizeButton->property(glv::Momentary, true);
     harmonicsBox << randomizeButton << new glv::Label("Randomize");
@@ -421,7 +516,9 @@ void AddSynthApp::initializeGui()
     harmonicButton->attach([](const glv::Notification &n) {
         glv::Button *b = n.sender<glv::Button>();
         AddSynthApp *app = n.receiver<AddSynthApp>();
-        app->harmonicPartials();
+        if (b->getValue() == 1) {
+            app->harmonicPartials();
+        }
     }, glv::Update::Value, this);
     harmonicButton->property(glv::Momentary, true);
     harmonicsBox << harmonicButton << new glv::Label("Harmonic");
@@ -430,7 +527,9 @@ void AddSynthApp::initializeGui()
     evenButton->attach([](const glv::Notification &n) {
         glv::Button *b = n.sender<glv::Button>();
         AddSynthApp *app = n.receiver<AddSynthApp>();
-        app->oddPartials();
+        if (b->getValue() == 1) {
+            app->oddPartials();
+        }
     }, glv::Update::Value, this);
     evenButton->property(glv::Momentary, true);
     harmonicsBox << evenButton << new glv::Label("Even only");
@@ -450,7 +549,9 @@ void AddSynthApp::initializeGui()
     oneButton->attach([](const glv::Notification &n) {
         glv::Button *b = n.sender<glv::Button>();
         AddSynthApp *app = n.receiver<AddSynthApp>();
-        app->setAmpsToOne();
+        if (b->getValue() == 1) {
+            app->setAmpsToOne();
+        }
     }, glv::Update::Value, this);
     oneButton->property(glv::Momentary, true);
     amplitudesBox << oneButton << new glv::Label("All One");
@@ -459,7 +560,9 @@ void AddSynthApp::initializeGui()
     oneOverNButton->attach([](const glv::Notification &n) {
         glv::Button *b = n.sender<glv::Button>();
         AddSynthApp *app = n.receiver<AddSynthApp>();
-        app->setAmpsOneOverN();
+        if (b->getValue() == 1) {
+            app->setAmpsOneOverN();
+        }
     }, glv::Update::Value, this);
     oneOverNButton->property(glv::Momentary, true);
     amplitudesBox << oneOverNButton << new glv::Label("One over N");
@@ -468,7 +571,9 @@ void AddSynthApp::initializeGui()
     slopeUpButton->attach([](const glv::Notification &n) {
         glv::Button *b = n.sender<glv::Button>();
         AddSynthApp *app = n.receiver<AddSynthApp>();
-        app->ampSlopeFactor(1.005);
+        if (b->getValue() == 1) {
+            app->ampSlopeFactor(1.005);
+        }
     }, glv::Update::Value, this);
     slopeUpButton->property(glv::Momentary, true);
     amplitudesBox << slopeUpButton << new glv::Label("Slope up");
@@ -477,7 +582,9 @@ void AddSynthApp::initializeGui()
     slopeDownButton->attach([](const glv::Notification &n) {
         glv::Button *b = n.sender<glv::Button>();
         AddSynthApp *app = n.receiver<AddSynthApp>();
-        app->ampSlopeFactor(1/1.005);
+        if (b->getValue() == 1) {
+            app->ampSlopeFactor(1/1.005);
+        }
     }, glv::Update::Value, this);
     slopeDownButton->property(glv::Momentary, true);
     amplitudesBox << slopeDownButton << new glv::Label("Slope down");
@@ -570,6 +677,9 @@ void AddSynthApp::initializePresets()
         mPresetHandler << mAttackTimes[i] << mDecayTimes[i] << mSustainLevels[i] << mReleaseTimes[i];
     }
     mPresetHandler.print();
+    sequencer << mPresetHandler;
+    recorder << mPresetHandler;
+    mKeyboardPresets.presets = &mPresetHandler;
 
     // MIDI Control of parameters
     unsigned int midiControllerPort = 4;
@@ -584,10 +694,9 @@ void AddSynthApp::initializePresets()
     presetMIDI.init(midiControllerPort, mPresetHandler);
     presetMIDI.setMorphControl(102, 1, 0.0, 8.0);
     // MIDI preset mapping
-    presetMIDI.connectNoteToPreset(1, 0, 36, 24, 59);
+//    presetMIDI.connectNoteToPreset(1, 0, 36, 24, 59);
+    midiHandler.bindTo(midiIn);
 
-    sequencer << mPresetHandler;
-    recorder << mPresetHandler;
 }
 
 void AddSynthApp::onSound(AudioIOData &io)
