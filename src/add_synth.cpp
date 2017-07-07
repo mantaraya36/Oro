@@ -847,7 +847,9 @@ void AddSynthApp::ampSlopeFactor(double factor)
 
 void AddSynthApp::trigger(int id)
 {
+//    std::cout << "trigger id " << id << std::endl;
     AddSynthParameters params;
+    params.id = id;
     params.mLevel = mLevel.get();
     params.mFundamental = mFundamental.get();
     params.mCumulativeDelay = mCumulativeDelay.get();
@@ -865,19 +867,19 @@ void AddSynthApp::trigger(int id)
     for (int i = 0; i < SYNTH_POLYPHONY; i++) {
         if (synth[i].done()) {
             synth[i].trigger(params);
+            break;
         }
     }
 }
 
 void AddSynthApp::release(int id)
 {
+//    std::cout << "release id " << id << std::endl;
     for (int i = 0; i < SYNTH_POLYPHONY; i++) {
         if (synth[i].id() == id) {
             synth[i].release();
-            return;
         }
     }
-    std::cout << "ERROR: id not found for release!" <<std::endl;
 }
 
 int main(int argc, char *argv[] )
