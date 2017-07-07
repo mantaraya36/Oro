@@ -27,9 +27,11 @@ using namespace al;
 #define SURROUND
 
 #define NUM_VOICES 16
+#define SYNTH_POLYPHONY 16
 
 class AddSynthParameters {
 public:
+    int id; // Instance id (e.g. MIDI note)
     float mLevel;
     float mFundamental;
     float mCumulativeDelay;
@@ -51,13 +53,14 @@ public:
     AddSynth(){
         float envLevels[6] = {0.0, 0.0, 1.0, 0.7, 0.7, 0.0};
         for (int i = 0; i < NUM_VOICES; i++) {
-            mEnvelopes[i].levels(envLevels, 6).sustainPoint(4);
+            mEnvelopes[i].levels(envLevels, 6).sustainPoint(4).finish();
         }
         setCurvature(-4);
         release();
     }
 
     void trigger(AddSynthParameters &params) {
+        mId = params.id;
         mLevel = params.mLevel;
         updateOutMap(params.mArcStart, params.mArcSpan, params.mOutputRouting);
         memcpy(mFrequencyFactors, params.mFrequencyFactors, sizeof(float) * NUM_VOICES); // Must be called before settinf oscillator fundamental
@@ -78,6 +81,15 @@ public:
         for (int i = 0; i < NUM_VOICES; i++) {
             mEnvelopes[i].release();
         }
+    }
+
+    int id() { return mId;}
+
+    bool done() {
+        for (int i = 0; i < NUM_VOICES; i++) {
+            if (!mEnvelopes[i].done()) return false;
+        }
+        return true;
     }
 
     void generateAudio(AudioIOData &io) {
@@ -146,6 +158,7 @@ private:
     gam::Sine<> mOscillators[NUM_VOICES];
     gam::Env<5> mEnvelopes[NUM_VOICES]; // First segment determines envelope delay
 
+    int mId = 0;
     float mLevel = 0;
     float mFrequencyFactors[NUM_VOICES];
     float mAmplitudes[NUM_VOICES];
@@ -258,7 +271,7 @@ public:
 
     // Transform partials
     void multiplyPartials(float factor);
-    void randomizePartials(float max);
+    void randomizePartials(float max, bool sortPartials = true);
     void harmonicPartials();
     void oddPartials();
 
@@ -471,7 +484,7 @@ private:
     }
 
     // Synthesis
-    AddSynth synth;
+    AddSynth synth[SYNTH_POLYPHONY];
     vector<int> outputRouting;
 };
 
@@ -536,7 +549,18 @@ void AddSynthApp::initializeGui()
         }
     }, glv::Update::Value, this);
     randomizeButton->property(glv::Momentary, true);
-    harmonicsBox << randomizeButton << new glv::Label("Randomize");
+    harmonicsBox << randomizeButton << new glv::Label("Randomize Sort");
+
+    glv::Button *randomizeNoSortButton = new glv::Button;
+    randomizeNoSortButton->attach([](const glv::Notification &n) {
+        glv::Button *b = n.sender<glv::Button>();
+        AddSynthApp *app = n.receiver<AddSynthApp>();
+        if (b->getValue() == 1) {
+            app->randomizePartials(10.0, false);
+        }
+    }, glv::Update::Value, this);
+    randomizeNoSortButton->property(glv::Momentary, true);
+    harmonicsBox << randomizeNoSortButton << new glv::Label("Randomize");
 
     glv::Button *harmonicButton = new glv::Button;
     harmonicButton->attach([](const glv::Notification &n) {
@@ -739,7 +763,12 @@ void AddSynthApp::initializePresets()
 
 void AddSynthApp::onSound(AudioIOData &io)
 {
-    synth.generateAudio(io);
+    for (int i = 0; i < SYNTH_POLYPHONY; i++) {
+        if (!synth[i].done()) {
+            synth[i].generateAudio(io);
+            io.frame(1);
+        }
+    }
 }
 
 void AddSynthApp::onKeyDown(const Keyboard &k)
@@ -760,7 +789,7 @@ void AddSynthApp::multiplyPartials(float factor)
     }
 }
 
-void AddSynthApp::randomizePartials(float max)
+void AddSynthApp::randomizePartials(float max, bool sortPartials)
 {
     if (max > 20.0) {
         max = 20.0;
@@ -773,7 +802,9 @@ void AddSynthApp::randomizePartials(float max)
         int random_variable = std::rand();
         randomFactors[i] = 1 + (max *random_variable/(float) RAND_MAX);
     }
-    sort(randomFactors.begin(), randomFactors.end());
+    if (sortPartials) {
+        sort(randomFactors.begin(), randomFactors.end());
+    }
     for (int i = 0; i < NUM_VOICES; i++) {
         mFrequencyFactors[i].set(randomFactors[i]);
     }
@@ -831,12 +862,22 @@ void AddSynthApp::trigger(int id)
         params.mFrequencyFactors[i] = mFrequencyFactors[i].get();
         params.mAmplitudes[i] = mAmplitudes[i].get();
     }
-    synth.trigger(params);
+    for (int i = 0; i < SYNTH_POLYPHONY; i++) {
+        if (synth[i].done()) {
+            synth[i].trigger(params);
+        }
+    }
 }
 
 void AddSynthApp::release(int id)
 {
-    synth.release();
+    for (int i = 0; i < SYNTH_POLYPHONY; i++) {
+        if (synth[i].id() == id) {
+            synth[i].release();
+            return;
+        }
+    }
+    std::cout << "ERROR: id not found for release!" <<std::endl;
 }
 
 int main(int argc, char *argv[] )
