@@ -295,6 +295,10 @@ public:
 
     void attackTimeAdd(float value);
     void attackTimeSlope(float factor);
+    void decayTimeAdd(float value);
+    void decayTimeSlope(float factor);
+    void releaseTimeAdd(float value);
+    void releaseTimeSlope(float factor);
 
     // Envelope
     void trigger(int id);
@@ -769,6 +773,51 @@ void AddSynthApp::initializeGui()
     controlView << attackTimesBox;
 
     // Decay Times
+
+    glv::Button *decayTimeUpButton = new glv::Button;
+    decayTimeUpButton->attach([](const glv::Notification &n) {
+        glv::Button *b = n.sender<glv::Button>();
+        AddSynthApp *app = n.receiver<AddSynthApp>();
+        if (b->getValue() == 1) {
+            app->decayTimeAdd(0.05);
+        }
+    }, glv::Update::Value, this);
+    decayTimeUpButton->property(glv::Momentary, true);
+    decayTimesBox << decayTimeUpButton << new glv::Label("Faster Decay");
+
+    glv::Button *decayTimeDownButton = new glv::Button;
+    decayTimeDownButton->attach([](const glv::Notification &n) {
+        glv::Button *b = n.sender<glv::Button>();
+        AddSynthApp *app = n.receiver<AddSynthApp>();
+        if (b->getValue() == 1) {
+            app->decayTimeAdd(-0.05);
+        }
+    }, glv::Update::Value, this);
+    decayTimeDownButton->property(glv::Momentary, true);
+    decayTimesBox << decayTimeDownButton << new glv::Label("Slower Decay");
+
+    glv::Button *decayRampUpButton = new glv::Button;
+    decayRampUpButton->attach([](const glv::Notification &n) {
+        glv::Button *b = n.sender<glv::Button>();
+        AddSynthApp *app = n.receiver<AddSynthApp>();
+        if (b->getValue() == 1) {
+            app->decayTimeSlope(1.01);
+        }
+    }, glv::Update::Value, this);
+    decayRampUpButton->property(glv::Momentary, true);
+    decayTimesBox << decayRampUpButton << new glv::Label("Ramp up");
+
+    glv::Button *decayRampDownButton = new glv::Button;
+    decayRampDownButton->attach([](const glv::Notification &n) {
+        glv::Button *b = n.sender<glv::Button>();
+        AddSynthApp *app = n.receiver<AddSynthApp>();
+        if (b->getValue() == 1) {
+            app->decayTimeSlope(1/1.01);
+        }
+    }, glv::Update::Value, this);
+    decayRampDownButton->property(glv::Momentary, true);
+    decayTimesBox << decayRampDownButton << new glv::Label("Ramp down");
+
     for (int i = 0; i < NUM_VOICES; i++) {
         decayTimesBox << ParameterGUI::makeParameterView(mDecayTimes[i]);
     }
@@ -787,6 +836,52 @@ void AddSynthApp::initializeGui()
     sustainLevelsBox.set(-700, 30, sustainLevelsBox.width(), sustainLevelsBox.height());
     controlView << sustainLevelsBox;
 
+    // Release Time
+
+    glv::Button *releaseTimeUpButton = new glv::Button;
+    releaseTimeUpButton->attach([](const glv::Notification &n) {
+        glv::Button *b = n.sender<glv::Button>();
+        AddSynthApp *app = n.receiver<AddSynthApp>();
+        if (b->getValue() == 1) {
+            app->releaseTimeAdd(0.05);
+        }
+    }, glv::Update::Value, this);
+    releaseTimeUpButton->property(glv::Momentary, true);
+    releaseTimesBox << releaseTimeUpButton << new glv::Label("Faster Release");
+
+    glv::Button *releaseTimeDownButton = new glv::Button;
+    releaseTimeDownButton->attach([](const glv::Notification &n) {
+        glv::Button *b = n.sender<glv::Button>();
+        AddSynthApp *app = n.receiver<AddSynthApp>();
+        if (b->getValue() == 1) {
+            app->releaseTimeAdd(-0.05);
+        }
+    }, glv::Update::Value, this);
+    releaseTimeDownButton->property(glv::Momentary, true);
+    releaseTimesBox << releaseTimeDownButton << new glv::Label("Slower Release");
+
+    glv::Button *releaseRampUpButton = new glv::Button;
+    releaseRampUpButton->attach([](const glv::Notification &n) {
+        glv::Button *b = n.sender<glv::Button>();
+        AddSynthApp *app = n.receiver<AddSynthApp>();
+        if (b->getValue() == 1) {
+            app->releaseTimeSlope(1.01);
+        }
+    }, glv::Update::Value, this);
+    releaseRampUpButton->property(glv::Momentary, true);
+    releaseTimesBox << releaseRampUpButton << new glv::Label("Ramp up");
+
+    glv::Button *releaseRampDownButton = new glv::Button;
+    releaseRampDownButton->attach([](const glv::Notification &n) {
+        glv::Button *b = n.sender<glv::Button>();
+        AddSynthApp *app = n.receiver<AddSynthApp>();
+        if (b->getValue() == 1) {
+            app->releaseTimeSlope(1/1.01);
+        }
+    }, glv::Update::Value, this);
+    releaseRampDownButton->property(glv::Momentary, true);
+    releaseTimesBox << releaseRampDownButton << new glv::Label("Ramp down");
+
     for (int i = 0; i < NUM_VOICES; i++) {
         releaseTimesBox << ParameterGUI::makeParameterView(mReleaseTimes[i]);
     }
@@ -795,37 +890,6 @@ void AddSynthApp::initializeGui()
     releaseTimesBox.anchor(glv::Place::TR);
     releaseTimesBox.set(-550, 30, releaseTimesBox.width(), releaseTimesBox.height());
     controlView << releaseTimesBox;
-
-
-//    viewSelector.addItem("Harmonics").addItem("Amplitudes").addItem("Attack").addItem("Release");
-//    viewSelector.attach([](const glv::Notification &n) {
-//        glv::DropDown *b = n.sender<glv::DropDown>();
-//        AddSynthApp *app = n.receiver<AddSynthApp>();
-//        std::cout << "pressed " << b->selectedItem() << std::endl;
-//        app->harmonicsBox.disable(glv::Property::Visible);
-//        app->amplitudesBox.disable(glv::Property::Visible);
-//        app->attackTimesBox.disable(glv::Property::Visible);
-//        app->releaseTimesBox.disable(glv::Property::Visible);
-//        switch (b->selectedItem()) {
-//        case 0:
-//            app->harmonicsBox.enable(glv::Property::Visible);
-//            break;
-//        case 1:
-//            app->amplitudesBox.enable(glv::Property::Visible);
-//            break;
-//        case 2:
-//            app->attackTimesBox.enable(glv::Property::Visible);
-//            break;
-//        case 3:
-//            app->releaseTimesBox.enable(glv::Property::Visible);
-//            break;
-//        }
-//    }, glv::Update::Value, this);
-//    viewSelector.enable(glv::DrawBack);
-//    viewSelector.anchor(glv::Place::TR);
-//    viewSelector.set(-360, 0, viewSelector.width(), viewSelector.height());
-//    controlView << viewSelector;
-
     controlView.set(300, 0, 300, 400);
 }
 
@@ -969,6 +1033,34 @@ void AddSynthApp::attackTimeSlope(float factor)
 {
     for (int i = 0; i < NUM_VOICES; i++) {
         mAttackTimes[i].set(mAttackTimes[i].get() * pow(factor, i));
+    }
+}
+
+void AddSynthApp::decayTimeAdd(float value)
+{
+    for (int i = 0; i < NUM_VOICES; i++) {
+        mDecayTimes[i].set(mDecayTimes[i].get() + value);
+    }
+}
+
+void AddSynthApp::decayTimeSlope(float factor)
+{
+    for (int i = 0; i < NUM_VOICES; i++) {
+        mDecayTimes[i].set(mDecayTimes[i].get() * pow(factor, i));
+    }
+}
+
+void AddSynthApp::releaseTimeAdd(float value)
+{
+    for (int i = 0; i < NUM_VOICES; i++) {
+        mReleaseTimes[i].set(mReleaseTimes[i].get() + value);
+    }
+}
+
+void AddSynthApp::releaseTimeSlope(float factor)
+{
+    for (int i = 0; i < NUM_VOICES; i++) {
+        mReleaseTimes[i].set(mReleaseTimes[i].get() * pow(factor, i));
     }
 }
 
