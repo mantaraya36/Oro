@@ -26,7 +26,7 @@ using namespace al;
 
 #define SURROUND
 
-#define NUM_VOICES 16
+#define NUM_VOICES 24
 #define SYNTH_POLYPHONY 16
 
 class AddSynthParameters {
@@ -35,6 +35,7 @@ public:
     float mLevel;
     float mFundamental;
     float mCumulativeDelay;
+    float mCumDelayRandomness;
     float mAttackTimes[NUM_VOICES];
     float mDecayTimes[NUM_VOICES];
     float mSustainLevels[NUM_VOICES];
@@ -65,7 +66,7 @@ public:
         updateOutMap(params.mArcStart, params.mArcSpan, params.mOutputRouting);
         memcpy(mFrequencyFactors, params.mFrequencyFactors, sizeof(float) * NUM_VOICES); // Must be called before settinf oscillator fundamental
         setOscillatorFundamental(params.mFundamental);
-        setInitialCumulativeDelay(params.mCumulativeDelay);
+        setInitialCumulativeDelay(params.mCumulativeDelay, params.mCumDelayRandomness);
         memcpy(mAmplitudes, params.mAmplitudes, sizeof(float) * NUM_VOICES);
 
         for (int i = 0; i < NUM_VOICES; i++) {
@@ -100,13 +101,21 @@ public:
         }
     }
 
-    void setInitialCumulativeDelay(float initialDelay)
+    void setInitialCumulativeDelay(float initialDelay, float randomDev)
     {
+        srand(time(0));
         for (int i = 0; i < NUM_VOICES; i++) {
+            int random_variable = std::rand();
+            float dev = initialDelay *((2.0 * random_variable/(float) RAND_MAX) - 1.0);
+
             if (initialDelay >= 0) {
-                mEnvelopes[i].lengths()[0] = initialDelay * i;
+                float length = initialDelay * i + dev;
+                if (length < 0) {length = 0;}
+                mEnvelopes[i].lengths()[0] = length;
             } else {
-                mEnvelopes[i].lengths()[0] = initialDelay * (NUM_VOICES - i - 1);
+                float length = initialDelay * (NUM_VOICES - i - 1) + dev;
+                if (length < 0) {length = 0;}
+                mEnvelopes[i].lengths()[0] = length;
             }
         }
     }
@@ -298,6 +307,7 @@ private:
     Parameter mLevel {"Level", "", 0.25, "", 0.0, 1.0};
     Parameter mFundamental {"Fundamental", "", 220.0, "", 0.0, 9000.0};
     Parameter mCumulativeDelay{"CumDelay", "", 0.0, "", -0.2, 0.2};
+    Parameter mCumulativeDelayRandomness{"CumDelayDev", "", 0.0, "", 0.0, 1.0};
 
     // Spatialization
     int mNumSpeakers; // Assumes regular angular separation
@@ -320,7 +330,15 @@ private:
         {"Attack13", "", 0.1f, "", 0.0, 20.0},
         {"Attack14", "", 0.1f, "", 0.0, 20.0},
         {"Attack15", "", 0.1f, "", 0.0, 20.0},
-        {"Attack16", "", 0.1f, "", 0.0, 20.0}
+        {"Attack16", "", 0.1f, "", 0.0, 20.0},
+        {"Attack17", "", 0.1f, "", 0.0, 20.0},
+        {"Attack18", "", 0.1f, "", 0.0, 20.0},
+        {"Attack19", "", 0.1f, "", 0.0, 20.0},
+        {"Attack20", "", 0.1f, "", 0.0, 20.0},
+        {"Attack21", "", 0.1f, "", 0.0, 20.0},
+        {"Attack22", "", 0.1f, "", 0.0, 20.0},
+        {"Attack23", "", 0.1f, "", 0.0, 20.0},
+        {"Attack24", "", 0.1f, "", 0.0, 20.0}
                                               };
     vector<Parameter> mDecayTimes = {
         {"Decay1", "", 0.1f, "", 0.0, 20.0},
@@ -338,7 +356,15 @@ private:
         {"Decay13", "", 0.1f, "", 0.0, 20.0},
         {"Decay14", "", 0.1f, "", 0.0, 20.0},
         {"Decay15", "", 0.1f, "", 0.0, 20.0},
-        {"Decay16", "", 0.1f, "", 0.0, 20.0}
+        {"Decay16", "", 0.1f, "", 0.0, 20.0},
+        {"Decay17", "", 0.1f, "", 0.0, 20.0},
+        {"Decay18", "", 0.1f, "", 0.0, 20.0},
+        {"Decay19", "", 0.1f, "", 0.0, 20.0},
+        {"Decay20", "", 0.1f, "", 0.0, 20.0},
+        {"Decay21", "", 0.1f, "", 0.0, 20.0},
+        {"Decay22", "", 0.1f, "", 0.0, 20.0},
+        {"Decay23", "", 0.1f, "", 0.0, 20.0},
+        {"Decay24", "", 0.1f, "", 0.0, 20.0}
                                               };
     vector<Parameter> mSustainLevels = {
         {"Sustain1", "", 0.7f, "", 0.0, 1.0},
@@ -356,7 +382,15 @@ private:
         {"Sustain13", "", 0.7f, "", 0.0, 1.0},
         {"Sustain14", "", 0.7f, "", 0.0, 1.0},
         {"Sustain15", "", 0.7f, "", 0.0, 1.0},
-        {"Sustain16", "", 0.7f, "", 0.0, 1.0}
+        {"Sustain16", "", 0.7f, "", 0.0, 1.0},
+        {"Sustain17", "", 0.7f, "", 0.0, 1.0},
+        {"Sustain18", "", 0.7f, "", 0.0, 1.0},
+        {"Sustain19", "", 0.7f, "", 0.0, 1.0},
+        {"Sustain20", "", 0.7f, "", 0.0, 1.0},
+        {"Sustain21", "", 0.7f, "", 0.0, 1.0},
+        {"Sustain22", "", 0.7f, "", 0.0, 1.0},
+        {"Sustain23", "", 0.7f, "", 0.0, 1.0},
+        {"Sustain24", "", 0.7f, "", 0.0, 1.0}
                                               };
     vector<Parameter> mReleaseTimes = {
         {"Release1", "", 1.0f, "", 0.0, 20.0},
@@ -374,7 +408,15 @@ private:
         {"Release13", "", 1.0f, "", 0.0, 20.0},
         {"Release14", "", 1.0f, "", 0.0, 20.0},
         {"Release15", "", 1.0f, "", 0.0, 20.0},
-        {"Release16", "", 1.0f, "", 0.0, 20.0}
+        {"Release16", "", 1.0f, "", 0.0, 20.0},
+        {"Release17", "", 1.0f, "", 0.0, 20.0},
+        {"Release18", "", 1.0f, "", 0.0, 20.0},
+        {"Release19", "", 1.0f, "", 0.0, 20.0},
+        {"Release20", "", 1.0f, "", 0.0, 20.0},
+        {"Release21", "", 1.0f, "", 0.0, 20.0},
+        {"Release22", "", 1.0f, "", 0.0, 20.0},
+        {"Release23", "", 1.0f, "", 0.0, 20.0},
+        {"Release24", "", 1.0f, "", 0.0, 20.0}
                                               };
 
     vector<Parameter> mFrequencyFactors = {
@@ -393,7 +435,15 @@ private:
         {"Harm13", "", 13.0f, "", 0.0, 20.0},
         {"Harm14", "", 14.0f, "", 0.0, 20.0},
         {"Harm15", "", 15.0f, "", 0.0, 20.0},
-        {"Harm16", "", 16.0f, "", 0.0, 20.0}
+        {"Harm16", "", 16.0f, "", 0.0, 20.0},
+        {"Harm17", "", 9.0f, "", 0.0, 20.0},
+        {"Harm18", "", 10.0f, "", 0.0, 20.0},
+        {"Harm19", "", 11.0f, "", 0.0, 20.0},
+        {"Harm20", "", 12.0f, "", 0.0, 20.0},
+        {"Harm21", "", 13.0f, "", 0.0, 20.0},
+        {"Harm22", "", 14.0f, "", 0.0, 20.0},
+        {"Harm23", "", 15.0f, "", 0.0, 20.0},
+        {"Harm24", "", 16.0f, "", 0.0, 20.0}
                                               };
     vector<Parameter> mAmplitudes = {
         {"Amp1", "", 1.0f, "", 0.0, 1.0},
@@ -411,7 +461,15 @@ private:
         {"Amp13", "", 1/13.0f, "", 0.0, 1.0},
         {"Amp14", "", 1/14.0f, "", 0.0, 1.0},
         {"Amp15", "", 1/15.0f, "", 0.0, 1.0},
-        {"Amp16", "", 1/16.0f, "", 0.0, 1.0}
+        {"Amp16", "", 1/16.0f, "", 0.0, 1.0},
+        {"Amp17", "", 1/9.0f, "", 0.0, 1.0},
+        {"Amp18", "", 1/10.0f, "", 0.0, 1.0},
+        {"Amp19", "", 1/11.0f, "", 0.0, 1.0},
+        {"Amp20", "", 1/12.0f, "", 0.0, 1.0},
+        {"Amp21", "", 1/13.0f, "", 0.0, 1.0},
+        {"Amp22", "", 1/14.0f, "", 0.0, 1.0},
+        {"Amp23", "", 1/15.0f, "", 0.0, 1.0},
+        {"Amp24", "", 1/16.0f, "", 0.0, 1.0}
                                               };
     // Presets
     PresetHandler mPresetHandler;
@@ -510,7 +568,7 @@ void AddSynthApp::initializeValues()
 void AddSynthApp::initializeGui()
 {
     gui << SequencerGUI::makePresetHandlerView(mPresetHandler, 1.0, 12, 4);
-    gui << mLevel << mFundamental << mCumulativeDelay;
+    gui << mLevel << mFundamental << mCumulativeDelay << mCumulativeDelayRandomness;
     gui << mArcStart << mArcSpan;
 
     gui << SequencerGUI::makeSequencerPlayerView(sequencer)
@@ -724,7 +782,7 @@ void AddSynthApp::initializeGui()
 void AddSynthApp::initializePresets()
 {
     mPresetHandler << mLevel;
-    mPresetHandler << mFundamental << mCumulativeDelay;
+    mPresetHandler << mFundamental << mCumulativeDelay << mCumulativeDelayRandomness;
     mPresetHandler << mArcStart << mArcSpan;
     for (int i = 0; i < NUM_VOICES; i++) {
         mPresetHandler << mFrequencyFactors[i] << mAmplitudes[i];
@@ -739,8 +797,9 @@ void AddSynthApp::initializePresets()
     unsigned int midiControllerPort = 4;
     parameterMIDI.init(midiControllerPort);
     parameterMIDI.connectControl(mCumulativeDelay, 75, 1);
-    parameterMIDI.connectControl(mArcStart, 76, 1);
-    parameterMIDI.connectControl(mArcSpan, 77, 1);
+    parameterMIDI.connectControl(mCumulativeDelayRandomness, 76, 1);
+    parameterMIDI.connectControl(mArcStart, 77, 1);
+    parameterMIDI.connectControl(mArcSpan, 78, 1);
 
     // MIDI control of presets
     // 74 71 91 93 73 72 5 84 7
@@ -857,6 +916,7 @@ void AddSynthApp::trigger(int id)
     params.mLevel = mLevel.get();
     params.mFundamental = mFundamental.get();
     params.mCumulativeDelay = mCumulativeDelay.get();
+    params.mCumDelayRandomness = mCumulativeDelayRandomness.get();
     params.mArcStart = mArcStart.get();
     params.mArcSpan = mArcSpan.get();
     params.mOutputRouting = outputRouting;
