@@ -43,6 +43,11 @@ public:
     float mFrequencyFactors[NUM_VOICES];
     float mAmplitudes[NUM_VOICES];
 
+    float mAmpModFrequencies[NUM_VOICES];
+    float mAmpModDepth[NUM_VOICES];
+    float mAmpModAttack;
+    float mAmpModRelease;
+
     // Spatialization
     float mArcStart;
     float mArcSpan;
@@ -53,8 +58,10 @@ class AddSynth {
 public:
     AddSynth(){
         float envLevels[6] = {0.0, 0.0, 1.0, 0.7, 0.7, 0.0};
+        float ampModEnvLevels[4] = {0.0, 1.0, 1.0, 0.0};
         for (int i = 0; i < NUM_VOICES; i++) {
             mEnvelopes[i].levels(envLevels, 6).sustainPoint(4).finish();
+            mAmpModEnvelopes[i].levels(ampModEnvLevels, 4).sustainPoint(3).finish();
         }
         setCurvature(-4);
         release();
@@ -74,13 +81,19 @@ public:
             setDecayTime(params.mDecayTimes[i], i);
             setSustainLevel(params.mSustainLevels[i], i);
             setReleaseTime(params.mReleaseTimes[i], i);
+            setAmpModAttackTime(params.mAmpModAttack, i);
+            setAmpModReleaseTime(params.mAmpModRelease, i);
+            mAmpModulators[i].set(params.mAmpModFrequencies[i], params.mAmpModDepth[i]);
+
             mEnvelopes[i].reset();
+            mAmpModEnvelopes[i].reset();
         }
     }
 
     void release() {
         for (int i = 0; i < NUM_VOICES; i++) {
             mEnvelopes[i].release();
+            mAmpModEnvelopes[i].release();
         }
     }
 
@@ -96,7 +109,8 @@ public:
     void generateAudio(AudioIOData &io) {
         while (io()) {
             for (int i = 0; i < NUM_VOICES; i++) {
-                io.out(mOutMap[i]) += mOscillators[i]() * mEnvelopes[i]() *  mAmplitudes[i] * mLevel;
+                io.out(mOutMap[i]) += mOscillators[i]() * mEnvelopes[i]() *  mAmplitudes[i] * mLevel
+                        * (1 + mAmpModulators[i]() * mAmpModEnvelopes[i]());
             }
         }
     }
@@ -128,6 +142,16 @@ public:
     void setDecayTime(float decayTime, int i)
     {
         mEnvelopes[i].lengths()[2] = decayTime;
+    }
+
+    void setAmpModAttackTime(float attackTime, int i)
+    {
+        mAmpModEnvelopes[i].lengths()[0] = attackTime;
+    }
+
+    void setAmpModReleaseTime(float releaseTime, int i)
+    {
+        mAmpModEnvelopes[i].lengths()[2] = releaseTime;
     }
 
     void setSustainLevel(float sustainLevel, int i)
@@ -170,6 +194,8 @@ private:
     // Synthesis
     gam::Sine<> mOscillators[NUM_VOICES];
     gam::Env<5> mEnvelopes[NUM_VOICES]; // First segment determines envelope delay
+    gam::SineR<> mAmpModulators[NUM_VOICES];
+    gam::Env<3> mAmpModEnvelopes[NUM_VOICES];
 
     int mId = 0;
     float mLevel = 0;
@@ -301,6 +327,9 @@ public:
     void sustainSlope(float factor);
     void releaseTimeAdd(float value);
     void releaseTimeSlope(float factor);
+
+    void ampModFreqAdd(float value);
+    void ampModFreqSlope(float factor);
 
     // Envelope
     void trigger(int id);
@@ -480,6 +509,37 @@ private:
         {"Amp23", "", 1/15.0f, "", 0.0, 1.0},
         {"Amp24", "", 1/16.0f, "", 0.0, 1.0}
                                               };
+    // Amp Mod
+    Parameter mAmpModDepth{"AmpModDepth", "", 0.0, "", 0.0, 1.0};
+    Parameter mAmpModAttack{"AmpModAttack", "", 0.0, "", 0.0, 10.0};
+    Parameter mAmpModRelease{"AmpModRelease", "", 0.0, "", 0.0, 10.0};
+
+    vector<Parameter> mAmpModFrequencies = {
+        {"AmpModFreq1", "", 1.0f, "", 0.0, 30.0},
+        {"AmpModFreq2", "", 1.0f, "", 0.0, 30.0},
+        {"AmpModFreq3", "", 1.0f, "", 0.0, 30.0},
+        {"AmpModFreq4", "", 1.0f, "", 0.0, 30.0},
+        {"AmpModFreq5", "", 1.0f, "", 0.0, 30.0},
+        {"AmpModFreq6", "", 1.0f, "", 0.0, 30.0},
+        {"AmpModFreq7", "", 1.0f, "", 0.0, 30.0},
+        {"AmpModFreq8", "", 1.0f, "", 0.0, 30.0},
+        {"AmpModFreq9", "", 1.0f, "", 0.0, 30.0},
+        {"AmpModFreq10", "",1.0f, "", 0.0, 30.0},
+        {"AmpModFreq11", "",1.0f, "", 0.0, 30.0},
+        {"AmpModFreq12", "",1.0f, "", 0.0, 30.0},
+        {"AmpModFreq13", "",1.0f, "", 0.0, 30.0},
+        {"AmpModFreq14", "",1.0f, "", 0.0, 30.0},
+        {"AmpModFreq15", "",1.0f, "", 0.0, 30.0},
+        {"AmpModFreq16", "",1.0f, "", 0.0, 30.0},
+        {"AmpModFreq17", "",1.0f, "", 0.0, 30.0},
+        {"AmpModFreq18", "",1.0f, "", 0.0, 30.0},
+        {"AmpModFreq19", "",1.0f, "", 0.0, 30.0},
+        {"AmpModFreq20", "",1.0f, "", 0.0, 30.0},
+        {"AmpModFreq21", "",1.0f, "", 0.0, 30.0},
+        {"AmpModFreq22", "",1.0f, "", 0.0, 30.0},
+        {"AmpModFreq23", "",1.0f, "", 0.0, 30.0},
+        {"AmpModFreq24", "",1.0f, "", 0.0, 30.0}
+                                              };
     // Presets
     PresetHandler mPresetHandler;
 
@@ -497,6 +557,7 @@ private:
     glv::Box decayTimesBox {glv::Direction::S};
     glv::Box sustainLevelsBox {glv::Direction::S};
     glv::Box releaseTimesBox {glv::Direction::S};
+    glv::Box ampModBox {glv::Direction::S};
     GLVDetachable controlView;
 
     PresetKeyboardControl mKeyboardPresets;
@@ -938,6 +999,69 @@ void AddSynthApp::initializeGui()
     releaseTimesBox.anchor(glv::Place::TR);
     releaseTimesBox.set(-550, 30, releaseTimesBox.width(), releaseTimesBox.height());
     controlView << releaseTimesBox;
+
+    // Amp Mod
+
+
+
+    glv::Button *ampModUpButton = new glv::Button;
+    ampModUpButton->attach([](const glv::Notification &n) {
+        glv::Button *b = n.sender<glv::Button>();
+        AddSynthApp *app = n.receiver<AddSynthApp>();
+        if (b->getValue() == 1) {
+            app->ampModFreqAdd(0.05);
+        }
+    }, glv::Update::Value, this);
+    ampModUpButton->property(glv::Momentary, true);
+    ampModBox << ampModUpButton << new glv::Label("Higher freq");
+
+    glv::Button *ampModDownButton = new glv::Button;
+    ampModDownButton->attach([](const glv::Notification &n) {
+        glv::Button *b = n.sender<glv::Button>();
+        AddSynthApp *app = n.receiver<AddSynthApp>();
+        if (b->getValue() == 1) {
+            app->ampModFreqAdd(-0.05);
+        }
+    }, glv::Update::Value, this);
+    ampModDownButton->property(glv::Momentary, true);
+    ampModBox << ampModDownButton << new glv::Label("Lower freq");
+
+    glv::Button *ampModRampUpButton = new glv::Button;
+    ampModRampUpButton->attach([](const glv::Notification &n) {
+        glv::Button *b = n.sender<glv::Button>();
+        AddSynthApp *app = n.receiver<AddSynthApp>();
+        if (b->getValue() == 1) {
+            app->ampModFreqSlope(1.01);
+        }
+    }, glv::Update::Value, this);
+    ampModRampUpButton->property(glv::Momentary, true);
+    ampModBox << ampModRampUpButton << new glv::Label("Ramp up");
+
+    glv::Button *ampModRampDownButton = new glv::Button;
+    ampModRampDownButton->attach([](const glv::Notification &n) {
+        glv::Button *b = n.sender<glv::Button>();
+        AddSynthApp *app = n.receiver<AddSynthApp>();
+        if (b->getValue() == 1) {
+            app->ampModFreqSlope(1/1.01);
+        }
+    }, glv::Update::Value, this);
+    ampModRampDownButton->property(glv::Momentary, true);
+    ampModBox << ampModRampDownButton << new glv::Label("Ramp down");
+
+    ampModBox << ParameterGUI::makeParameterView(mAmpModDepth);
+    ampModBox << ParameterGUI::makeParameterView(mAmpModAttack);
+    ampModBox << ParameterGUI::makeParameterView(mAmpModRelease);
+
+    for (int i = 0; i < NUM_VOICES; i++) {
+        ampModBox << ParameterGUI::makeParameterView(mAmpModFrequencies[i]);
+    }
+    ampModBox.fit();
+    ampModBox.enable(glv::DrawBack);
+    ampModBox.anchor(glv::Place::TR);
+    ampModBox.set(-400, 30, releaseTimesBox.width(), releaseTimesBox.height());
+    controlView << ampModBox;
+
+
     controlView.set(300, 0, 300, 400);
 }
 
@@ -1126,6 +1250,20 @@ void AddSynthApp::releaseTimeSlope(float factor)
     }
 }
 
+void AddSynthApp::ampModFreqAdd(float value)
+{
+    for (int i = 0; i < NUM_VOICES; i++) {
+        mAmpModFrequencies[i].set(mAmpModFrequencies[i].get() + value);
+    }
+}
+
+void AddSynthApp::ampModFreqSlope(float factor)
+{
+    for (int i = 0; i < NUM_VOICES; i++) {
+        mAmpModFrequencies[i].set(mAmpModFrequencies[i].get() * pow(factor, i));
+    }
+}
+
 void AddSynthApp::trigger(int id)
 {
 //    std::cout << "trigger id " << id << std::endl;
@@ -1138,6 +1276,10 @@ void AddSynthApp::trigger(int id)
     params.mArcStart = mArcStart.get();
     params.mArcSpan = mArcSpan.get();
     params.mOutputRouting = outputRouting;
+
+    params.mAmpModAttack = mAmpModAttack.get();
+    params.mAmpModRelease = mAmpModRelease.get();
+
     for (int i = 0; i < NUM_VOICES; i++) {
         params.mAttackTimes[i] = mAttackTimes[i].get();
         params.mDecayTimes[i] = mDecayTimes[i].get();
@@ -1145,6 +1287,8 @@ void AddSynthApp::trigger(int id)
         params.mReleaseTimes[i] = mReleaseTimes[i].get();
         params.mFrequencyFactors[i] = mFrequencyFactors[i].get();
         params.mAmplitudes[i] = mAmplitudes[i].get();
+
+        params.mAmpModDepth[i] = mAmpModDepth.get();
     }
     for (int i = 0; i < SYNTH_POLYPHONY; i++) {
         if (synth[i].done()) {
