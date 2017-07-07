@@ -766,7 +766,7 @@ void AddSynthApp::onSound(AudioIOData &io)
     for (int i = 0; i < SYNTH_POLYPHONY; i++) {
         if (!synth[i].done()) {
             synth[i].generateAudio(io);
-            io.frame(1);
+            io.frame(0);
         }
     }
 }
