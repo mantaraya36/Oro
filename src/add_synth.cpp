@@ -61,7 +61,7 @@ public:
         float ampModEnvLevels[4] = {0.0, 1.0, 1.0, 0.0};
         for (int i = 0; i < NUM_VOICES; i++) {
             mEnvelopes[i].levels(envLevels, 6).sustainPoint(4).finish();
-            mAmpModEnvelopes[i].levels(ampModEnvLevels, 4).sustainPoint(3).finish();
+            mAmpModEnvelopes[i].levels(ampModEnvLevels, 4).sustainPoint(2).finish();
         }
         setCurvature(-4);
         release();
@@ -169,6 +169,7 @@ public:
     {
         for (int i = 0; i < NUM_VOICES; i++) {
             mEnvelopes[i].curve(curvature);
+            mAmpModEnvelopes[i].curve(curvature);
         }
     }
 
@@ -1288,6 +1289,7 @@ void AddSynthApp::trigger(int id)
         params.mFrequencyFactors[i] = mFrequencyFactors[i].get();
         params.mAmplitudes[i] = mAmplitudes[i].get();
 
+        params.mAmpModFrequencies[i] = mAmpModFrequencies[i].get();
         params.mAmpModDepth[i] = mAmpModDepth.get();
     }
     for (int i = 0; i < SYNTH_POLYPHONY; i++) {
