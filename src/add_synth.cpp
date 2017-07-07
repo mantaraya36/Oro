@@ -268,8 +268,8 @@ public:
     void ampSlopeFactor(double factor);
 
     // Envelope
-    void trigger();
-    void release();
+    void trigger(int id);
+    void release(int id);
     void setInitialCumulativeDelay(float initialDelay);
     void setAttackTime(float attackTime);
     void setReleaseTime(float releaseTime);
@@ -423,44 +423,45 @@ private:
 
     MIDIIn midiIn {"USB Oxygen 49"};
 
+    static inline float midi2cps(int midiNote) {
+        return 440.0 * pow(2, (midiNote - 69.0)/ 12.0);
+    }
+
     static void midiCallback(double deltaTime, std::vector<unsigned char> *msg, void *userData){
         AddSynthApp *app = static_cast<AddSynthApp *>(userData);
         unsigned numBytes = msg->size();
 
         if(numBytes > 0){
             unsigned char status = msg->at(0);
-            // Check if we received a channel message
             if(MIDIByte::isChannelMessage(status)){
                 unsigned char type = status & MIDIByte::MESSAGE_MASK;
                 unsigned char chan = status & MIDIByte::CHANNEL_MASK;
-
-                // Here we demonstrate how to parse to common channel messages
                 switch(type){
                 case MIDIByte::NOTE_ON:
-                    printf("Note %u, Vel %u", msg->at(1), msg->at(2));
+//                    printf("Note %u, Vel %u", msg->at(1), msg->at(2));
+                    app->mFundamental.set(midi2cps(msg->at(1)));
+                    app->trigger(msg->at(1));
                     break;
 
                 case MIDIByte::NOTE_OFF:
-                    printf("Note %u, Vel %u", msg->at(1), msg->at(2));
+
+                    app->release(msg->at(1));
+//                    printf("Note %u, Vel %u", msg->at(1), msg->at(2));
                     break;
 
                 case MIDIByte::PITCH_BEND:
-                    printf("Value %u", MIDIByte::convertPitchBend(msg->at(1), msg->at(2)));
+//                    printf("Value %u", MIDIByte::convertPitchBend(msg->at(1), msg->at(2)));
                     break;
-
-                // Control messages need to be parsed again...
                 case MIDIByte::CONTROL_CHANGE:
-                    printf("%s ", MIDIByte::controlNumberString(msg->at(1)));
-                    switch(msg->at(1)){
-                    case MIDIByte::MODULATION:
-                        printf("%u", msg->at(2));
-                        break;
-                    }
+//                    printf("%s ", MIDIByte::controlNumberString(msg->at(1)));
+//                    switch(msg->at(1)){
+//                    case MIDIByte::MODULATION:
+//                        printf("%u", msg->at(2));
+//                        break;
+//                    }
                     break;
                 default:;
                 }
-
-                printf(" (MIDI chan %u)", chan + 1);
             }
         }
     }
@@ -739,12 +740,12 @@ void AddSynthApp::onSound(AudioIOData &io)
 
 void AddSynthApp::onKeyDown(const Keyboard &k)
 {
-    trigger();
+    trigger(k.key());
 }
 
 void AddSynthApp::onKeyUp(const Keyboard &k)
 {
-    release();
+    release(k.key());
 }
 
 void AddSynthApp::multiplyPartials(float factor)
@@ -809,7 +810,7 @@ void AddSynthApp::ampSlopeFactor(double factor)
     }
 }
 
-void AddSynthApp::trigger()
+void AddSynthApp::trigger(int id)
 {
     AddSynthParameters params;
     params.mLevel = mLevel.get();
@@ -829,7 +830,7 @@ void AddSynthApp::trigger()
     synth.trigger(params);
 }
 
-void AddSynthApp::release()
+void AddSynthApp::release(int id)
 {
     synth.release();
 }
