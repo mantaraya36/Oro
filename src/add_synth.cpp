@@ -103,7 +103,11 @@ public:
     void setInitialCumulativeDelay(float initialDelay)
     {
         for (int i = 0; i < NUM_VOICES; i++) {
-            mEnvelopes[i].lengths()[0] = initialDelay * i;
+            if (initialDelay >= 0) {
+                mEnvelopes[i].lengths()[0] = initialDelay * i;
+            } else {
+                mEnvelopes[i].lengths()[0] = initialDelay * (NUM_VOICES - i - 1);
+            }
         }
     }
 
@@ -293,7 +297,7 @@ private:
     // Parameters
     Parameter mLevel {"Level", "", 0.25, "", 0.0, 1.0};
     Parameter mFundamental {"Fundamental", "", 220.0, "", 0.0, 9000.0};
-    Parameter mCumulativeDelay{"CumDelay", "", 0.0, "", 0.0, 0.2};
+    Parameter mCumulativeDelay{"CumDelay", "", 0.0, "", -0.2, 0.2};
 
     // Spatialization
     int mNumSpeakers; // Assumes regular angular separation
