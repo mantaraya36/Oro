@@ -439,8 +439,12 @@ private:
                 switch(type){
                 case MIDIByte::NOTE_ON:
 //                    printf("Note %u, Vel %u", msg->at(1), msg->at(2));
-                    app->mFundamental.set(midi2cps(msg->at(1)));
-                    app->trigger(msg->at(1));
+                    if (msg->at(2) != 0) {
+                        app->mFundamental.set(midi2cps(msg->at(1)));
+                        app->trigger(msg->at(1));
+                    } else {
+                        app->release(msg->at(1));
+                    }
                     break;
 
                 case MIDIByte::NOTE_OFF:
