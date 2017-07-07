@@ -423,26 +423,47 @@ private:
 
     MIDIIn midiIn {"USB Oxygen 49"};
 
+    static void midiCallback(double deltaTime, std::vector<unsigned char> *msg, void *userData){
+        AddSynthApp *app = static_cast<AddSynthApp *>(userData);
+        unsigned numBytes = msg->size();
 
-    class MIDIHandler : public MIDIMessageHandler
-    {
-    public:
-        MIDIHandler() {}
-        virtual ~MIDIHandler(){}
+        if(numBytes > 0){
+            unsigned char status = msg->at(0);
+            // Check if we received a channel message
+            if(MIDIByte::isChannelMessage(status)){
+                unsigned char type = status & MIDIByte::MESSAGE_MASK;
+                unsigned char chan = status & MIDIByte::CHANNEL_MASK;
 
-        /// Called when a MIDI message is received
-        virtual void onMIDIMessage(const MIDIMessage& m) {
-            m.print();
-        };
+                // Here we demonstrate how to parse to common channel messages
+                switch(type){
+                case MIDIByte::NOTE_ON:
+                    printf("Note %u, Vel %u", msg->at(1), msg->at(2));
+                    break;
 
-        /// Bind handler to a MIDI input
-    //        void bindTo(MIDIIn& midiIn, unsigned port=0);
+                case MIDIByte::NOTE_OFF:
+                    printf("Note %u, Vel %u", msg->at(1), msg->at(2));
+                    break;
 
-    protected:
-    };
+                case MIDIByte::PITCH_BEND:
+                    printf("Value %u", MIDIByte::convertPitchBend(msg->at(1), msg->at(2)));
+                    break;
 
-    MIDIHandler midiHandler;
+                // Control messages need to be parsed again...
+                case MIDIByte::CONTROL_CHANGE:
+                    printf("%s ", MIDIByte::controlNumberString(msg->at(1)));
+                    switch(msg->at(1)){
+                    case MIDIByte::MODULATION:
+                        printf("%u", msg->at(2));
+                        break;
+                    }
+                    break;
+                default:;
+                }
 
+                printf(" (MIDI chan %u)", chan + 1);
+            }
+        }
+    }
 
     // Synthesis
     AddSynth synth;
@@ -695,8 +716,20 @@ void AddSynthApp::initializePresets()
     presetMIDI.setMorphControl(102, 1, 0.0, 8.0);
     // MIDI preset mapping
 //    presetMIDI.connectNoteToPreset(1, 0, 36, 24, 59);
-    midiHandler.bindTo(midiIn);
+    unsigned portToOpen = 4;
+    // Print out names of available input ports
+    for(unsigned i=0; i< midiIn.getPortCount(); ++i){
+        printf("Port %u: %s\n", i, midiIn.getPortName(i).c_str());
+    }
+    try {
+        // Open the port specified above
+        midiIn.openPort(portToOpen);
+    }
+    catch(MIDIError &error){
+        error.printMessage();
+    }
 
+    midiIn.setCallback(AddSynthApp::midiCallback, this);
 }
 
 void AddSynthApp::onSound(AudioIOData &io)
