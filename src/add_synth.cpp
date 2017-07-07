@@ -297,6 +297,8 @@ public:
     void attackTimeSlope(float factor);
     void decayTimeAdd(float value);
     void decayTimeSlope(float factor);
+    void sustainAdd(float value);
+    void sustainSlope(float factor);
     void releaseTimeAdd(float value);
     void releaseTimeSlope(float factor);
 
@@ -311,7 +313,7 @@ public:
 private:
 
     // Parameters
-    Parameter mLevel {"Level", "", 0.25, "", 0.0, 1.0};
+    Parameter mLevel {"Level", "", 0.05, "", 0.0, 1.0};
     Parameter mFundamental {"Fundamental", "", 220.0, "", 0.0, 9000.0};
     Parameter mCumulativeDelay{"CumDelay", "", 0.0, "", -0.2, 0.2};
     Parameter mCumulativeDelayRandomness{"CumDelayDev", "", 0.0, "", 0.0, 1.0};
@@ -562,7 +564,7 @@ void AddSynthApp::initializeValues()
     mFundamental.set(220);
     harmonicPartials();
 
-    mLevel.set(0.25);
+    mLevel.set(0.05);
     mCumulativeDelay.set(0.0);
     for (int i = 0; i < NUM_VOICES; i++) {
         mAttackTimes[i].set(0.1);
@@ -827,6 +829,52 @@ void AddSynthApp::initializeGui()
     decayTimesBox.set(-850, 30, decayTimesBox.width(), decayTimesBox.height());
     controlView << decayTimesBox;
 
+    // Sustain
+
+    glv::Button *sustainTimeUpButton = new glv::Button;
+    sustainTimeUpButton->attach([](const glv::Notification &n) {
+        glv::Button *b = n.sender<glv::Button>();
+        AddSynthApp *app = n.receiver<AddSynthApp>();
+        if (b->getValue() == 1) {
+            app->sustainAdd(0.05);
+        }
+    }, glv::Update::Value, this);
+    sustainTimeUpButton->property(glv::Momentary, true);
+    sustainLevelsBox << sustainTimeUpButton << new glv::Label("Faster Release");
+
+    glv::Button *sustainTimeDownButton = new glv::Button;
+    sustainTimeDownButton->attach([](const glv::Notification &n) {
+        glv::Button *b = n.sender<glv::Button>();
+        AddSynthApp *app = n.receiver<AddSynthApp>();
+        if (b->getValue() == 1) {
+            app->sustainAdd(-0.05);
+        }
+    }, glv::Update::Value, this);
+    sustainTimeDownButton->property(glv::Momentary, true);
+    sustainLevelsBox << sustainTimeDownButton << new glv::Label("Slower Release");
+
+    glv::Button *sustainRampUpButton = new glv::Button;
+    sustainRampUpButton->attach([](const glv::Notification &n) {
+        glv::Button *b = n.sender<glv::Button>();
+        AddSynthApp *app = n.receiver<AddSynthApp>();
+        if (b->getValue() == 1) {
+            app->sustainSlope(1.01);
+        }
+    }, glv::Update::Value, this);
+    sustainRampUpButton->property(glv::Momentary, true);
+    sustainLevelsBox << sustainRampUpButton << new glv::Label("Ramp up");
+
+    glv::Button *sustainRampDownButton = new glv::Button;
+    sustainRampDownButton->attach([](const glv::Notification &n) {
+        glv::Button *b = n.sender<glv::Button>();
+        AddSynthApp *app = n.receiver<AddSynthApp>();
+        if (b->getValue() == 1) {
+            app->sustainSlope(1/1.01);
+        }
+    }, glv::Update::Value, this);
+    sustainRampDownButton->property(glv::Momentary, true);
+    sustainLevelsBox << sustainRampDownButton << new glv::Label("Ramp down");
+
     for (int i = 0; i < NUM_VOICES; i++) {
         sustainLevelsBox << ParameterGUI::makeParameterView(mSustainLevels[i]);
     }
@@ -1047,6 +1095,20 @@ void AddSynthApp::decayTimeSlope(float factor)
 {
     for (int i = 0; i < NUM_VOICES; i++) {
         mDecayTimes[i].set(mDecayTimes[i].get() * pow(factor, i));
+    }
+}
+
+void AddSynthApp::sustainAdd(float value)
+{
+    for (int i = 0; i < NUM_VOICES; i++) {
+        mSustainLevels[i].set(mSustainLevels[i].get() + value);
+    }
+}
+
+void AddSynthApp::sustainSlope(float factor)
+{
+    for (int i = 0; i < NUM_VOICES; i++) {
+        mSustainLevels[i].set(mSustainLevels[i].get() * pow(factor, i));
     }
 }
 
