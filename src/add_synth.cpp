@@ -47,6 +47,8 @@ public:
     float mAmpModDepth[NUM_VOICES];
     float mAmpModAttack;
     float mAmpModRelease;
+	float mAttackCurve;
+    float mReleaseCurve;
 
     // Spatialization
     float mArcStart;
@@ -63,7 +65,7 @@ public:
             mEnvelopes[i].levels(envLevels, 6).sustainPoint(4).finish();
             mAmpModEnvelopes[i].levels(ampModEnvLevels, 4).sustainPoint(2).finish();
         }
-        setCurvature(-4);
+        setCurvature(4);
         release();
     }
 
@@ -76,6 +78,8 @@ public:
         setInitialCumulativeDelay(params.mCumulativeDelay, params.mCumDelayRandomness);
         memcpy(mAmplitudes, params.mAmplitudes, sizeof(float) * NUM_VOICES);
 
+		setAttackCurvature(params.mAttackCurve);
+		setReleaseCurvature(params.mReleaseCurve);
         for (int i = 0; i < NUM_VOICES; i++) {
             setAttackTime(params.mAttackTimes[i], i);
             setDecayTime(params.mDecayTimes[i], i);
@@ -170,6 +174,22 @@ public:
         for (int i = 0; i < NUM_VOICES; i++) {
             mEnvelopes[i].curve(curvature);
             mAmpModEnvelopes[i].curve(curvature);
+        }
+    }
+
+	void setAttackCurvature(float curvature)
+    {
+        for (int i = 0; i < NUM_VOICES; i++) {
+            mEnvelopes[i].curves()[1] = curvature;
+            mAmpModEnvelopes[i].curves()[1] = curvature;
+        }
+    }
+
+	void setReleaseCurvature(float curvature)
+    {
+        for (int i = 0; i < NUM_VOICES; i++) {
+            mEnvelopes[i].curves()[4] = curvature;
+            mAmpModEnvelopes[i].curves()[4] = curvature;
         }
     }
 
@@ -347,6 +367,8 @@ private:
     Parameter mFundamental {"Fundamental", "", 220.0, "", 0.0, 9000.0};
     Parameter mCumulativeDelay{"CumDelay", "", 0.0, "", -0.2, 0.2};
     Parameter mCumulativeDelayRandomness{"CumDelayDev", "", 0.0, "", 0.0, 1.0};
+	Parameter mAttackCurve{"AttackCurve", "", 4.0, "", -10.0, 10.0};
+	Parameter mReleaseCurve{"ReleaseCurve", "", -4.0, "", -10.0, 10.0};
 
     // Spatialization
     int mNumSpeakers; // Assumes regular angular separation
@@ -354,30 +376,30 @@ private:
     Parameter mArcSpan {"ArcSpan", "", 0, "", 0.0, 2.0}; // 1 = full circumference. + -> CW, - -> CCW
 
     vector<Parameter> mAttackTimes = {
-        {"Attack1", "", 0.1f, "", 0.0, 20.0},
-        {"Attack2", "", 0.1f, "", 0.0, 20.0},
-        {"Attack3", "", 0.1f, "", 0.0, 20.0},
-        {"Attack4", "", 0.1f, "", 0.0, 20.0},
-        {"Attack5", "", 0.1f, "", 0.0, 20.0},
-        {"Attack6", "", 0.1f, "", 0.0, 20.0},
-        {"Attack7", "", 0.1f, "", 0.0, 20.0},
-        {"Attack8", "", 0.1f, "", 0.0, 20.0},
-        {"Attack9", "", 0.1f, "", 0.0, 20.0},
-        {"Attack10", "", 0.1f, "", 0.0, 20.0},
-        {"Attack11", "", 0.1f, "", 0.0, 20.0},
-        {"Attack12", "", 0.1f, "", 0.0, 20.0},
-        {"Attack13", "", 0.1f, "", 0.0, 20.0},
-        {"Attack14", "", 0.1f, "", 0.0, 20.0},
-        {"Attack15", "", 0.1f, "", 0.0, 20.0},
-        {"Attack16", "", 0.1f, "", 0.0, 20.0},
-        {"Attack17", "", 0.1f, "", 0.0, 20.0},
-        {"Attack18", "", 0.1f, "", 0.0, 20.0},
-        {"Attack19", "", 0.1f, "", 0.0, 20.0},
-        {"Attack20", "", 0.1f, "", 0.0, 20.0},
-        {"Attack21", "", 0.1f, "", 0.0, 20.0},
-        {"Attack22", "", 0.1f, "", 0.0, 20.0},
-        {"Attack23", "", 0.1f, "", 0.0, 20.0},
-        {"Attack24", "", 0.1f, "", 0.0, 20.0}
+	    {"Attack1", "", 0.1f, "", 0.0, 60.0},
+        {"Attack2", "", 0.1f, "", 0.0, 60.0},
+        {"Attack3", "", 0.1f, "", 0.0, 60.0},
+        {"Attack4", "", 0.1f, "", 0.0, 60.0},
+        {"Attack5", "", 0.1f, "", 0.0, 60.0},
+        {"Attack6", "", 0.1f, "", 0.0, 60.0},
+        {"Attack7", "", 0.1f, "", 0.0, 60.0},
+        {"Attack8", "", 0.1f, "", 0.0, 60.0},
+        {"Attack9", "", 0.1f, "", 0.0, 60.0},
+        {"Attack10", "", 0.1f, "", 0.0, 60.0},
+        {"Attack11", "", 0.1f, "", 0.0, 60.0},
+        {"Attack12", "", 0.1f, "", 0.0, 60.0},
+        {"Attack13", "", 0.1f, "", 0.0, 60.0},
+        {"Attack14", "", 0.1f, "", 0.0, 60.0},
+        {"Attack15", "", 0.1f, "", 0.0, 60.0},
+        {"Attack16", "", 0.1f, "", 0.0, 60.0},
+        {"Attack17", "", 0.1f, "", 0.0, 60.0},
+        {"Attack18", "", 0.1f, "", 0.0, 60.0},
+        {"Attack19", "", 0.1f, "", 0.0, 60.0},
+        {"Attack20", "", 0.1f, "", 0.0, 60.0},
+        {"Attack21", "", 0.1f, "", 0.0, 60.0},
+        {"Attack22", "", 0.1f, "", 0.0, 60.0},
+        {"Attack23", "", 0.1f, "", 0.0, 60.0},
+        {"Attack24", "", 0.1f, "", 0.0, 60.0}
                                               };
     vector<Parameter> mDecayTimes = {
         {"Decay1", "", 0.1f, "", 0.0, 20.0},
@@ -641,6 +663,7 @@ void AddSynthApp::initializeGui()
     gui << SequencerGUI::makePresetHandlerView(mPresetHandler, 1.0, 12, 4);
     gui << mLevel << mFundamental << mCumulativeDelay << mCumulativeDelayRandomness;
     gui << mArcStart << mArcSpan;
+	gui << mAttackCurve << mReleaseCurve;
 
     gui << SequencerGUI::makeSequencerPlayerView(sequencer)
         << SequencerGUI::makeRecorderView(recorder);
@@ -1071,6 +1094,7 @@ void AddSynthApp::initializePresets()
     mPresetHandler << mLevel;
     mPresetHandler << mFundamental << mCumulativeDelay << mCumulativeDelayRandomness;
     mPresetHandler << mArcStart << mArcSpan;
+	mPresetHandler << mAttackCurve << mReleaseCurve;
     for (int i = 0; i < NUM_VOICES; i++) {
         mPresetHandler << mFrequencyFactors[i] << mAmplitudes[i];
         mPresetHandler << mAttackTimes[i] << mDecayTimes[i] << mSustainLevels[i] << mReleaseTimes[i];
@@ -1276,6 +1300,8 @@ void AddSynthApp::trigger(int id)
     params.mCumDelayRandomness = mCumulativeDelayRandomness.get();
     params.mArcStart = mArcStart.get();
     params.mArcSpan = mArcSpan.get();
+	params.mAttackCurve = mAttackCurve.get();
+    params.mReleaseCurve = mReleaseCurve.get();
     params.mOutputRouting = outputRouting;
 
     params.mAmpModAttack = mAmpModAttack.get();
