@@ -635,6 +635,9 @@ private:
 //                        break;
 //                    }
                     break;
+                case MIDIByte::PROGRAM_CHANGE:
+                    app->mPresetHandler.recallPreset(msg->at(1));
+                break;
                 default:;
                 }
             }
