@@ -60,10 +60,12 @@ class AddSynth {
 public:
     AddSynth(){
         float envLevels[6] = {0.0, 0.0, 1.0, 0.7, 0.7, 0.0};
-        float ampModEnvLevels[4] = {0.0, 1.0, 1.0, 0.0};
+        float ampModEnvLevels[4] = {0.0, 1.0, 0.0};
         for (int i = 0; i < NUM_VOICES; i++) {
             mEnvelopes[i].levels(envLevels, 6).sustainPoint(4).finish();
-            mAmpModEnvelopes[i].levels(ampModEnvLevels, 4).sustainPoint(2).finish();
+            mAmpModEnvelopes[i].levels(ampModEnvLevels, 3).sustainPoint(1).finish();
+
+//			mAmpModEnvelopes[i].lengths()[1] = 1.0;
         }
         setCurvature(4);
         release();
@@ -155,7 +157,7 @@ public:
 
     void setAmpModReleaseTime(float releaseTime, int i)
     {
-        mAmpModEnvelopes[i].lengths()[2] = releaseTime;
+        mAmpModEnvelopes[i].lengths()[1] = releaseTime;
     }
 
     void setSustainLevel(float sustainLevel, int i)
@@ -351,6 +353,7 @@ public:
 
     void ampModFreqAdd(float value);
     void ampModFreqSlope(float factor);
+	void ampModRandomize(float max, bool sortPartials = true);
 
     // Envelope
     void trigger(int id);
@@ -481,30 +484,30 @@ private:
                                               };
 
     vector<Parameter> mFrequencyFactors = {
-        {"Harm1", "", 1.0f, "", 0.0, 20.0},
-        {"Harm2", "", 2.0f, "", 0.0, 20.0},
-        {"Harm3", "", 3.0f, "", 0.0, 20.0},
-        {"Harm4", "", 4.0f, "", 0.0, 20.0},
-        {"Harm5", "", 5.0f, "", 0.0, 20.0},
-        {"Harm6", "", 6.0f, "", 0.0, 20.0},
-        {"Harm7", "", 7.0f, "", 0.0, 20.0},
-        {"Harm8", "", 8.0f, "", 0.0, 20.0},
-        {"Harm9", "", 9.0f, "", 0.0, 20.0},
-        {"Harm10", "", 10.0f, "", 0.0, 20.0},
-        {"Harm11", "", 11.0f, "", 0.0, 20.0},
-        {"Harm12", "", 12.0f, "", 0.0, 20.0},
-        {"Harm13", "", 13.0f, "", 0.0, 20.0},
-        {"Harm14", "", 14.0f, "", 0.0, 20.0},
-        {"Harm15", "", 15.0f, "", 0.0, 20.0},
-        {"Harm16", "", 16.0f, "", 0.0, 20.0},
-        {"Harm17", "", 9.0f, "", 0.0, 20.0},
-        {"Harm18", "", 10.0f, "", 0.0, 20.0},
-        {"Harm19", "", 11.0f, "", 0.0, 20.0},
-        {"Harm20", "", 12.0f, "", 0.0, 20.0},
-        {"Harm21", "", 13.0f, "", 0.0, 20.0},
-        {"Harm22", "", 14.0f, "", 0.0, 20.0},
-        {"Harm23", "", 15.0f, "", 0.0, 20.0},
-        {"Harm24", "", 16.0f, "", 0.0, 20.0}
+        {"Harm2", "", 2.0f, "", 0.0, 30.0},
+        {"Harm3", "", 3.0f, "", 0.0, 30.0},
+        {"Harm4", "", 4.0f, "", 0.0, 30.0},
+	    {"Harm1", "", 1.0f, "", 0.0, 30.0},
+        {"Harm5", "", 5.0f, "", 0.0, 30.0},
+        {"Harm6", "", 6.0f, "", 0.0, 30.0},
+        {"Harm7", "", 7.0f, "", 0.0, 30.0},
+        {"Harm8", "", 8.0f, "", 0.0, 30.0},
+        {"Harm9", "", 9.0f, "", 0.0, 30.0},
+        {"Harm10", "", 10.0f, "", 0.0, 30.0},
+        {"Harm11", "", 11.0f, "", 0.0, 30.0},
+        {"Harm12", "", 12.0f, "", 0.0, 30.0},
+        {"Harm13", "", 13.0f, "", 0.0, 30.0},
+        {"Harm14", "", 14.0f, "", 0.0, 30.0},
+        {"Harm15", "", 15.0f, "", 0.0, 30.0},
+        {"Harm16", "", 16.0f, "", 0.0, 30.0},
+        {"Harm17", "", 17.0f, "", 0.0, 30.0},
+        {"Harm18", "", 10.0f, "", 0.0, 30.0},
+        {"Harm19", "", 11.0f, "", 0.0, 30.0},
+        {"Harm20", "", 12.0f, "", 0.0, 30.0},
+        {"Harm21", "", 13.0f, "", 0.0, 30.0},
+        {"Harm22", "", 14.0f, "", 0.0, 30.0},
+        {"Harm23", "", 15.0f, "", 0.0, 30.0},
+        {"Harm24", "", 16.0f, "", 0.0, 30.0}
                                               };
     vector<Parameter> mAmplitudes = {
         {"Amp1", "", 1.0f, "", 0.0, 1.0},
@@ -535,7 +538,7 @@ private:
     // Amp Mod
     Parameter mAmpModDepth{"AmpModDepth", "", 0.0, "", 0.0, 1.0};
     Parameter mAmpModAttack{"AmpModAttack", "", 0.0, "", 0.0, 10.0};
-    Parameter mAmpModRelease{"AmpModRelease", "", 0.0, "", 0.0, 10.0};
+    Parameter mAmpModRelease{"AmpModRelease", "", 5.0, "", 0.0, 10.0};
 
     vector<Parameter> mAmpModFrequencies = {
         {"AmpModFreq1", "", 1.0f, "", 0.0, 30.0},
@@ -1076,13 +1079,24 @@ void AddSynthApp::initializeGui()
     ampModBox << ParameterGUI::makeParameterView(mAmpModAttack);
     ampModBox << ParameterGUI::makeParameterView(mAmpModRelease);
 
+	glv::Button *randomizeAmpModButton = new glv::Button;
+    randomizeAmpModButton->attach([](const glv::Notification &n) {
+        glv::Button *b = n.sender<glv::Button>();
+        AddSynthApp *app = n.receiver<AddSynthApp>();
+        if (b->getValue() == 1) {
+            app->ampModRandomize(10.0, false);
+        }
+    }, glv::Update::Value, this);
+    randomizeAmpModButton->property(glv::Momentary, true);
+    ampModBox << randomizeAmpModButton << new glv::Label("Randomize Sort");
+
     for (int i = 0; i < NUM_VOICES; i++) {
         ampModBox << ParameterGUI::makeParameterView(mAmpModFrequencies[i]);
     }
     ampModBox.fit();
     ampModBox.enable(glv::DrawBack);
     ampModBox.anchor(glv::Place::TR);
-    ampModBox.set(-400, 30, releaseTimesBox.width(), releaseTimesBox.height());
+    ampModBox.set(-400, 30, ampModBox.width(), ampModBox.height());
     controlView << ampModBox;
 
 
@@ -1165,8 +1179,8 @@ void AddSynthApp::multiplyPartials(float factor)
 
 void AddSynthApp::randomizePartials(float max, bool sortPartials)
 {
-    if (max > 20.0) {
-        max = 20.0;
+    if (max > 25.0) {
+        max = 25.0;
     } else if (max < 1) {
         max = 1.0;
     }
@@ -1286,6 +1300,27 @@ void AddSynthApp::ampModFreqSlope(float factor)
 {
     for (int i = 0; i < NUM_VOICES; i++) {
         mAmpModFrequencies[i].set(mAmpModFrequencies[i].get() * pow(factor, i));
+	}
+}
+
+void AddSynthApp::ampModRandomize(float max, bool sortPartials)
+{
+	if (max > 30.0) {
+        max = 30.0;
+    } else if (max < 1) {
+        max = 1.0;
+    }
+    srand(time(0));
+    vector<float> randomFactors(NUM_VOICES);
+    for (int i = 0; i < NUM_VOICES; i++) {
+        int random_variable = std::rand();
+        randomFactors[i] = 1 + (max *random_variable/(float) RAND_MAX);
+    }
+    if (sortPartials) {
+        sort(randomFactors.begin(), randomFactors.end());
+    }
+    for (int i = 0; i < NUM_VOICES; i++) {
+        mAmpModFrequencies[i].set(randomFactors[i]);
     }
 }
 
