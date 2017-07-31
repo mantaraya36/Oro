@@ -1111,10 +1111,12 @@ void AddSynthApp::initializePresets()
     mPresetHandler << mLevel;
     mPresetHandler << mFundamental << mCumulativeDelay << mCumulativeDelayRandomness;
     mPresetHandler << mArcStart << mArcSpan;
-	mPresetHandler << mAttackCurve << mReleaseCurve;
+    mPresetHandler << mAttackCurve << mReleaseCurve;
+    mPresetHandler << mAmpModDepth << mAmpModAttack << mAmpModRelease;
     for (int i = 0; i < NUM_VOICES; i++) {
         mPresetHandler << mFrequencyFactors[i] << mAmplitudes[i];
         mPresetHandler << mAttackTimes[i] << mDecayTimes[i] << mSustainLevels[i] << mReleaseTimes[i];
+        mPresetHandler << mAmpModFrequencies[i];
     }
     mPresetHandler.print();
     sequencer << mPresetHandler;
