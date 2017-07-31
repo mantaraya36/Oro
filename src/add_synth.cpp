@@ -484,10 +484,10 @@ private:
                                               };
 
     vector<Parameter> mFrequencyFactors = {
+        {"Harm1", "", 1.0f, "", 0.0, 30.0},
         {"Harm2", "", 2.0f, "", 0.0, 30.0},
         {"Harm3", "", 3.0f, "", 0.0, 30.0},
         {"Harm4", "", 4.0f, "", 0.0, 30.0},
-	    {"Harm1", "", 1.0f, "", 0.0, 30.0},
         {"Harm5", "", 5.0f, "", 0.0, 30.0},
         {"Harm6", "", 6.0f, "", 0.0, 30.0},
         {"Harm7", "", 7.0f, "", 0.0, 30.0},
@@ -1122,7 +1122,7 @@ void AddSynthApp::initializePresets()
     mKeyboardPresets.presets = &mPresetHandler;
 
     // MIDI Control of parameters
-    unsigned int midiControllerPort = 4;
+    unsigned int midiControllerPort = 0;
     parameterMIDI.init(midiControllerPort);
     parameterMIDI.connectControl(mCumulativeDelay, 75, 1);
     parameterMIDI.connectControl(mCumulativeDelayRandomness, 76, 1);
@@ -1136,7 +1136,7 @@ void AddSynthApp::initializePresets()
     presetMIDI.setMorphControl(102, 1, 0.0, 8.0);
     // MIDI preset mapping
 //    presetMIDI.connectNoteToPreset(1, 0, 36, 24, 59);
-    unsigned portToOpen = 4;
+    unsigned portToOpen = 0;
     // Print out names of available input ports
     for(unsigned i=0; i< midiIn.getPortCount(); ++i){
         printf("Port %u: %s\n", i, midiIn.getPortName(i).c_str());
