@@ -115,7 +115,7 @@ public:
     void generateAudio(AudioIOData &io) {
         while (io()) {
             for (int i = 0; i < NUM_VOICES; i++) {
-                io.out(mOutMap[i]) += mOscillators[i]() * mEnvelopes[i]() *  mAmplitudes[i] * mLevel
+                io.out(mOutMap[i]) +=  mAttenuation * mOscillators[i]() * mEnvelopes[i]() *  mAmplitudes[i] * mLevel
                         * (1 + mAmpModulators[i]() * mAmpModEnvelopes[i]());
             }
         }
@@ -225,6 +225,8 @@ private:
     float mFrequencyFactors[NUM_VOICES];
     float mAmplitudes[NUM_VOICES];
 
+    float mAttenuation {0.01};
+
     int mOutMap[NUM_VOICES] = {0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1};
 
 };
@@ -241,49 +243,49 @@ public:
 //		if (!presetKeyboardActive) {
 //			return true;
 //		}
-		switch(k.key()){
-		case '1': presets->recallPreset(0); return false;
-		case '2': presets->recallPreset(1); return false;
-		case '3': presets->recallPreset(2); return false;
-		case '4': presets->recallPreset(3); return false;
-		case '5': presets->recallPreset(4); return false;
-		case '6': presets->recallPreset(5); return false;
-		case '7': presets->recallPreset(6); return false;
-		case '8': presets->recallPreset(7); return false;
-		case '9': presets->recallPreset(8); return false;
-		case '0': presets->recallPreset(9); return false;
-		case 'q': presets->recallPreset(10); return false;
-		case 'w': presets->recallPreset(11); return false;
-		case 'e': presets->recallPreset(12); return false;
-		case 'r': presets->recallPreset(13); return false;
-		case 't': presets->recallPreset(14); return false;
-		case 'y': presets->recallPreset(15); return false;
-		case 'u': presets->recallPreset(16); return false;
-		case 'i': presets->recallPreset(17); return false;
-		case 'o': presets->recallPreset(18); return false;
-		case 'p': presets->recallPreset(19); return false;
-		case 'a': presets->recallPreset(20); return false;
-		case 's': presets->recallPreset(21); return false;
-		case 'd': presets->recallPreset(22); return false;
-		case 'f': presets->recallPreset(23); return false;
-		case 'g': presets->recallPreset(24); return false;
-		case 'h': presets->recallPreset(25); return false;
-		case 'j': presets->recallPreset(26); return false;
-		case 'k': presets->recallPreset(27); return false;
-		case 'l': presets->recallPreset(28); return false;
-		case ';': presets->recallPreset(29); return false;
-		case 'z': presets->recallPreset(30); return false;
-		case 'x': presets->recallPreset(31); return false;
-		case 'c': presets->recallPreset(32); return false;
-		case 'v': presets->recallPreset(33); return false;
-		case 'b': presets->recallPreset(34); return false;
-		case 'n': presets->recallPreset(35); return false;
-		case 'm': presets->recallPreset(36); return false;
-		case ',': presets->recallPreset(37); return false;
-		case '.': presets->recallPreset(38); return false;
-		case '/': presets->recallPreset(39); return false;
-		default: break;
-		}
+//		switch(k.key()){
+//		case '1': presets->recallPreset(0); return false;
+//		case '2': presets->recallPreset(1); return false;
+//		case '3': presets->recallPreset(2); return false;
+//		case '4': presets->recallPreset(3); return false;
+//		case '5': presets->recallPreset(4); return false;
+//		case '6': presets->recallPreset(5); return false;
+//		case '7': presets->recallPreset(6); return false;
+//		case '8': presets->recallPreset(7); return false;
+//		case '9': presets->recallPreset(8); return false;
+//		case '0': presets->recallPreset(9); return false;
+//		case 'q': presets->recallPreset(10); return false;
+//		case 'w': presets->recallPreset(11); return false;
+//		case 'e': presets->recallPreset(12); return false;
+//		case 'r': presets->recallPreset(13); return false;
+//		case 't': presets->recallPreset(14); return false;
+//		case 'y': presets->recallPreset(15); return false;
+//		case 'u': presets->recallPreset(16); return false;
+//		case 'i': presets->recallPreset(17); return false;
+//		case 'o': presets->recallPreset(18); return false;
+//		case 'p': presets->recallPreset(19); return false;
+//		case 'a': presets->recallPreset(20); return false;
+//		case 's': presets->recallPreset(21); return false;
+//		case 'd': presets->recallPreset(22); return false;
+//		case 'f': presets->recallPreset(23); return false;
+//		case 'g': presets->recallPreset(24); return false;
+//		case 'h': presets->recallPreset(25); return false;
+//		case 'j': presets->recallPreset(26); return false;
+//		case 'k': presets->recallPreset(27); return false;
+//		case 'l': presets->recallPreset(28); return false;
+//		case ';': presets->recallPreset(29); return false;
+//		case 'z': presets->recallPreset(30); return false;
+//		case 'x': presets->recallPreset(31); return false;
+//		case 'c': presets->recallPreset(32); return false;
+//		case 'v': presets->recallPreset(33); return false;
+//		case 'b': presets->recallPreset(34); return false;
+//		case 'n': presets->recallPreset(35); return false;
+//		case 'm': presets->recallPreset(36); return false;
+//		case ',': presets->recallPreset(37); return false;
+//		case '.': presets->recallPreset(38); return false;
+//		case '/': presets->recallPreset(39); return false;
+//		default: break;
+//		}
 		return true;
 	}
 
@@ -592,15 +594,41 @@ private:
     PresetMIDI presetMIDI;
     ParameterMIDI parameterMIDI;
 
+    ParameterBool midiLight{"MIDI", "", false};
+
     MIDIIn midiIn {"USB Oxygen 49"};
 
     static inline float midi2cps(int midiNote) {
         return 440.0 * pow(2, (midiNote - 69.0)/ 12.0);
     }
 
+//    static void midiLightWaiter(AddSynthApp *app) {
+//        static std::mutex midiLightLock;
+//        static std::shared_ptr<std::thread> th;
+//        static std::atomic<bool> done(true); // Use an atomic flag.
+//        if(midiLightLock.try_lock()) {
+//            if (done.load()) {
+//               if(th) {
+//                   th->join();
+//               }
+//               done.store(false);
+//               th = std::make_shared<std::thread>([](AddSynthApp *app) {
+//                   std::this_thread::sleep_for(std::chrono::milliseconds(500));
+//                   app->midiLight.set(false);
+//                   done.store(true);
+//               },
+//               app
+//               );
+//               midiLightLock.unlock();
+//            }
+//        }
+//    }
+
     static void midiCallback(double deltaTime, std::vector<unsigned char> *msg, void *userData){
         AddSynthApp *app = static_cast<AddSynthApp *>(userData);
         unsigned numBytes = msg->size();
+        app->midiLight.set(true);
+//        midiLightWaiter(app);
 
         if(numBytes > 0){
             unsigned char status = msg->at(0);
@@ -654,7 +682,7 @@ void AddSynthApp::initializeValues()
     mFundamental.set(220);
     harmonicPartials();
 
-    mLevel.set(0.05);
+    mLevel.set(0.5);
     mCumulativeDelay.set(0.0);
     for (int i = 0; i < NUM_VOICES; i++) {
         mAttackTimes[i].set(0.1);
@@ -670,6 +698,7 @@ void AddSynthApp::initializeGui()
     gui << mLevel << mFundamental << mCumulativeDelay << mCumulativeDelayRandomness;
     gui << mArcStart << mArcSpan;
 	gui << mAttackCurve << mReleaseCurve;
+    gui << midiLight;
 
     gui << SequencerGUI::makeSequencerPlayerView(sequencer)
         << SequencerGUI::makeRecorderView(recorder);
