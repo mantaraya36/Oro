@@ -298,7 +298,7 @@ public:
 class AddSynthApp: public App
 {
 public:
-    AddSynthApp() : mKeyboardPresets(nav())
+    AddSynthApp(int midiChannel) : mKeyboardPresets(nav()), mMidiChannel(midiChannel - 1)
     {
         initializeValues();
         initWindow();
@@ -627,7 +627,6 @@ private:
     static void midiCallback(double deltaTime, std::vector<unsigned char> *msg, void *userData){
         AddSynthApp *app = static_cast<AddSynthApp *>(userData);
         unsigned numBytes = msg->size();
-        app->midiLight.set(true);
 //        midiLightWaiter(app);
 
         if(numBytes > 0){
@@ -635,44 +634,48 @@ private:
             if(MIDIByte::isChannelMessage(status)){
                 unsigned char type = status & MIDIByte::MESSAGE_MASK;
                 unsigned char chan = status & MIDIByte::CHANNEL_MASK;
-                switch(type){
-                case MIDIByte::NOTE_ON:
-//                    printf("Note %u, Vel %u", msg->at(1), msg->at(2));
-                    if (msg->at(2) != 0) {
-                        app->mFundamental.set(midi2cps(msg->at(1)));
-                        app->trigger(msg->at(1));
-                    } else {
+                if ((int) chan == app->mMidiChannel) {
+                    app->midiLight.set(true);
+                    switch(type){
+                    case MIDIByte::NOTE_ON:
+                        //                    printf("Note %u, Vel %u", msg->at(1), msg->at(2));
+                        if (msg->at(2) != 0) {
+                            app->mFundamental.set(midi2cps(msg->at(1)));
+                            app->trigger(msg->at(1));
+                        } else {
+                            app->release(msg->at(1));
+                        }
+                        break;
+
+                    case MIDIByte::NOTE_OFF:
+
                         app->release(msg->at(1));
+                        //                    printf("Note %u, Vel %u", msg->at(1), msg->at(2));
+                        break;
+
+                    case MIDIByte::PITCH_BEND:
+                        //                    printf("Value %u", MIDIByte::convertPitchBend(msg->at(1), msg->at(2)));
+                        break;
+                    case MIDIByte::CONTROL_CHANGE:
+                        //                    printf("%s ", MIDIByte::controlNumberString(msg->at(1)));
+                        //                    switch(msg->at(1)){
+                        //                    case MIDIByte::MODULATION:
+                        //                        printf("%u", msg->at(2));
+                        //                        break;
+                        //                    }
+                        break;
+                    case MIDIByte::PROGRAM_CHANGE:
+                        app->mPresetHandler.recallPreset(msg->at(1));
+                        break;
+                    default:;
                     }
-                    break;
-
-                case MIDIByte::NOTE_OFF:
-
-                    app->release(msg->at(1));
-//                    printf("Note %u, Vel %u", msg->at(1), msg->at(2));
-                    break;
-
-                case MIDIByte::PITCH_BEND:
-//                    printf("Value %u", MIDIByte::convertPitchBend(msg->at(1), msg->at(2)));
-                    break;
-                case MIDIByte::CONTROL_CHANGE:
-//                    printf("%s ", MIDIByte::controlNumberString(msg->at(1)));
-//                    switch(msg->at(1)){
-//                    case MIDIByte::MODULATION:
-//                        printf("%u", msg->at(2));
-//                        break;
-//                    }
-                    break;
-                case MIDIByte::PROGRAM_CHANGE:
-                    app->mPresetHandler.recallPreset(msg->at(1));
-                break;
-                default:;
                 }
             }
         }
     }
 
     // Synthesis
+    int mMidiChannel;
     AddSynth synth[SYNTH_POLYPHONY];
     vector<int> outputRouting;
 };
@@ -1147,14 +1150,14 @@ void AddSynthApp::initializePresets()
         mPresetHandler << mAttackTimes[i] << mDecayTimes[i] << mSustainLevels[i] << mReleaseTimes[i];
         mPresetHandler << mAmpModFrequencies[i];
     }
-    mPresetHandler.print();
+//    mPresetHandler.print();
     sequencer << mPresetHandler;
     recorder << mPresetHandler;
     mKeyboardPresets.presets = &mPresetHandler;
 
     // MIDI Control of parameters
-    unsigned int midiControllerPort = 0;
-    parameterMIDI.init(midiControllerPort);
+    int midiPort = 0;
+    parameterMIDI.init(midiPort);
     parameterMIDI.connectControl(mCumulativeDelay, 75, 1);
     parameterMIDI.connectControl(mCumulativeDelayRandomness, 76, 1);
     parameterMIDI.connectControl(mArcStart, 77, 1);
@@ -1163,18 +1166,18 @@ void AddSynthApp::initializePresets()
     // MIDI control of presets
     // 74 71 91 93 73 72 5 84 7
     // 75 76 77 78 74 71 24 102
-    presetMIDI.init(midiControllerPort, mPresetHandler);
+    presetMIDI.init(midiPort, mPresetHandler);
     presetMIDI.setMorphControl(102, 1, 0.0, 8.0);
     // MIDI preset mapping
 //    presetMIDI.connectNoteToPreset(1, 0, 36, 24, 59);
-    unsigned portToOpen = 0;
+
     // Print out names of available input ports
     for(unsigned i=0; i< midiIn.getPortCount(); ++i){
         printf("Port %u: %s\n", i, midiIn.getPortName(i).c_str());
     }
     try {
         // Open the port specified above
-        midiIn.openPort(portToOpen);
+        midiIn.openPort(midiPort);
     }
     catch(MIDIError &error){
         error.printMessage();
@@ -1407,7 +1410,11 @@ void AddSynthApp::release(int id)
 
 int main(int argc, char *argv[] )
 {
-    AddSynthApp().start();
+    int midiChannel = 1;
+    if (argc > 1) {
+        midiChannel = atoi(argv[1]);
+    }
+    AddSynthApp(midiChannel).start();
 
     return 0;
 }
