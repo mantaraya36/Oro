@@ -584,16 +584,16 @@ void ModalSynthApp::multiplyWidths(float factor)
 
 void ModalSynthApp::randomizeWidths(float max, bool sortPartials)
 {
-    if (max > 0.1) {
-        max = 0.1;
-    } else if (max < 0.001) {
-        max = 0.001;
+    if (max > 0.002) {
+        max = 0.002;
+    } else if (max < 0.0005) {
+        max = 0.0005;
     }
     srand(time(0));
     vector<float> randomFactors(NUM_VOICES);
     for (int i = 0; i < NUM_VOICES; i++) {
         int random_variable = std::rand();
-        randomFactors[i] = 0.001 + (max *random_variable/(float) RAND_MAX);
+        randomFactors[i] = 0.0005 + (max *random_variable/(float) RAND_MAX);
     }
     if (sortPartials) {
         sort(randomFactors.begin(), randomFactors.end());
@@ -643,7 +643,7 @@ void ModalSynthApp::trigger(int id)
 //    params.mArcStart = mArcStart.get();
 //    params.mArcSpan = mArcSpan.get();
     params.mOutputRouting = outputRouting;
-    params.mOutputChannel = 2;
+    params.mOutputChannel = 1;
 
 
     for (int i = 0; i < NUM_VOICES; i++) {
