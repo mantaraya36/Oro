@@ -84,6 +84,7 @@ public:
     // Spatialization
     float mArcStart;
     float mArcSpan;
+    int mOutputChannel;
     vector<int> mOutputRouting;
 };
 
@@ -105,6 +106,7 @@ public:
             mResonators[i].set(params.mFundamental * mFrequencyFactors[i], mWidths[i] * params.mFundamental * mFrequencyFactors[i]);
         }
         mDone = false;
+        mOutputChannel = params.mOutputChannel;
     }
 
     void generateAudio(AudioIOData &io) {
@@ -114,7 +116,7 @@ public:
             noise = mNoise() * mNoiseEnv();
             for (int i = 0; i < NUM_VOICES; i++) {
                 float value = mResonators[i](noise) * mAmplitudes[i] *  std::pow(10, (mLevel-100)/ 20.0);
-				io.out(0) +=  value;
+				io.out(mOutputChannel) +=  value;
                 if(value > max) {max = value;};
 			}
         }
@@ -142,6 +144,7 @@ private:
     float mAmplitudes[NUM_VOICES];
     gam::AD<> mNoiseEnv {0.001f, 0.001f};
     gam::NoiseBrown<> mNoise;
+    int mOutputChannel;
 
     int mId = 0;
     float mLevel = 0;
@@ -640,6 +643,7 @@ void ModalSynthApp::trigger(int id)
 //    params.mArcStart = mArcStart.get();
 //    params.mArcSpan = mArcSpan.get();
     params.mOutputRouting = outputRouting;
+    params.mOutputChannel = 2;
 
 
     for (int i = 0; i < NUM_VOICES; i++) {
