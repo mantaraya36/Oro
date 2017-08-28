@@ -65,7 +65,269 @@ Lance Putnam, 6/2011, putnam.lance@gmail.com
 //#define SURROUND
 using namespace al;
 using namespace std;
-#define BUILDING_FOR_ALLOSPHERE
+// #define BUILDING_FOR_ALLOSPHERE
+
+
+class Simulator :  public osc::PacketHandler {
+public:
+    Simulator(SharedState *state) :
+        mChaos("chaos", "", 0),
+	mVideoDomain(30),
+	mMaker("192.168.10.255")
+    {
+        mState = state;
+        mMouseSpeed = 0;
+        mMouseX = 0;
+        mMouseY = 0;
+
+        /* States */
+
+        mNoise.resize(GRID_SIZE * GRID_SIZE * GRID_SIZE);
+        mFilters.resize(GRID_SIZE * GRID_SIZE * GRID_SIZE);
+
+        for (gam::Biquad<> &b:mFilters) {
+            b.domain(mVideoDomain);
+            b.freq(0.3);
+        }
+
+        for (unsigned int i = 0; i < NUM_OFRENDAS; i++) {
+            mOfrendas.ofrendas[i].envelope.decay(2500.0);
+            mOfrendas.ofrendas[i].envelope.value(i/(float)NUM_OFRENDAS);
+        }
+
+        mRecvFromControl.handler(*this);
+        mRecvFromControl.timeout(0.005);
+        mRecvFromControl.start();
+        for(auto& v : mState->wave) v = 0;
+        /* States */
+        mMaker.start();
+    }
+
+    int indexAt(int x, int y, int z){
+        //return (z*Nx + y)*Ny + x;
+        return (y*Nx + x)*2 + z; // may give slightly faster accessing
+    }
+
+    void setMousePosition(float x, float y) {
+        mMouseSpeed = 5.0f * sqrt(x * x + y * y);
+        mMouseX = x;
+        mMouseY = y;
+    }
+
+    void onAnimate(double dt) {
+        al_sec curTime = al_steady_time();
+//        if (mMouseSpeed > 2) {
+//            mChaos.set(mMouseSpeed/10.0f);
+//            if ((int) state().interactionEnd - (int) state().interactionBegin != -1) {
+//                const Vec4d &lastPoint = state().interactionPoints[state().interactionEnd];
+//                if (lastPoint.x != mMouseX && lastPoint.y != mMouseY) {
+//                    Vec4d newPoint(mMouseX, mMouseY, 0, mMouseSpeed);
+//                    state().interactionEnd++;
+//                    if (state().interactionEnd == INTERACTION_POINTS) {
+//                        state().interactionEnd = 0;
+//                    }
+//                    state().interactionPoints[state().interactionEnd] = newPoint;
+//                    state().interactionTimes[state().interactionEnd] = curTime;
+//                }
+//            }
+//        }
+
+        float timeOut = 3.0;
+        for (int it = state().interactionBegin; it != state().interactionEnd; it++) {
+            if (it == INTERACTION_POINTS) {
+                it = 0;
+            }
+            if (curTime - state().interactionTimes[it] > timeOut) {
+                state().interactionBegin++;
+                if (state().interactionBegin == INTERACTION_POINTS) {
+                    state().interactionBegin = 0;
+                }
+            } else {
+                break;
+            }
+
+        }
+
+        float * dev_ = state().dev;
+        unsigned int count = 0;
+        for (int x = 0; x < GRID_SIZE; x++) {
+            for (int y = 0; y < GRID_SIZE; y++) {
+                for (int z = 0; z < GRID_SIZE; z++) {
+                    *dev_++ = mFilters[count](mNoise[count]() * (mChaos.get() * 5.0f));
+                    count++;
+                }
+            }
+        }
+
+        /* States */
+        for (unsigned int i = 0; i < NUM_OFRENDAS; i++) {
+            float env = mOfrendas.ofrendas[i].envelope();
+            if (mOfrendas.ofrendas[i].envelope.done(0.1)) {
+                state().posOfrendas[i].x = rnd::gaussian()* 0.9;
+                mOfrendas.ofrendas[i].envelope.reset();
+            } else {
+                state().posOfrendas[i].y = env * 36.0f - 18.0f;
+                float randomVal = rnd::gaussian();
+                state().posOfrendas[i].x += randomVal * 0.03f;
+                state().posOfrendas[i][3] += randomVal * 1.1f;
+            }
+        }
+
+
+        // Wave equation
+        int zprev = 1-zcurr;
+        // Compute effects of trigger
+
+        float chaosSpeed = 0.1; //0.01
+
+        if (mDist > 0) {
+            if(state().chaos > 0.45 && rnd::prob(0.2)){
+                if (mPairHash.hashComplete()) {
+//                    std::cout << mPairHash.mHash << std::endl;
+//                    showBitcoinReport(mPairHash.mHash, )
+                    mSenderToControl.send("/showBitcoinReport", mPairHash.mHash, mPairHash.isBitcoin());
+                    mPairHash.clearHash();
+                } else {
+//                    std::cout << mDeltaX << "...." << mDeltaY << std::endl;
+                    // Range 0.001 -> 0.04;
+                    const float maxDelta = 0.03; const float minDelta = 0.00001;
+                    int value1 = 16 * (abs(mDeltaX) - minDelta) / (maxDelta - minDelta);
+                    int value2 = 16 * (abs(mDeltaY) - minDelta) / (maxDelta - minDelta);
+                    if (value1 >= 16) value1 = 15;
+                    if (value2 >= 16) value2 = 15;
+                    if (value1 < 0) value1 = 0;
+                    if (value2 < 0) value2 = 0;
+                    std::string newPair;
+                    newPair += mHexChars[value1];
+                    newPair += mHexChars[value2];
+                    mPairHash.nextHash(newPair, mPosX, mPosY);
+                    mSenderToControl.send("/addBitcoinMarker", newPair, mPosX, mPosY);
+
+//                    auto module = mRenderTree.createModule<TextRenderModule>();
+//                    module->setFontSize(24);
+//                    module->setScale(0.3);
+//                    module->setText(newPair);
+//                    module->setPosition(Vec3d(mPosX- 0.5, mPosY- 0.5, 0.2999));
+//                    module->addBehavior(std::make_shared<Timeout>(10 * window().fps()));
+//                    module->addBehavior(std::make_shared<Sink>(3* window().fps(), -0.3));
+//                    module->addBehavior(std::make_shared<FadeOut>(7* window().fps(),3* window().fps()));
+                }
+            }
+            state().chaos += mDist* chaosSpeed;
+        }
+
+        if(mPosX >= -50.0 && mPosY >= -50.0){
+            // Add a Gaussian-shaped droplet
+            //				int ix = rnd::uniform(Nx-8)+4;
+            //				int iy = rnd::uniform(Ny-8)+4;
+            for(int j=-4; j<=4; ++j){
+                for(int i=-4; i<=4; ++i){
+                    float x = mPosX*(Nx - 8) + 4;
+                    float adjustedY = (mPosY* 9/16.0) + (0.5 * 5/16.0);
+                    float y = adjustedY*(Ny - 8) + 4;
+                    float v = 0.35*exp(-(i* i/16.0+j*j/16.0)/(0.5*0.5));
+                    state().wave[indexAt(x+i, y+j, zcurr)] += v;
+                    state().wave[indexAt(x+i, y+j, zprev)] += v;
+                    //                            std::cout << x << "  " << y << " "<< v << std::endl;
+                }
+            }
+            mPosX = mPosY = -100.0; // Must be last as mPosX and mPosY are used above
+        }
+
+
+
+        // Compute wave equation
+        for(int j=0; j<Ny; ++j){
+		for(int i=0; i<Nx; ++i){
+
+			// Neighbor indices; wrap toroidally
+			int im1 = i!=0 ? i-1 : Nx-1;
+			int ip1 = i!=Nx-1 ? i+1 : 0;
+			int jm1 = j!=0 ? j-1 : Ny-1;
+			int jp1 = j!=Nx-1 ? j+1 : 0;
+
+			// Get neighborhood of samples
+			auto vp = state().wave[indexAt(i,j,zprev)];		// previous value
+			auto vc = state().wave[indexAt(i,j,zcurr)];		// current value
+			auto vl = state().wave[indexAt(im1,j,zcurr)];	// neighbor left
+			auto vr = state().wave[indexAt(ip1,j,zcurr)];	// neighbor right
+			auto vd = state().wave[indexAt(i,jm1,zcurr)];	// neighbor up
+			auto vu = state().wave[indexAt(i,jp1,zcurr)];	// neighbor down
+
+			// Compute next value of wave equation at (i,j)
+			auto val = 2*vc - vp + velocity.get()*((vl - 2*vc + vr) + (vd - 2*vc + vu));
+
+			// Store in previous value since we don't need it again
+			state().wave[indexAt(i,j,zprev)] = val * decay.get();
+		}}
+        zcurr = zprev;
+
+        velocity.set(0.001 + (state().chaos*state().chaos* 0.49));
+
+        decay.set(0.93 + (state().chaos* 0.068));
+//        shininess.set(50 - (state().chaos* 20));
+
+        state().chaos = state().chaos * 0.9997f;
+        state().decay = decay.get();
+        state().velocity = velocity.get();
+
+        mMaker.set(state());
+        mChaos.set(state().chaos);
+
+        // Send to Control
+        mSenderToControl.send("/chaos", state().chaos);
+        mSenderToControl.send("/decay", decay.get());
+        mSenderToControl.send("/velocity", velocity.get());
+
+    }
+
+    virtual void onMessage(osc::Message &m) override {
+        m.print();
+        if (m.addressPattern() == "/dist" && m.typeTags() == "fff") {
+            m >> mDist >> mDeltaX >> mDeltaY;
+        } else if (m.addressPattern() == "/drop" && m.typeTags() == "ff") {
+            m >> mPosX >> mPosY;
+        }
+    }
+
+    Parameter mChaos;
+
+//	Parameter mSpeedX, mSpeedY, mSpeedZ;
+    /* Simulation states and data */
+    SharedState *mState; // To renderers
+
+    Parameter decay {"decay", "", 0.96, "", 0.8, 0.999999};	// Decay factor of waves, in (0, 1]
+    Parameter velocity{"velocity", "", 0.4999999, "", 0, 0.4999999};	// Velocity of wave propagation, in (0, 0.5]
+
+    // Bitcoin
+    std::string mHexChars {"0123456789ABCDEF"};
+    PairHash mPairHash;
+
+    // From controllers
+    float mMouseSpeed;
+    float mMouseX, mMouseY;
+    float mPosX {0};
+    float mPosY {0};
+    float mDeltaX {0};
+    float mDeltaY {0};
+    float mDist {0};
+
+    // For onAnimate computation
+    gam::Domain mVideoDomain; // Simulation frame rate
+    Ofrenda_Data mOfrendas;
+    std::vector<gam::Biquad<> > mFilters;
+    std::vector<gam::NoiseBrown<> > mNoise;
+
+    cuttlebone::Maker<SharedState> mMaker;
+
+    int zcurr=0;		// The current "plane" coordinate representing time
+
+    SharedState &state() {return *mState;}
+
+    osc::Send mSenderToControl {CONTROL_IN_PORT, CONTROL_IP_ADDRESS};
+    osc::Recv mRecvFromControl {SIMULATOR_IN_PORT};
+};
+
 
 
 class MyApp : public OmniApp {
@@ -77,8 +339,13 @@ public:
 
     SharedState& state() {return mState;}
 
-    float mMouseX, mMouseY;
-    float mSpeedX, mSpeedY;
+//    float mMouseX, mMouseY;
+//    float mSpeedX, mSpeedY;
+    // From control interface
+    float mPosX {0};
+    float mPosY {0};
+    float mDeltaX {0};
+    float mDeltaY {0};
 
 	ShaderProgram mShader;
 
@@ -109,7 +376,7 @@ public:
 
 	{
 		AudioDevice::printAll();
-		mSpeedX = mSpeedY = 0;
+//		mSpeedX = mSpeedY = 0;
 //        omni().resolution(256);
 		// Configure the camera lens
 //		lens().near(0.1).far(25).fovy(45);
@@ -147,7 +414,7 @@ public:
 //		mShader.compile(fogVert, fogFrag);
         OmniApp::onCreate();
 
-        nav().pos().set(0,0,10);
+        nav().pos().set(0,3,10);
 //		nav().quat().fromAxisAngle(0.*M_2PI, 0,1,0);
         omni().clearColor() = Color(0.02, 0.02, 0.04, 0.0);
 
@@ -179,6 +446,16 @@ public:
         }
         mSimulator.onAnimate(dt); // State could be shared here when simulator is local
 //        state().nav = nav();
+
+        // Update wave equation
+        for(int j=0; j<Ny; ++j){
+            for(int i=0; i<Nx; ++i){
+                int idx = j*Nx + i;
+                mPainter.waterMesh.vertices()[idx].z = mSimulator.state().wave[indexAt(i,j, mSimulator.zcurr)] / mSimulator.decay.get();
+            }
+        }
+
+        mPainter.waterMesh.generateNormals();
 	}
 
 	virtual void onDraw(Graphics& g) override {
@@ -197,36 +474,39 @@ public:
 			float fluct1 = fluctuation1();
 			float fluct2 = fluctuation2();
 
-			float out1 = granX() * mSpeedX * mouseSpeedScale;
-			float out2 = granY() * mSpeedY * mouseSpeedScale;
+			float out1;
+			float out2;
 
-			float bg1 = background1() * gainBackground1.get();
-			float bg2 = background2() * gainBackground2.get();
-			float bg3 = background3() * gainBackground3.get();
-#ifdef BUILDING_FOR_ALLOSPHERE
-			io.out(19) = out1 + (bg1 * (1 - fluct2)/2.0) + (bg2 * (1 - fluct2)/2.0) + (bg3 * (1 - fluct2)/2.0);
-			io.out(27) = out2 + (bg1 * (1 - fluct1)/2.0) + (bg2 * (1 - fluct1)/2.0) + (bg3 * (1 - fluct1)/2.0);
+//            float out1 = granX() * mSpeedX * mouseSpeedScale;
+//			float out2 = granY() * mSpeedY * mouseSpeedScale;
 
-			io.out(45) = (bg1 * (1 - fluct2)/2.0) + (bg2 * (1 - fluct2)/2.0) + (bg3 * (1 - fluct2)/2.0);
-			io.out(31) = (bg1 * (1 - fluct1)/2.0) + (bg2 * (1 - fluct2)/2.0) + (bg3 * (1 - fluct2)/2.0);
-			io.out(40) = out1 + (bg1 * (1 - fluct2)/2.0) + (bg2 * (1 - fluct2)/2.0) + (bg3 * (1 - fluct2)/2.0);
-			io.out(36) = out2 + (bg1 * (1 - fluct1)/2.0) + (bg2 * (1 - fluct1)/2.0) + (bg3 * (1 - fluct1)/2.0);
+//			float bg1 = background1() * gainBackground1.get();
+//			float bg2 = background2() * gainBackground2.get();
+//			float bg3 = background3() * gainBackground3.get();
+//#ifdef BUILDING_FOR_ALLOSPHERE
+//			io.out(19) = out1 + (bg1 * (1 - fluct2)/2.0) + (bg2 * (1 - fluct2)/2.0) + (bg3 * (1 - fluct2)/2.0);
+//			io.out(27) = out2 + (bg1 * (1 - fluct1)/2.0) + (bg2 * (1 - fluct1)/2.0) + (bg3 * (1 - fluct1)/2.0);
 
-			float sw = io.out(45) + io.out(31);
-			io.out(47) = sw * 0.07;
+//			io.out(45) = (bg1 * (1 - fluct2)/2.0) + (bg2 * (1 - fluct2)/2.0) + (bg3 * (1 - fluct2)/2.0);
+//			io.out(31) = (bg1 * (1 - fluct1)/2.0) + (bg2 * (1 - fluct2)/2.0) + (bg3 * (1 - fluct2)/2.0);
+//			io.out(40) = out1 + (bg1 * (1 - fluct2)/2.0) + (bg2 * (1 - fluct2)/2.0) + (bg3 * (1 - fluct2)/2.0);
+//			io.out(36) = out2 + (bg1 * (1 - fluct1)/2.0) + (bg2 * (1 - fluct1)/2.0) + (bg3 * (1 - fluct1)/2.0);
 
-#else
-#ifdef SURROUND
-			io.out(2) = out1 + (bg1 * (1 - fluct2)/2.0) + (bg2 * (1 - fluct2)/2.0) + (bg3 * (1 - fluct2)/2.0);
-			io.out(3) = out2 + (bg1 * (1 - fluct1)/2.0) + (bg2 * (1 - fluct1)/2.0) + (bg3 * (1 - fluct1)/2.0);
+//			float sw = io.out(45) + io.out(31);
+//			io.out(47) = sw * 0.07;
 
-			io.out(6) = (bg1 * (1 - fluct2)/2.0) + (bg2 * (1 - fluct2)/2.0) + (bg3 * (1 - fluct2)/2.0);
-			io.out(7) = (bg1 * (1 - fluct1)/2.0) + (bg2 * (1 - fluct2)/2.0) + (bg3 * (1 - fluct2)/2.0);
-#else
-			io.out(0) = out1 + (bg1 * (1 - fluct2)/2.0) + (bg2 * (1 - fluct2)/2.0) + (bg3 * (1 - fluct2)/2.0);
-			io.out(1) = out2 + (bg1 * (1 - fluct1)/2.0) + (bg2 * (1 - fluct1)/2.0) + (bg3 * (1 - fluct1)/2.0);
-#endif
-#endif
+//#else
+//#ifdef SURROUND
+//			io.out(2) = out1 + (bg1 * (1 - fluct2)/2.0) + (bg2 * (1 - fluct2)/2.0) + (bg3 * (1 - fluct2)/2.0);
+//			io.out(3) = out2 + (bg1 * (1 - fluct1)/2.0) + (bg2 * (1 - fluct1)/2.0) + (bg3 * (1 - fluct1)/2.0);
+
+//			io.out(6) = (bg1 * (1 - fluct2)/2.0) + (bg2 * (1 - fluct2)/2.0) + (bg3 * (1 - fluct2)/2.0);
+//			io.out(7) = (bg1 * (1 - fluct1)/2.0) + (bg2 * (1 - fluct2)/2.0) + (bg3 * (1 - fluct2)/2.0);
+//#else
+//			io.out(0) = out1 + (bg1 * (1 - fluct2)/2.0) + (bg2 * (1 - fluct2)/2.0) + (bg3 * (1 - fluct2)/2.0);
+//			io.out(1) = out2 + (bg1 * (1 - fluct1)/2.0) + (bg2 * (1 - fluct1)/2.0) + (bg3 * (1 - fluct1)/2.0);
+//#endif
+//#endif
 		}
 	}
 
@@ -241,9 +521,6 @@ public:
 		case 'y': printf("Pressed y.\n"); break;
 		case 'n': printf("Pressed n.\n"); break;
 		case '.': printf("Pressed period.\n"); break;
-		case ' ': printf("Pressed space bar.\n");
-			mSimulator.addChaos();
-			break;
 
 		// For non-printable keys, we have to use the enums described in the
 		// Keyboard class:
@@ -273,17 +550,17 @@ public:
 //        return true;
 //	}
 
-    virtual bool onMouseMove(const Mouse &m) override {
-        std::cout << "mousr" << m.x() << "-" << width() << std::endl;
-        mMouseX = (m.x() - (float)width()/2)/(float)width();
-        mMouseY = -(m.y() - (float)height()/2)/(float)height();
+//    virtual bool onMouseMove(const Mouse &m) override {
+//        std::cout << "mousr" << m.x() << "-" << width() << std::endl;
+//        mMouseX = (m.x() - (float)width()/2)/(float)width();
+//        mMouseY = -(m.y() - (float)height()/2)/(float)height();
 
-        mSpeedX = m.dx()/(float)width();
-        mSpeedY = m.dy()/(float)height();
+//        mSpeedX = m.dx()/(float)width();
+//        mSpeedY = m.dy()/(float)height();
 
-        mSimulator.setMousePosition(mMouseX, mMouseY);
-        return true;
-    }
+//        mSimulator.setMousePosition(mMouseX, mMouseY);
+//        return true;
+//    }
 
     virtual std::string vertexCode() override;
     virtual std::string fragmentCode() override;

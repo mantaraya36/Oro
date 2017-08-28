@@ -150,8 +150,6 @@ private:
     float mLevel = 0;
     float mFrequencyFactors[NUM_VOICES];
     bool mDone {true};
-
-    int mOutMap[NUM_VOICES] = {0, 1, 0, 1, 0, 1, 0, 1};
 };
 
 class ModalSynthApp: public App

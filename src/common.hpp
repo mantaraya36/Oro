@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include <memory>
+#include <functional>
 
 #include "allocore/graphics/al_Shapes.hpp"
 #include "allocore/graphics/al_Image.hpp"
@@ -18,6 +19,8 @@
 #include "Gamma/Oscillator.h"
 #include "Gamma/Envelope.h"
 
+#include "Gamma/ipl.h"
+
 
 #include "Cuttlebone/Cuttlebone.hpp"
 
@@ -29,6 +32,13 @@ using namespace std;
 #define INTERACTION_POINTS 32
 #define NUM_OFRENDAS 8
 
+// OSC communication between simulator and control
+#define CONTROL_IP_ADDRESS "localhost"
+#define CONTROL_IN_PORT 10300
+
+#define SIMULATOR_IP_ADDRESS "localhost"
+#define SIMULATOR_IN_PORT 10200
+
 struct Ofrenda {
     gam::Decay<float> envelope;
 };
@@ -36,6 +46,56 @@ struct Ofrenda {
 struct Ofrenda_Data {
     Ofrenda ofrendas[NUM_OFRENDAS];
 };
+
+class PairHash {
+public:
+    bool hashComplete() { return mCurrentHashIndex == 32; }
+    void nextHash(std::string pair, float x, float y) {
+        if (!hashComplete()) {
+            mHash.insert(mCurrentHashIndex*2, pair);
+            mHashX[mCurrentHashIndex] = x;
+            mHashY[mCurrentHashIndex] = y;
+            mCurrentHashIndex++;
+        }
+    }
+    void clearHash() {
+        mCurrentHashIndex = 0;
+        mHash.clear();
+    }
+
+    bool isBitcoin() {return false;}
+
+    std::string mHash;
+    float mHashX[32], mHashY[32];
+    int mCurrentHashIndex {0};
+};
+
+class InteractionActor {
+public:
+    InteractionActor(std::shared_ptr<void> data) {}
+
+    void addController(void *data) {};
+
+private:
+    std::shared_ptr<void> mData;
+//    function<Type()>
+};
+
+class InteractionState {
+public:
+
+    template <class T = double>
+    void addChildState(InteractionState &state, function<bool(T value)> threshold = [](T value) { return value > 1.0; })
+{ }
+
+private:
+    vector<InteractionActor *> mActors;
+    vector<InteractionState *> mChildStates;
+    double mProgress; // 0 -> 1
+
+};
+
+
 
 class Granulator {
 public:
@@ -76,12 +136,19 @@ private:
 	int mMaxOverlap;
 };
 
+static const int Nx = 200, Ny = Nx;
+
+inline int indexAt(int x, int y, int z){
+    //return (z*Nx + y)*Ny + x;
+    return (y*Nx + x)*2 + z; // may give slightly faster accessing
+}
 
 typedef struct {
     double lightPhase;
     float dev[GRID_SIZE * GRID_SIZE * GRID_SIZE];
 
     float chaos;
+    float decay, velocity;
     Vec4f interactionPoints[INTERACTION_POINTS];
 	al_sec interactionTimes[INTERACTION_POINTS];
     unsigned int interactionEnd = 0;
@@ -90,6 +157,10 @@ typedef struct {
     Vec4f posOfrendas[NUM_OFRENDAS];
     bool ofrendas[NUM_OFRENDAS]; //if ofrendas are on or off
     Nav nav;
+    float wave[Nx*Ny*2];
+
+    bool down;
+
 } SharedState;
 
 class SharedPainter {
@@ -98,6 +169,8 @@ public:
     Light mLight;			// Necessary to light objects in the scene
 	Material mGoldMaterial;		// Necessary for specular highlights
     Material mOfrendaMaterial;
+
+    Mesh waterMesh;
 
     vector<Mesh> mGrid;
 	vector<Mesh> mGridVertical;
@@ -116,6 +189,9 @@ public:
         mGrid.resize(GRID_SIZE * GRID_SIZE * GRID_SIZE);
 		mGridVertical.resize(GRID_SIZE * GRID_SIZE * GRID_SIZE);
 		mGridHorizontal.resize(GRID_SIZE * GRID_SIZE * GRID_SIZE);
+
+        // Add a tessellated plane
+		addSurface(waterMesh, Nx,Ny);
 
 		for (Mesh &m: mGrid) {
 //			addCylinder(m, 0.01, 1);
@@ -188,13 +264,27 @@ public:
 		g.depthTesting(true);
         shader().uniform("enableFog", 1);
 
-		g.nicest();
+//		g.nicest();
 
         shader().uniform("lighting", 1.0);
         shader().uniform("fogCurve", 1.0);
         float fogColor[4] = {0.0f, 0.0f, 0.0f, 0.2f};
         shader().uniform4("fogColor", fogColor, 4);
         g.fog(30, 2, Color(0,0,0, 0.2));
+
+        g.pushMatrix();
+//        mtrl.specular(RGB(0));
+//        mtrl.shininess(shininess.get());
+//        mtrl();
+//        light.dir(1,1,1);
+//        light();
+//        waterMesh.colors()[0] = waterMesh.get();
+//        waterMesh.colors()[0] .a = 1.0;
+        g.translate(0, 1.3, -4.0);
+        g.rotate(70, 1, 0, 0);
+        g.draw(waterMesh);
+        g.popMatrix();
+
 
 
 		state().lightPhase += 1./1800; if(state().lightPhase > 1) state().lightPhase -= 1;
@@ -392,135 +482,6 @@ static const char* fragmentShader = R"(uniform float lighting; uniform float tex
                                gl_FragColor.rgb = mix(gl_FragColor.rgb, fogCol.rgb, c);
           }
          })";
-
-
-class Simulator {
-public:
-    Simulator(SharedState *state) :
-        mChaos("chaos", "", 0),
-	mVideoDomain(30),
-	mMaker("192.168.10.255") //,
-//	    mSpeedX("speedX", "", 0),
-//	    mSpeedY("speedY", "", 0),
-//	    mSpeedZ("speedZ", "", 0)
-    {
-        mState = state;
-	mMouseSpeed = 0;
-	mMouseX = 0;
-	mMouseY = 0;
-
-        /* States */
-
-        mNoise.resize(GRID_SIZE * GRID_SIZE * GRID_SIZE);
-		mFilters.resize(GRID_SIZE * GRID_SIZE * GRID_SIZE);
-
-		for (gam::Biquad<> &b:mFilters) {
-			b.domain(mVideoDomain);
-			b.freq(0.3);
-		}
-
-        for (unsigned int i = 0; i < NUM_OFRENDAS; i++) {
-	    mOfrendas.ofrendas[i].envelope.decay(2500.0);
-            mOfrendas.ofrendas[i].envelope.value(i/(float)NUM_OFRENDAS);
-        }
-        /* States */
-        mMaker.start();
-    }
-
-    void addChaos() {
-        mChaos.set(mChaos.get() > 1.0f ? 0.0f : mChaos.get() + 0.1f);
-    }
-    void setMousePosition(float x, float y) {
-	mMouseSpeed = 5.0f * sqrt(x * x + y * y);
-        mMouseX = x;
-        mMouseY = y;
-    }
-
-    void onAnimate(double dt) {
-	mChaos.set(mChaos.get()* 0.997);
-        al_sec curTime = al_steady_time();
-	if (mMouseSpeed > 2) {
-	    mChaos.set(mMouseSpeed/10.0f);
-	    if ((int) state().interactionEnd - (int) state().interactionBegin != -1) {
-		const Vec4d &lastPoint = state().interactionPoints[state().interactionEnd];
-		if (lastPoint.x != mMouseX && lastPoint.y != mMouseY) {
-		    Vec4d newPoint(mMouseX, mMouseY, 0, mMouseSpeed);
-		    state().interactionEnd++;
-		    if (state().interactionEnd == INTERACTION_POINTS) {
-			state().interactionEnd = 0;
-		    }
-		    state().interactionPoints[state().interactionEnd] = newPoint;
-		    state().interactionTimes[state().interactionEnd] = curTime;
-		}
-	    }
-	}
-
-	float timeOut = 3.0;
-		for (int it = state().interactionBegin; it != state().interactionEnd; it++) {
-            if (it == INTERACTION_POINTS) {
-                it = 0;
-            }
-			if (curTime - state().interactionTimes[it] > timeOut) {
-				state().interactionBegin++;
-                if (state().interactionBegin == INTERACTION_POINTS) {
-                    state().interactionBegin = 0;
-                }
-			} else {
-				break;
-			}
-
-		}
-
-        float * dev_ = state().dev;
-        unsigned int count = 0;
-        for (int x = 0; x < GRID_SIZE; x++) {
-			for (int y = 0; y < GRID_SIZE; y++) {
-				for (int z = 0; z < GRID_SIZE; z++) {
-					*dev_++ = mFilters[count](mNoise[count]() * (mChaos.get() * 5.0f));
-					count++;
-				}
-			}
-		}
-
-        /* States */
-        for (unsigned int i = 0; i < NUM_OFRENDAS; i++) {
-            float env = mOfrendas.ofrendas[i].envelope();
-            if (mOfrendas.ofrendas[i].envelope.done(0.1)) {
-		state().posOfrendas[i].x = rnd::gaussian()* 0.9;
-                mOfrendas.ofrendas[i].envelope.reset();
-            } else {
-                state().posOfrendas[i].y = env * 36.0f - 18.0f;
-                float randomVal = rnd::gaussian();
-		state().posOfrendas[i].x += randomVal * 0.03f;
-		state().posOfrendas[i][3] += randomVal * 1.1f;
-            }
-        }
-        /* States */
-
-        mMaker.set(state());
-    }
-
-    Parameter mChaos;
-//	Parameter mSpeedX, mSpeedY, mSpeedZ;
-    /* Simulation states and data */
-    SharedState *mState; // To renderers
-
-    // From controllers
-    float mMouseSpeed;
-    float mMouseX, mMouseY;
-
-    // For onAnimate computation
-    gam::Domain mVideoDomain; // Simulation frame rate
-    Ofrenda_Data mOfrendas;
-    std::vector<gam::Biquad<> > mFilters;
-    std::vector<gam::NoiseBrown<> > mNoise;
-
-    cuttlebone::Maker<SharedState> mMaker;
-    /* End Simulation states and data */
-
-    SharedState &state() {return *mState;}
-};
-
 
 
 #endif
