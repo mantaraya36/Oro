@@ -24,7 +24,7 @@
 using namespace std;
 using namespace al;
 
-//#define SURROUND
+#define SURROUND
 
 #define NUM_VOICES 8
 #define SYNTH_POLYPHONY 16
@@ -155,7 +155,7 @@ private:
 class ModalSynthApp: public App
 {
 public:
-    ModalSynthApp()
+    ModalSynthApp(int midiChannel) : mMidiChannel(midiChannel - 1)
     {
     }
 
@@ -247,6 +247,7 @@ private:
     // MIDI Control
     PresetMIDI presetMIDI;
     ParameterMIDI parameterMIDI;
+    int mMidiChannel;
 
     ParameterBool midiLight{"MIDI", "", false};
 
@@ -267,38 +268,40 @@ private:
             if(MIDIByte::isChannelMessage(status)){
                 unsigned char type = status & MIDIByte::MESSAGE_MASK;
                 unsigned char chan = status & MIDIByte::CHANNEL_MASK;
-                switch(type){
-                case MIDIByte::NOTE_ON:
-//                    printf("Note %u, Vel %u", msg->at(1), msg->at(2));
-                    if (msg->at(2) != 0) {
-                        app->mFundamental.set(midi2cps(msg->at(1)));
-                        app->trigger(msg->at(1));
-                    } else {
-//                        app->release(msg->at(1));
+                if ((int) chan == app->mMidiChannel) {
+                    switch(type){
+                    case MIDIByte::NOTE_ON:
+                        //                    printf("Note %u, Vel %u", msg->at(1), msg->at(2));
+                        if (msg->at(2) != 0) {
+                            app->mFundamental.set(midi2cps(msg->at(1)));
+                            app->trigger(msg->at(1));
+                        } else {
+                            //                        app->release(msg->at(1));
+                        }
+                        break;
+
+                    case MIDIByte::NOTE_OFF:
+
+                        //                    app->release(msg->at(1));
+                        //                    printf("Note %u, Vel %u", msg->at(1), msg->at(2));
+                        break;
+
+                    case MIDIByte::PITCH_BEND:
+                        //                    printf("Value %u", MIDIByte::convertPitchBend(msg->at(1), msg->at(2)));
+                        break;
+                    case MIDIByte::CONTROL_CHANGE:
+                        //                    printf("%s ", MIDIByte::controlNumberString(msg->at(1)));
+                        //                    switch(msg->at(1)){
+                        //                    case MIDIByte::MODULATION:
+                        //                        printf("%u", msg->at(2));
+                        //                        break;
+                        //                    }
+                        break;
+                    case MIDIByte::PROGRAM_CHANGE:
+                        app->mPresetHandler.recallPreset(msg->at(1));
+                        break;
+                    default:;
                     }
-                    break;
-
-                case MIDIByte::NOTE_OFF:
-
-//                    app->release(msg->at(1));
-//                    printf("Note %u, Vel %u", msg->at(1), msg->at(2));
-                    break;
-
-                case MIDIByte::PITCH_BEND:
-//                    printf("Value %u", MIDIByte::convertPitchBend(msg->at(1), msg->at(2)));
-                    break;
-                case MIDIByte::CONTROL_CHANGE:
-//                    printf("%s ", MIDIByte::controlNumberString(msg->at(1)));
-//                    switch(msg->at(1)){
-//                    case MIDIByte::MODULATION:
-//                        printf("%u", msg->at(2));
-//                        break;
-//                    }
-                    break;
-                case MIDIByte::PROGRAM_CHANGE:
-                    app->mPresetHandler.recallPreset(msg->at(1));
-                break;
-                default:;
                 }
             }
         }
@@ -641,7 +644,7 @@ void ModalSynthApp::trigger(int id)
 //    params.mArcStart = mArcStart.get();
 //    params.mArcSpan = mArcSpan.get();
     params.mOutputRouting = outputRouting;
-    params.mOutputChannel = 1;
+    params.mOutputChannel = 2;
 
 
     for (int i = 0; i < NUM_VOICES; i++) {
@@ -660,7 +663,12 @@ void ModalSynthApp::trigger(int id)
 
 int main(int argc, char *argv[] )
 {
-    ModalSynthApp app;
+    int midiChannel = 1;
+    if (argc > 1) {
+        midiChannel = atoi(argv[1]);
+    }
+
+    ModalSynthApp app(midiChannel);
 
     app.initializeValues();
     app.initializePresets(); // Must be called before initializeGui
