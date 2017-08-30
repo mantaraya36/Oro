@@ -55,13 +55,13 @@ public:
 
     void reset() {
         mIntroTextModule = mRenderTree.createModule<TextRenderModule>();
-        mIntroTextModule->loadFont("/home/andres/Documents/src/Allostuff/Oro/fonts/CaslonAntique.ttf", 32, true);
+        mIntroTextModule->loadFont("fonts/CaslonAntique.ttf", 32, true);
         mIntroTextModule->setScale(0.4);
         mIntroTextModule->setText("In sacred lagoons in the Colombian Andes,");
         mIntroTextModule->setPosition(Vec3d(-0.6, 0.08, 0.04999));
 
         mIntroTextModule2 = mRenderTree.createModule<TextRenderModule>();
-        mIntroTextModule2->loadFont("/home/andres/Documents/src/Allostuff/Oro/fonts/CaslonAntique.ttf", 32, true);
+        mIntroTextModule2->loadFont("fonts/CaslonAntique.ttf", 32, true);
         mIntroTextModule2->setScale(0.4);
         mIntroTextModule2->setText("Gold was thrown in as part of a ritual");
         mIntroTextModule2->setPosition(Vec3d(-0.6, -0.0, 0.04999));
