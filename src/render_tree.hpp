@@ -339,7 +339,7 @@ private:
     std::string mText {"Test"};
     std::string mFontPath {"AlloSystem/allocore/share/fonts/VeraMono.ttf"};
     float mFontSize {18};
-    Font mFont{mFontPath, mFontSize};
+    Font mFont{mFontPath, (int)mFontSize};
     Mesh mTextMesh;
 
     bool initDone {false};
