@@ -28,6 +28,7 @@ using namespace al;
 
 #define NUM_VOICES 8
 #define SYNTH_POLYPHONY 16
+#define WIDTHFACTOR 100
 
 namespace gam{
 template <class Tv=gam::real, class Tp=gam::real, class Td=DomainObserver>
@@ -103,7 +104,7 @@ public:
         mNoiseEnv.reset();
 
         for (int i = 0; i < NUM_VOICES; i++) {
-            mResonators[i].set(params.mFundamental * mFrequencyFactors[i], mWidths[i] * params.mFundamental * mFrequencyFactors[i]);
+            mResonators[i].set(params.mFundamental * mFrequencyFactors[i], mWidths[i] * params.mFundamental * mFrequencyFactors[i] / WIDTHFACTOR);
         }
         mDone = false;
         mOutputChannel = params.mOutputChannel;
@@ -189,7 +190,10 @@ public:
 
     // Envelope
     void trigger(int id);
-    void release(int id);
+//    void release(int id);
+
+    void triggerKey(int id);
+//    void releaseKey(int id);
 
     vector<int> outputRouting;
 private:
@@ -209,14 +213,14 @@ private:
         {"factor8", "", 7.2f, "", 1.0, 20.0}
     };
     vector<Parameter> mWidths = {
-        {"width1", "", 0.001f, "", 0.0000001, 3.0},
-        {"width2", "", 0.001f, "", 0.0000001, 3.0},
-        {"width3", "", 0.001f, "", 0.0000001, 3.0},
-        {"width4", "", 0.001f, "", 0.0000001, 3.0},
-        {"width5", "", 0.001f, "", 0.0000001, 3.0},
-        {"width6", "", 0.001f, "", 0.0000001, 3.0},
-        {"width7", "", 0.001f, "", 0.0000001, 3.0},
-        {"width8", "", 0.001f, "", 0.0000001, 3.0}
+        {"width1", "", 0.1f, "", 0.000001, 99.0},
+        {"width3", "", 0.1f, "", 0.000001, 99.0},
+        {"width4", "", 0.1f, "", 0.000001, 99.0},
+        {"width5", "", 0.1f, "", 0.000001, 99.0},
+        {"width6", "", 0.1f, "", 0.000001, 99.0},
+        {"width7", "", 0.1f, "", 0.000001, 99.0},
+        {"width2", "", 0.1f, "", 0.000001, 99.0},
+        {"width8", "", 0.1f, "", 0.000001, 99.0}
     };
     vector<Parameter> mAmplitudes = {
         {"amp1", "", 1.0f, "", 0.0, 3.0},
@@ -545,7 +549,7 @@ void ModalSynthApp::onSound(AudioIOData &io)
 
 void ModalSynthApp::onKeyDown(const Keyboard &k)
 {
-    trigger(k.key());
+    triggerKey(k.key());
 }
 
 void ModalSynthApp::multiplyAmps(float factor)
@@ -660,6 +664,66 @@ void ModalSynthApp::trigger(int id)
         }
     }
 }
+
+inline float mtof(int m) {
+    return 440.0 * pow (2, (m - 69)/ 12.0);
+}
+
+void ModalSynthApp::triggerKey(int id)
+{
+    float frequency = 440;
+    switch(id){
+    case '1': frequency = mtof(40);break;
+    case '2': frequency = mtof(41);break;
+    case '3': frequency = mtof(42);break;
+    case '4': frequency = mtof(43);break;
+    case '5': frequency = mtof(44);break;
+    case '6': frequency = mtof(45);break;
+    case '7': frequency = mtof(46);break;
+    case '8': frequency = mtof(47);break;
+    case '9': frequency = mtof(48);break;
+    case '0': frequency = mtof(49);break;
+    case 'q': frequency = mtof(50);break;
+    case 'w': frequency = mtof(51);break;
+    case 'e': frequency = mtof(52);break;
+    case 'r': frequency = mtof(53);break;
+    case 't': frequency = mtof(54);break;
+    case 'y': frequency = mtof(55);break;
+    case 'u': frequency = mtof(56);break;
+    case 'i': frequency = mtof(57);break;
+    case 'o': frequency = mtof(58);break;
+    case 'p': frequency = mtof(59);break;
+    case 'a': frequency = mtof(60);break;
+    case 's': frequency = mtof(61);break;
+    case 'd': frequency = mtof(62);break;
+    case 'f': frequency = mtof(63);break;
+    case 'g': frequency = mtof(64);break;
+    case 'h': frequency = mtof(65);break;
+    case 'j': frequency = mtof(66);break;
+    case 'k': frequency = mtof(67);break;
+    case 'l': frequency = mtof(68);break;
+    case ';': frequency = mtof(69);break;
+    case 'z': frequency = mtof(70);break;
+    case 'x': frequency = mtof(71);break;
+    case 'c': frequency = mtof(72);break;
+    case 'v': frequency = mtof(73);break;
+    case 'b': frequency = mtof(74);break;
+    case 'n': frequency = mtof(75);break;
+    case 'm': frequency = mtof(76);break;
+    case ',': frequency = mtof(77);break;
+    case '.': frequency = mtof(78);break;
+    case '/': frequency = mtof(79);break;
+    }
+
+    std::cout << id << ".." << frequency << std::endl;
+    mFundamental.set(frequency);
+    trigger(id);
+}
+
+//void ModalSynthApp::releaseKey(int id)
+//{
+//    release(id);
+//}
 
 int main(int argc, char *argv[] )
 {
