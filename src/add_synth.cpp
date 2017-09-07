@@ -49,6 +49,7 @@ public:
     float mAmpModRelease;
 	float mAttackCurve;
     float mReleaseCurve;
+    bool mFreqMod;
 
     // Spatialization
     float mArcStart;
@@ -79,6 +80,7 @@ public:
         setOscillatorFundamental(params.mFundamental);
         setInitialCumulativeDelay(params.mCumulativeDelay, params.mCumDelayRandomness);
         memcpy(mAmplitudes, params.mAmplitudes, sizeof(float) * NUM_VOICES);
+        mFreqMod = params.mFreqMod == 1.0;
 
 		setAttackCurvature(params.mAttackCurve);
 		setReleaseCurvature(params.mReleaseCurve);
@@ -89,7 +91,11 @@ public:
             setReleaseTime(params.mReleaseTimes[i], i);
             setAmpModAttackTime(params.mAmpModAttack, i);
             setAmpModReleaseTime(params.mAmpModRelease, i);
-            mAmpModulators[i].set(params.mAmpModFrequencies[i], params.mAmpModDepth[i]);
+            if (mFreqMod) {
+                mAmpModulators[i].set(params.mAmpModFrequencies[i] * mOscillators[i].freq(), 5 * params.mAmpModDepth[i] * mOscillators[i].freq());
+            } else {
+                mAmpModulators[i].set(params.mAmpModFrequencies[i], params.mAmpModDepth[i]);
+            }
 
             mEnvelopes[i].reset();
             mAmpModEnvelopes[i].reset();
@@ -115,8 +121,13 @@ public:
     void generateAudio(AudioIOData &io) {
         while (io()) {
             for (int i = 0; i < NUM_VOICES; i++) {
-                io.out(mOutMap[i]) +=  mAttenuation * mOscillators[i]() * mEnvelopes[i]() *  mAmplitudes[i] * mLevel
-                        * (1 + mAmpModulators[i]() * mAmpModEnvelopes[i]());
+                if (mFreqMod) {
+                    mOscillators[i].freq( mFundamental * mFrequencyFactors[i] + (mAmpModulators[i]() * mAmpModEnvelopes[i]()));
+                    io.out(mOutMap[i]) +=  mAttenuation * mOscillators[i]() * mEnvelopes[i]() *  mAmplitudes[i] * mLevel;
+                } else {
+                    io.out(mOutMap[i]) +=  mAttenuation * mOscillators[i]() * mEnvelopes[i]() *  mAmplitudes[i] * mLevel
+                            * (1 + mAmpModulators[i]() * mAmpModEnvelopes[i]());
+                }
             }
         }
     }
@@ -197,6 +208,7 @@ public:
 
     void setOscillatorFundamental(float frequency)
     {
+        mFundamental = frequency;
         for (int i = 0; i < NUM_VOICES; i++) {
             mOscillators[i].freq(frequency * mFrequencyFactors[i]);
         }
@@ -220,8 +232,11 @@ private:
     gam::SineR<> mAmpModulators[NUM_VOICES];
     gam::Env<3> mAmpModEnvelopes[NUM_VOICES];
 
+    bool mFreqMod;
+
     int mId = 0;
     float mLevel = 0;
+    float mFundamental;
     float mFrequencyFactors[NUM_VOICES];
     float mAmplitudes[NUM_VOICES];
 
@@ -231,74 +246,12 @@ private:
 
 };
 
-class PresetKeyboardControl : public NavInputControl {
-public:
-
-	PresetKeyboardControl (Nav &nav) : NavInputControl(nav){ mUseMouse = false;}
-
-	virtual bool onKeyDown(const Keyboard &k) {
-		if (k.ctrl() || k.alt() || k.meta()) {
-			return true;
-		}
-//		if (!presetKeyboardActive) {
-//			return true;
-//		}
-//		switch(k.key()){
-//		case '1': presets->recallPreset(0); return false;
-//		case '2': presets->recallPreset(1); return false;
-//		case '3': presets->recallPreset(2); return false;
-//		case '4': presets->recallPreset(3); return false;
-//		case '5': presets->recallPreset(4); return false;
-//		case '6': presets->recallPreset(5); return false;
-//		case '7': presets->recallPreset(6); return false;
-//		case '8': presets->recallPreset(7); return false;
-//		case '9': presets->recallPreset(8); return false;
-//		case '0': presets->recallPreset(9); return false;
-//		case 'q': presets->recallPreset(10); return false;
-//		case 'w': presets->recallPreset(11); return false;
-//		case 'e': presets->recallPreset(12); return false;
-//		case 'r': presets->recallPreset(13); return false;
-//		case 't': presets->recallPreset(14); return false;
-//		case 'y': presets->recallPreset(15); return false;
-//		case 'u': presets->recallPreset(16); return false;
-//		case 'i': presets->recallPreset(17); return false;
-//		case 'o': presets->recallPreset(18); return false;
-//		case 'p': presets->recallPreset(19); return false;
-//		case 'a': presets->recallPreset(20); return false;
-//		case 's': presets->recallPreset(21); return false;
-//		case 'd': presets->recallPreset(22); return false;
-//		case 'f': presets->recallPreset(23); return false;
-//		case 'g': presets->recallPreset(24); return false;
-//		case 'h': presets->recallPreset(25); return false;
-//		case 'j': presets->recallPreset(26); return false;
-//		case 'k': presets->recallPreset(27); return false;
-//		case 'l': presets->recallPreset(28); return false;
-//		case ';': presets->recallPreset(29); return false;
-//		case 'z': presets->recallPreset(30); return false;
-//		case 'x': presets->recallPreset(31); return false;
-//		case 'c': presets->recallPreset(32); return false;
-//		case 'v': presets->recallPreset(33); return false;
-//		case 'b': presets->recallPreset(34); return false;
-//		case 'n': presets->recallPreset(35); return false;
-//		case 'm': presets->recallPreset(36); return false;
-//		case ',': presets->recallPreset(37); return false;
-//		case '.': presets->recallPreset(38); return false;
-//		case '/': presets->recallPreset(39); return false;
-//		default: break;
-//		}
-		return true;
-	}
-
-	virtual bool onKeyUp(const Keyboard &k) {
-		return true;
-	}
-    PresetHandler *presets;
-};
+class PresetKeyboardControl;
 
 class AddSynthApp: public App
 {
 public:
-    AddSynthApp(int midiChannel) : mKeyboardPresets(nav()), mMidiChannel(midiChannel - 1)
+    AddSynthApp(int midiChannel) : /*mKeyboardPresets(nav()),*/ mMidiChannel(midiChannel - 1)
     {
         initializeValues();
         initWindow();
@@ -309,11 +262,15 @@ public:
         int outChans = 2;
         outputRouting = {0, 1};
 #endif
-        initAudio(44100, 256, outChans, 0);
+        initAudio(44100, 2048, outChans, 0);
         gam::sampleRate(audioIO().fps());
+
+        AudioDevice::printAll();
+        audioIO().print();
 
         initializePresets(); // Must be called before initializeGui
         initializeGui();
+
     }
 
     void initializeValues();
@@ -325,7 +282,14 @@ public:
 
         controlView.parentWindow(*windows()[0]);
 
-        windows()[0]->prepend(mKeyboardPresets);
+        mModType.registerChangeCallback([](float value, void *sender,
+                                        void *userData, void * blockSender) {
+            if (static_cast<AddSynthApp *>(userData)->modDropDown != blockSender) {
+                static_cast<AddSynthApp *>(userData)->modDropDown->setValue(value == 0 ? "Amp": "Freq");
+            }
+        }, this);
+
+//        windows()[0]->prepend(mKeyboardPresets);
     }
 
     virtual void onSound(AudioIOData &io) override;
@@ -538,35 +502,36 @@ private:
         {"Amp24", "", 1/16.0f, "", 0.0, 1.0}
                                               };
     // Amp Mod
-    Parameter mAmpModDepth{"AmpModDepth", "", 0.0, "", 0.0, 1.0};
-    Parameter mAmpModAttack{"AmpModAttack", "", 0.0, "", 0.0, 10.0};
-    Parameter mAmpModRelease{"AmpModRelease", "", 5.0, "", 0.0, 10.0};
+    Parameter mModType{"modType", "", 0.0, "", 0.0, 1.0};
+    Parameter mModDepth{"modDepth", "", 0.0, "", 0.0, 1.0};
+    Parameter mModAttack{"modAttack", "", 0.0, "", 0.0, 10.0};
+    Parameter mModRelease{"modRelease", "", 5.0, "", 0.0, 10.0};
 
     vector<Parameter> mAmpModFrequencies = {
-        {"AmpModFreq1", "", 1.0f, "", 0.0, 30.0},
-        {"AmpModFreq2", "", 1.0f, "", 0.0, 30.0},
-        {"AmpModFreq3", "", 1.0f, "", 0.0, 30.0},
-        {"AmpModFreq4", "", 1.0f, "", 0.0, 30.0},
-        {"AmpModFreq5", "", 1.0f, "", 0.0, 30.0},
-        {"AmpModFreq6", "", 1.0f, "", 0.0, 30.0},
-        {"AmpModFreq7", "", 1.0f, "", 0.0, 30.0},
-        {"AmpModFreq8", "", 1.0f, "", 0.0, 30.0},
-        {"AmpModFreq9", "", 1.0f, "", 0.0, 30.0},
-        {"AmpModFreq10", "",1.0f, "", 0.0, 30.0},
-        {"AmpModFreq11", "",1.0f, "", 0.0, 30.0},
-        {"AmpModFreq12", "",1.0f, "", 0.0, 30.0},
-        {"AmpModFreq13", "",1.0f, "", 0.0, 30.0},
-        {"AmpModFreq14", "",1.0f, "", 0.0, 30.0},
-        {"AmpModFreq15", "",1.0f, "", 0.0, 30.0},
-        {"AmpModFreq16", "",1.0f, "", 0.0, 30.0},
-        {"AmpModFreq17", "",1.0f, "", 0.0, 30.0},
-        {"AmpModFreq18", "",1.0f, "", 0.0, 30.0},
-        {"AmpModFreq19", "",1.0f, "", 0.0, 30.0},
-        {"AmpModFreq20", "",1.0f, "", 0.0, 30.0},
-        {"AmpModFreq21", "",1.0f, "", 0.0, 30.0},
-        {"AmpModFreq22", "",1.0f, "", 0.0, 30.0},
-        {"AmpModFreq23", "",1.0f, "", 0.0, 30.0},
-        {"AmpModFreq24", "",1.0f, "", 0.0, 30.0}
+        {"modFreq1", "", 1.0f, "", 0.0, 30.0},
+        {"modFreq2", "", 1.0f, "", 0.0, 30.0},
+        {"modFreq3", "", 1.0f, "", 0.0, 30.0},
+        {"modFreq4", "", 1.0f, "", 0.0, 30.0},
+        {"modFreq5", "", 1.0f, "", 0.0, 30.0},
+        {"modFreq6", "", 1.0f, "", 0.0, 30.0},
+        {"modFreq7", "", 1.0f, "", 0.0, 30.0},
+        {"modFreq8", "", 1.0f, "", 0.0, 30.0},
+        {"modFreq9", "", 1.0f, "", 0.0, 30.0},
+        {"modFreq10", "",1.0f, "", 0.0, 30.0},
+        {"modFreq11", "",1.0f, "", 0.0, 30.0},
+        {"modFreq12", "",1.0f, "", 0.0, 30.0},
+        {"modFreq13", "",1.0f, "", 0.0, 30.0},
+        {"modFreq14", "",1.0f, "", 0.0, 30.0},
+        {"modFreq15", "",1.0f, "", 0.0, 30.0},
+        {"modFreq16", "",1.0f, "", 0.0, 30.0},
+        {"modFreq17", "",1.0f, "", 0.0, 30.0},
+        {"modFreq18", "",1.0f, "", 0.0, 30.0},
+        {"modFreq19", "",1.0f, "", 0.0, 30.0},
+        {"modFreq20", "",1.0f, "", 0.0, 30.0},
+        {"modFreq21", "",1.0f, "", 0.0, 30.0},
+        {"modFreq22", "",1.0f, "", 0.0, 30.0},
+        {"modFreq23", "",1.0f, "", 0.0, 30.0},
+        {"modFreq24", "",1.0f, "", 0.0, 30.0}
                                               };
     // Presets
     PresetHandler mPresetHandler;
@@ -586,9 +551,11 @@ private:
     glv::Box sustainLevelsBox {glv::Direction::S};
     glv::Box releaseTimesBox {glv::Direction::S};
     glv::Box ampModBox {glv::Direction::S};
+    glv::DropDown *modDropDown;
     GLVDetachable controlView;
 
-    PresetKeyboardControl mKeyboardPresets;
+//    PresetKeyboardControl mKeyboardPresets;
+    bool mPresetKeyboardActive = true;
 
     // MIDI Control
     PresetMIDI presetMIDI;
@@ -680,6 +647,126 @@ private:
     vector<int> outputRouting;
 };
 
+class PresetKeyboardControl : public NavInputControl {
+public:
+
+	PresetKeyboardControl (Nav &nav, AddSynthApp *app) : NavInputControl(nav), mApp(app){ mUseMouse = false;}
+
+	virtual bool onKeyDown(const Keyboard &k) {
+		if (k.ctrl() || k.alt() || k.meta()) {
+			return true;
+		}
+//		if (!mApp->mPresetKeyboardActive) {
+//			return true;
+//		}
+		switch(k.key()){
+		case '1': mApp->trigger(0); return false;
+		case '2': mApp->trigger(1); return false;
+		case '3': mApp->trigger(2); return false;
+		case '4': mApp->trigger(3); return false;
+		case '5': mApp->trigger(4); return false;
+		case '6': mApp->trigger(5); return false;
+		case '7': mApp->trigger(6); return false;
+		case '8': mApp->trigger(7); return false;
+		case '9': mApp->trigger(8); return false;
+		case '0': mApp->trigger(9); return false;
+		case 'q': mApp->trigger(10); return false;
+		case 'w': mApp->trigger(11); return false;
+		case 'e': mApp->trigger(12); return false;
+		case 'r': mApp->trigger(13); return false;
+		case 't': mApp->trigger(14); return false;
+		case 'y': mApp->trigger(15); return false;
+		case 'u': mApp->trigger(16); return false;
+		case 'i': mApp->trigger(17); return false;
+		case 'o': mApp->trigger(18); return false;
+		case 'p': mApp->trigger(19); return false;
+		case 'a': mApp->trigger(20); return false;
+		case 's': mApp->trigger(21); return false;
+		case 'd': mApp->trigger(22); return false;
+		case 'f': mApp->trigger(23); return false;
+		case 'g': mApp->trigger(24); return false;
+		case 'h': mApp->trigger(25); return false;
+		case 'j': mApp->trigger(26); return false;
+		case 'k': mApp->trigger(27); return false;
+		case 'l': mApp->trigger(28); return false;
+		case ';': mApp->trigger(29); return false;
+		case 'z': mApp->trigger(30); return false;
+		case 'x': mApp->trigger(31); return false;
+		case 'c': mApp->trigger(32); return false;
+		case 'v': mApp->trigger(33); return false;
+		case 'b': mApp->trigger(34); return false;
+		case 'n': mApp->trigger(35); return false;
+		case 'm': mApp->trigger(36); return false;
+		case ',': mApp->trigger(37); return false;
+		case '.': mApp->trigger(38); return false;
+		case '/': mApp->trigger(39); return false;
+		default: break;
+		}
+		return true;
+	}
+
+	virtual bool onKeyUp(const Keyboard &k) {
+        if (k.ctrl() || k.alt() || k.meta()) {
+			return true;
+		}
+//		if (!mApp->mPresetKeyboardActive) {
+//			return true;
+//		}
+		switch(k.key()){
+		case '1': mApp->release(0); return false;
+		case '2': mApp->release(1); return false;
+		case '3': mApp->release(2); return false;
+		case '4': mApp->release(3); return false;
+		case '5': mApp->release(4); return false;
+		case '6': mApp->release(5); return false;
+		case '7': mApp->release(6); return false;
+		case '8': mApp->release(7); return false;
+		case '9': mApp->release(8); return false;
+		case '0': mApp->release(9); return false;
+		case 'q': mApp->release(10); return false;
+		case 'w': mApp->release(11); return false;
+		case 'e': mApp->release(12); return false;
+		case 'r': mApp->release(13); return false;
+		case 't': mApp->release(14); return false;
+		case 'y': mApp->release(15); return false;
+		case 'u': mApp->release(16); return false;
+		case 'i': mApp->release(17); return false;
+		case 'o': mApp->release(18); return false;
+		case 'p': mApp->release(19); return false;
+		case 'a': mApp->release(20); return false;
+		case 's': mApp->release(21); return false;
+		case 'd': mApp->release(22); return false;
+		case 'f': mApp->release(23); return false;
+		case 'g': mApp->release(24); return false;
+		case 'h': mApp->release(25); return false;
+		case 'j': mApp->release(26); return false;
+		case 'k': mApp->release(27); return false;
+		case 'l': mApp->release(28); return false;
+		case ';': mApp->release(29); return false;
+		case 'z': mApp->release(30); return false;
+		case 'x': mApp->release(31); return false;
+		case 'c': mApp->release(32); return false;
+		case 'v': mApp->release(33); return false;
+		case 'b': mApp->release(34); return false;
+		case 'n': mApp->release(35); return false;
+		case 'm': mApp->release(36); return false;
+		case ',': mApp->release(37); return false;
+		case '.': mApp->release(38); return false;
+		case '/': mApp->release(39); return false;
+		default: break;
+		}
+		return true;
+	}
+    PresetHandler *presets;
+    AddSynthApp *mApp;
+};
+
+
+
+// ----------------------- Implementations
+
+
+
 void AddSynthApp::initializeValues()
 {
     mFundamental.set(220);
@@ -702,6 +789,13 @@ void AddSynthApp::initializeGui()
     gui << mArcStart << mArcSpan;
 	gui << mAttackCurve << mReleaseCurve;
     gui << midiLight;
+
+    glv::Button *keyboardButton = new glv::Button;
+    glv::Table *table = new glv::Table("><");
+    *table << keyboardButton << new glv::Label("Keyboard");
+    table->arrange();
+    gui << table;
+    keyboardButton->attachVariable(&mPresetKeyboardActive, 1);
 
     gui << SequencerGUI::makeSequencerPlayerView(sequencer)
         << SequencerGUI::makeRecorderView(recorder);
@@ -1063,8 +1157,15 @@ void AddSynthApp::initializeGui()
     controlView << releaseTimesBox;
 
     // Amp Mod
-
-
+    modDropDown = new glv::DropDown;
+    modDropDown->addItem("Amp");
+    modDropDown->addItem("Freq");
+    modDropDown->attach([](const glv::Notification &n) {
+        glv::DropDown *b = n.sender<glv::DropDown>();
+        AddSynthApp *app = n.receiver<AddSynthApp>();
+        app->mModType.setNoCalls(b->selectedItem(), b);
+    }, glv::Update::Value, this);
+    ampModBox << modDropDown << new glv::Label("Mod type");
 
     glv::Button *ampModUpButton = new glv::Button;
     ampModUpButton->attach([](const glv::Notification &n) {
@@ -1110,9 +1211,9 @@ void AddSynthApp::initializeGui()
     ampModRampDownButton->property(glv::Momentary, true);
     ampModBox << ampModRampDownButton << new glv::Label("Ramp down");
 
-    ampModBox << ParameterGUI::makeParameterView(mAmpModDepth);
-    ampModBox << ParameterGUI::makeParameterView(mAmpModAttack);
-    ampModBox << ParameterGUI::makeParameterView(mAmpModRelease);
+    ampModBox << ParameterGUI::makeParameterView(mModDepth);
+    ampModBox << ParameterGUI::makeParameterView(mModAttack);
+    ampModBox << ParameterGUI::makeParameterView(mModRelease);
 
 	glv::Button *randomizeAmpModButton = new glv::Button;
     randomizeAmpModButton->attach([](const glv::Notification &n) {
@@ -1144,7 +1245,9 @@ void AddSynthApp::initializePresets()
     mPresetHandler << mFundamental << mCumulativeDelay << mCumulativeDelayRandomness;
     mPresetHandler << mArcStart << mArcSpan;
     mPresetHandler << mAttackCurve << mReleaseCurve;
-    mPresetHandler << mAmpModDepth << mAmpModAttack << mAmpModRelease;
+    mPresetHandler << mModDepth << mModAttack << mModRelease;
+    mPresetHandler << mModType;
+
     for (int i = 0; i < NUM_VOICES; i++) {
         mPresetHandler << mFrequencyFactors[i] << mAmplitudes[i];
         mPresetHandler << mAttackTimes[i] << mDecayTimes[i] << mSustainLevels[i] << mReleaseTimes[i];
@@ -1153,7 +1256,7 @@ void AddSynthApp::initializePresets()
 //    mPresetHandler.print();
     sequencer << mPresetHandler;
     recorder << mPresetHandler;
-    mKeyboardPresets.presets = &mPresetHandler;
+//    mKeyboardPresets.presets = &mPresetHandler;
 
     // MIDI Control of parameters
     int midiPort = 0;
@@ -1198,12 +1301,151 @@ void AddSynthApp::onSound(AudioIOData &io)
 
 void AddSynthApp::onKeyDown(const Keyboard &k)
 {
-    trigger(k.key());
+    if (!mPresetKeyboardActive) {
+        return;
+    }
+    if (k.ctrl() || k.alt() || k.meta()) {
+        trigger(100);
+    }
+//    switch(k.key()){
+//    case '1': trigger(40);
+//    case '2': trigger(41);
+//    case '3': trigger(42);
+//    case '4': trigger(43);
+//    case '5': trigger(44);
+//    case '6': trigger(45);
+//    case '7': trigger(46);
+//    case '8': trigger(47);
+//    case '9': trigger(48);
+//    case '0': trigger(49);
+//    case 'q': trigger(50);
+//    case 'w': trigger(51);
+//    case 'e': trigger(52);
+//    case 'r': trigger(53);
+//    case 't': trigger(54);
+//    case 'y': trigger(55);
+//    case 'u': trigger(56);
+//    case 'i': trigger(57);
+//    case 'o': trigger(58);
+//    case 'p': trigger(59);
+//    case 'a': trigger(60);
+//    case 's': trigger(61);
+//    case 'd': trigger(62);
+//    case 'f': trigger(63);
+//    case 'g': trigger(64);
+//    case 'h': trigger(65);
+//    case 'j': trigger(66);
+//    case 'k': trigger(67);
+//    case 'l': trigger(68);
+//    case ';': trigger(69);
+//    case 'z': trigger(70);
+//    case 'x': trigger(71);
+//    case 'c': trigger(72);
+//    case 'v': trigger(73);
+//    case 'b': trigger(74);
+//    case 'n': trigger(75);
+//    case 'm': trigger(76);
+//    case ',': trigger(77);
+//    case '.': trigger(78);
+//    case '/': trigger(79);
+//    default: break;
+//    }
+
+    switch(k.key()){
+    case '1': mPresetHandler.recallPreset(0) ; trigger(0);  break;
+    case '2': mPresetHandler.recallPreset(1) ; trigger(1);  break;
+    case '3': mPresetHandler.recallPreset(2) ; trigger(2);  break;
+    case '4': mPresetHandler.recallPreset(3) ; trigger(3);  break;
+    case '5': mPresetHandler.recallPreset(4) ; trigger(4);  break;
+    case '6': mPresetHandler.recallPreset(5) ; trigger(5);  break;
+    case '7': mPresetHandler.recallPreset(6) ; trigger(6);  break;
+    case '8': mPresetHandler.recallPreset(7) ; trigger(7);  break;
+    case '9': mPresetHandler.recallPreset(8) ; trigger(8);  break;
+    case '0': mPresetHandler.recallPreset(9) ; trigger(9);  break;
+    case 'q': mPresetHandler.recallPreset(10); trigger(10); break;
+    case 'w': mPresetHandler.recallPreset(11); trigger(11); break;
+    case 'e': mPresetHandler.recallPreset(12); trigger(12); break;
+    case 'r': mPresetHandler.recallPreset(13); trigger(13); break;
+    case 't': mPresetHandler.recallPreset(14); trigger(14); break;
+    case 'y': mPresetHandler.recallPreset(15); trigger(15); break;
+    case 'u': mPresetHandler.recallPreset(16); trigger(16); break;
+    case 'i': mPresetHandler.recallPreset(17); trigger(17); break;
+    case 'o': mPresetHandler.recallPreset(18); trigger(18); break;
+    case 'p': mPresetHandler.recallPreset(19); trigger(19); break;
+    case 'a': mPresetHandler.recallPreset(20); trigger(20); break;
+    case 's': mPresetHandler.recallPreset(21); trigger(21); break;
+    case 'd': mPresetHandler.recallPreset(22); trigger(22); break;
+    case 'f': mPresetHandler.recallPreset(23); trigger(23); break;
+    case 'g': mPresetHandler.recallPreset(24); trigger(24); break;
+    case 'h': mPresetHandler.recallPreset(25); trigger(25); break;
+    case 'j': mPresetHandler.recallPreset(26); trigger(26); break;
+    case 'k': mPresetHandler.recallPreset(27); trigger(27); break;
+    case 'l': mPresetHandler.recallPreset(28); trigger(28); break;
+    case ';': mPresetHandler.recallPreset(29); trigger(29); break;
+    case 'z': mPresetHandler.recallPreset(30); trigger(30); break;
+    case 'x': mPresetHandler.recallPreset(31); trigger(31); break;
+    case 'c': mPresetHandler.recallPreset(32); trigger(32); break;
+    case 'v': mPresetHandler.recallPreset(33); trigger(33); break;
+    case 'b': mPresetHandler.recallPreset(34); trigger(34); break;
+    case 'n': mPresetHandler.recallPreset(35); trigger(35); break;
+    case 'm': mPresetHandler.recallPreset(36); trigger(36); break;
+    case ',': mPresetHandler.recallPreset(37); trigger(37); break;
+    case '.': mPresetHandler.recallPreset(38); trigger(38); break;
+    case '/': mPresetHandler.recallPreset(39); trigger(39); break;
+    }
 }
 
 void AddSynthApp::onKeyUp(const Keyboard &k)
 {
-    release(k.key());
+    if (!mPresetKeyboardActive) {
+        return;
+    }
+    if (k.ctrl() || k.alt() || k.meta()) {
+        release(100);
+    }
+    switch(k.key()){
+    case '1': release(0);
+    case '2': release(1);
+    case '3': release(2);
+    case '4': release(3);
+    case '5': release(4);
+    case '6': release(5);
+    case '7': release(6);
+    case '8': release(7);
+    case '9': release(8);
+    case '0': release(9);
+    case 'q': release(10);
+    case 'w': release(11);
+    case 'e': release(12);
+    case 'r': release(13);
+    case 't': release(14);
+    case 'y': release(15);
+    case 'u': release(16);
+    case 'i': release(17);
+    case 'o': release(18);
+    case 'p': release(19);
+    case 'a': release(20);
+    case 's': release(21);
+    case 'd': release(22);
+    case 'f': release(23);
+    case 'g': release(24);
+    case 'h': release(25);
+    case 'j': release(26);
+    case 'k': release(27);
+    case 'l': release(28);
+    case ';': release(29);
+    case 'z': release(30);
+    case 'x': release(31);
+    case 'c': release(32);
+    case 'v': release(33);
+    case 'b': release(34);
+    case 'n': release(35);
+    case 'm': release(36);
+    case ',': release(37);
+    case '.': release(38);
+    case '/': release(39);
+    default: break;
+    }
 }
 
 void AddSynthApp::multiplyPartials(float factor)
@@ -1376,8 +1618,9 @@ void AddSynthApp::trigger(int id)
     params.mReleaseCurve = mReleaseCurve.get();
     params.mOutputRouting = outputRouting;
 
-    params.mAmpModAttack = mAmpModAttack.get();
-    params.mAmpModRelease = mAmpModRelease.get();
+    params.mFreqMod = mModType.get() == 1.0f;
+    params.mAmpModAttack = mModAttack.get();
+    params.mAmpModRelease = mModRelease.get();
 
     for (int i = 0; i < NUM_VOICES; i++) {
         params.mAttackTimes[i] = mAttackTimes[i].get();
@@ -1388,7 +1631,7 @@ void AddSynthApp::trigger(int id)
         params.mAmplitudes[i] = mAmplitudes[i].get();
 
         params.mAmpModFrequencies[i] = mAmpModFrequencies[i].get();
-        params.mAmpModDepth[i] = mAmpModDepth.get();
+        params.mAmpModDepth[i] = mModDepth.get();
     }
     for (int i = 0; i < SYNTH_POLYPHONY; i++) {
         if (synth[i].done()) {
