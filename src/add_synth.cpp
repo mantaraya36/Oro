@@ -243,6 +243,7 @@ private:
     float mAttenuation {0.01};
 
     int mOutMap[NUM_VOICES] = {0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1};
+    int mLayer;
 
 };
 
@@ -257,7 +258,11 @@ public:
         initWindow();
 #ifdef SURROUND
         int outChans = 8;
-        outputRouting = {4, 3, 7, 6, 2 };
+        outputRouting = { {4, 3, 7, 6, 2 },
+                          {4, 3, 7, 6, 2 },
+                          {4, 3, 7, 6, 2 }
+                        }
+                          ;
 #else
         int outChans = 2;
         outputRouting = {0, 1};
@@ -332,12 +337,13 @@ public:
 private:
 
     // Parameters
-    Parameter mLevel {"Level", "", 0.05, "", 0.0, 1.0};
+    Parameter mLevel {"Level", "", 0.05f, "", 0.0, 1.0};
     Parameter mFundamental {"Fundamental", "", 220.0, "", 0.0, 9000.0};
-    Parameter mCumulativeDelay{"CumDelay", "", 0.0, "", -0.2, 0.2};
+    Parameter mCumulativeDelay{"CumDelay", "", 0.0, "", -0.2f, 0.2f};
     Parameter mCumulativeDelayRandomness{"CumDelayDev", "", 0.0, "", 0.0, 1.0};
 	Parameter mAttackCurve{"AttackCurve", "", 4.0, "", -10.0, 10.0};
 	Parameter mReleaseCurve{"ReleaseCurve", "", -4.0, "", -10.0, 10.0};
+    Parameter mLayer {"Layer", "", 1.0, "", 0.0, 2.0};
 
     // Spatialization
     int mNumSpeakers; // Assumes regular angular separation
@@ -644,7 +650,7 @@ private:
     // Synthesis
     int mMidiChannel;
     AddSynth synth[SYNTH_POLYPHONY];
-    vector<int> outputRouting;
+    vector<vector<int>> outputRouting;
 };
 
 class PresetKeyboardControl : public NavInputControl {
@@ -788,6 +794,7 @@ void AddSynthApp::initializeGui()
     gui << mLevel << mFundamental << mCumulativeDelay << mCumulativeDelayRandomness;
     gui << mArcStart << mArcSpan;
 	gui << mAttackCurve << mReleaseCurve;
+    gui << mLayer;
     gui << midiLight;
 
     glv::Button *keyboardButton = new glv::Button;
@@ -1247,6 +1254,7 @@ void AddSynthApp::initializePresets()
     mPresetHandler << mAttackCurve << mReleaseCurve;
     mPresetHandler << mModDepth << mModAttack << mModRelease;
     mPresetHandler << mModType;
+    mPresetHandler << mLayer;
 
     for (int i = 0; i < NUM_VOICES; i++) {
         mPresetHandler << mFrequencyFactors[i] << mAmplitudes[i];
@@ -1616,7 +1624,7 @@ void AddSynthApp::trigger(int id)
     params.mArcSpan = mArcSpan.get();
 	params.mAttackCurve = mAttackCurve.get();
     params.mReleaseCurve = mReleaseCurve.get();
-    params.mOutputRouting = outputRouting;
+    params.mOutputRouting = outputRouting[(size_t) mLayer.get()];
 
     params.mFreqMod = mModType.get() == 1.0f;
     params.mAmpModAttack = mModAttack.get();
