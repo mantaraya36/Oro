@@ -41,24 +41,24 @@ protected:
 };
 
 // TODO add cleanup for modules
-class RenderModule {
+class RenderModule : public OSCNotifier {
     friend class RenderTree;
     friend class RenderTreeHandler;
 public:
     RenderModule() {} // perhaps have non public constructor and factory function in chain?
     virtual ~RenderModule() {}
 
-    void setPosition(Vec3d pos) { mPosition = pos;}
-    void setRotation(Vec3d rot) { mRotation = rot;}
-    void setScale(Vec3d scale) { mScale = scale;}
-    void setColor(Color color) { mColor = color;}
+    void setPosition(Vec3f pos) { mPosition = pos; notifyListeners(moduleAddress() + "/position", pos);}
+    void setRotation(Vec3f rot) { mRotation = rot; notifyListeners(moduleAddress() + "/rotation", rot);}
+    void setScale(Vec3f scale) { mScale = scale; notifyListeners(moduleAddress() + "/scale", scale);}
+    void setColor(Color color) { mColor = color; /*notifyListeners(moduleAddress() + "/color", color.rgb());*/}
     void setId(u_int32_t id) { mId = id;}
 
     std::string getType() { return mType; }
 
-    Vec3d &getPosition() { return mPosition; }
-    Vec3d &getRotation() { return mRotation; }
-    Vec3d &getScale() { return mScale; }
+    Vec3f &getPosition() { return mPosition; }
+    Vec3f &getRotation() { return mRotation; }
+    Vec3f &getScale() { return mScale; }
     Color &getColor() { return mColor; }
     u_int32_t &getId() { return mId; }
 
@@ -83,7 +83,7 @@ public:
     {
         if (command == "setPosition") {
             if (arguments.size() == 3) {
-                Vec3d newPosition = Vec3d(std::stod(arguments[0]), std::stod(arguments[1]), std::stod(arguments[2]));
+                Vec3f newPosition = Vec3f(std::stod(arguments[0]), std::stod(arguments[1]), std::stod(arguments[2]));
                 setPosition(newPosition);
             }
         } else if (command == "setColor") {
@@ -99,11 +99,11 @@ public:
             }
         } else if (command == "setScale") {
             if (arguments.size() == 1) {
-                Vec3d newScale = Vec3d(std::stod(arguments[0]), std::stod(arguments[0]), std::stod(arguments[0]));
+                Vec3f newScale = Vec3f(std::stod(arguments[0]), std::stod(arguments[0]), std::stod(arguments[0]));
                 setScale(newScale);
             }
             if (arguments.size() == 3) {
-                Vec3d newScale = Vec3d(std::stod(arguments[0]), std::stod(arguments[1]), std::stod(arguments[2]));
+                Vec3f newScale = Vec3f(std::stod(arguments[0]), std::stod(arguments[1]), std::stod(arguments[2]));
                 setScale(newScale);
             }
         } /*else if (command == "setRotation") {
@@ -114,17 +114,23 @@ public:
     virtual bool done() { return mDone; } // Lets render tree know it's time to remove this node
     virtual void setDone(bool done) { mDone = done; }
 
+	std::string moduleAddress() { return "/" + std::to_string(mId);}
+
 protected:
     virtual void init(Graphics &g) = 0;
     virtual void render(Graphics &g) = 0;
     virtual void cleanup() {}
 
+	// Only use this lock to protect data when setting it in child classes. The initInternal()
+	// and renderInternal() functions take care of locking it for you
+	std::mutex mModuleLock;
+
     std::string mType;
-    std::mutex mModuleLock;
     bool mDone {false};
     unsigned long mTicks {0};
 private:
     void initInternal(Graphics &g) {
+		std::lock_guard<std::mutex> locker(mModuleLock);
         init(g);
         for(auto child : mChildren) { // TODO add protections for the case where parent has already intialized and child is added
             child->initInternal(g);
@@ -132,8 +138,8 @@ private:
     }
 
     void renderInternal(Graphics &g) {
+		std::lock_guard<std::mutex> locker(mModuleLock);
 //        We should do some form of depth sorting here? It might help with occlusion in many cases...
-
         g.blending(true);
         g.blendAdd();
         g.pushMatrix();
@@ -166,9 +172,9 @@ private:
         mTicks++;
     }
 
-    Vec3d mPosition {0, 0, 0};
-    Vec3d mRotation {0, 0, 0};
-    Vec3d mScale {1, 1, 1};
+    Vec3f mPosition {0, 0, 0};
+    Vec3f mRotation {0, 0, 0};
+    Vec3f mScale {1, 1, 1};
     Color mColor {1.0,1.0,1.0, 1.0};
     u_int32_t mModuleType {0};
     std::vector<std::shared_ptr<RenderModule>> mChildren;
@@ -262,7 +268,7 @@ public:
 
     virtual void tick() override {
         if (mModule->getTicks() < mTargetTicks) {
-            Vec3d pos = mModule->getPosition();
+            Vec3f pos = mModule->getPosition();
             pos.z += mDelta;
             mModule->setPosition(pos);
         }
@@ -282,12 +288,10 @@ public:
     static std::shared_ptr<TextRenderModule> create() { return std::make_shared<TextRenderModule>();}
     void loadFont(const std::string& filename, int fontSize=10, bool antialias=true)
     {
-        std::lock_guard<std::mutex> locker(mModuleLock);
         mFont.load(filename, fontSize, antialias);
     }
 
     void setText(std::string text) {
-        std::lock_guard<std::mutex> locker(mModuleLock);
         mText = text;
         if (initDone) {
             mFont.write(mTextMesh, mText);
@@ -317,14 +321,12 @@ public:
 protected:
     virtual void init(Graphics &g)
     {
-        std::lock_guard<std::mutex> locker(mModuleLock);
         mFont.write(mTextMesh, mText);
         initDone = true;
     }
 
     virtual void render(Graphics &g)
     {
-        std::lock_guard<std::mutex> locker(mModuleLock);
         g.pushMatrix();
         mFont.texture().bind();
         g.scale(0.005);
@@ -387,12 +389,10 @@ protected:
 
     virtual void init(Graphics &g) override
     {
-        std::lock_guard<std::mutex> locker(mModuleLock);
     }
 
     virtual void render(Graphics &g) override
     {
-        std::lock_guard<std::mutex> locker(mModuleLock);
 //        mMesh.reset();
 //        addCube(mMesh);
         g.blendTrans();
@@ -429,7 +429,6 @@ public:
 protected:
     virtual void init(Graphics &g) override
     {
-        std::lock_guard<std::mutex> locker(mModuleLock);
         mQuad.reset();
         mQuad.primitive(Graphics::TRIANGLE_STRIP);
         mQuad.texCoord(0, 0);
@@ -444,7 +443,6 @@ protected:
 
     virtual void render(Graphics &g) override
     {
-        std::lock_guard<std::mutex> locker(mModuleLock);
         g.blendModeTrans();
         mTexture.bind(0);
         g.draw(mQuad);
@@ -467,7 +465,6 @@ public:
 protected:
     virtual void init(Graphics &g) override
     {
-        std::lock_guard<std::mutex> locker(mModuleLock);
         mMesh.reset();
         mMesh.primitive(Graphics::TRIANGLE_STRIP);
         addSphereWithTexcoords(mMesh);
@@ -475,7 +472,6 @@ protected:
 
     virtual void render(Graphics &g) override
     {
-        std::lock_guard<std::mutex> locker(mModuleLock);
         mTexture.bind(0);
         g.draw(mMesh);
         mTexture.unbind();
@@ -490,6 +486,10 @@ class RenderTree {
 public:
     ~RenderTree()
     {
+        clear();
+    }
+
+    virtual void clear() {
         std::lock_guard<std::mutex> locker(mRenderChainLock);
         for(auto module: mModules) {
             module->cleanup();
@@ -497,7 +497,7 @@ public:
         mModules.clear();
     }
 
-    bool addModule(std::shared_ptr<RenderModule> module);
+    virtual bool addModule(std::shared_ptr<RenderModule> module);
 
     void render(Graphics &g);
     template<class ModuleType>
@@ -604,6 +604,21 @@ private:
     void *mUserData;
 };
 
+
+
+class RenderTreeRelayer {
+public:
+    RenderTreeRelayer(RenderTree &tree) : mTree(&tree)
+    {
+
+    }
+
+
+private:
+    RenderTree *mTree;
+
+};
+
 /**
  * @brief The
  *
@@ -660,7 +675,7 @@ public:
             std::cout << "Sending list to: " << m.senderAddress() << ":" << port << std::endl;
             std::vector<std::shared_ptr<RenderModule>> modules = mTree->modulesInTree();
             for (auto module: modules) {
-                Vec3d position = module->getPosition();
+                Vec3f position = module->getPosition();
                 sender.beginMessage("/module");
                 sender << module->getId() << module->getType();
                 sender << position.x << position.y << position.z;

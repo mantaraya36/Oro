@@ -235,7 +235,7 @@ public:
 //                printf("Read image from %s\n", filename);
                 textureOfrendas[counter].allocate(imagesOfrendas[counter].array());
                 textureOfrendas[counter].submit();
-                SharedPainter::state().ofrendas[counter] = true;
+                SharedPainter::state().ofrendas[counter] = false;
             } else {
 //                printf("Failed to read image from %s!  Quitting.\n", filename);
                 exit(-1);
@@ -270,22 +270,6 @@ public:
         shader().uniform("fogCurve", 1.0);
         float fogColor[4] = {0.0f, 0.0f, 0.0f, 0.2f};
         shader().uniform4("fogColor", fogColor, 4);
-        g.fog(30, 2, Color(0,0,0, 0.2));
-
-        g.pushMatrix();
-//        mtrl.specular(RGB(0));
-//        mtrl.shininess(shininess.get());
-//        mtrl();
-//        light.dir(1,1,1);
-//        light();
-//        waterMesh.colors()[0] = waterMesh.get();
-//        waterMesh.colors()[0] .a = 1.0;
-        g.translate(0, 1.3, -4.0);
-        g.rotate(70, 1, 0, 0);
-        g.draw(waterMesh);
-        g.popMatrix();
-
-
 
 		state().lightPhase += 1./1800; if(state().lightPhase > 1) state().lightPhase -= 1;
 		float x = cos(7*state().lightPhase*2*M_PI);
@@ -313,23 +297,32 @@ public:
 
 
 
-        mInteractionLine.reset();
-		float widths[512];
-		float *width_ponter = widths;
-        Vec4f *points = state().interactionPoints + state().interactionBegin;
-        for (unsigned int i = state().interactionBegin; i != state().interactionEnd; i++) {
-            if (i == INTERACTION_POINTS) {
-                i = 0;
-                points = state().interactionPoints;
-            }
-			mInteractionLine.vertex(points->x, points->y, 0);
-			*width_ponter++ = std::sqrt((*points)[3]) * 0.001f;
-			mInteractionLine.color(HSV(0.14f, 0.5f, (*points)[3]/20.0f));
-            points++;
-		}
-		mInteractionLine.primitive(Graphics::TRIANGLE_STRIP);
-		mInteractionLine.ribbonize(widths);
-		mInteractionLine.smooth();
+//        mInteractionLine.reset();
+//		float widths[512];
+//		float *width_ponter = widths;
+//        Vec4f *points = state().interactionPoints + state().interactionBegin;
+//        for (unsigned int i = state().interactionBegin; i != state().interactionEnd; i++) {
+//            if (i == INTERACTION_POINTS) {
+//                i = 0;
+//                points = state().interactionPoints;
+//            }
+//			mInteractionLine.vertex(points->x, points->y, 0);
+//			*width_ponter++ = std::sqrt((*points)[3]) * 0.001f;
+//			mInteractionLine.color(HSV(0.14f, 0.5f, (*points)[3]/20.0f));
+//            points++;
+//		}
+//		mInteractionLine.primitive(Graphics::TRIANGLE_STRIP);
+//		mInteractionLine.ribbonize(widths);
+//		mInteractionLine.smooth();
+
+
+        float fogStart = 2;
+        float fogEnd = 30;
+        if (state().chaos < 0.3) {
+            fogStart = 0.1;
+            fogEnd = 0.2;
+        }
+        g.fog(fogEnd, fogStart, Color(0,0,0, 0.2));
 
 		g.pushMatrix();
 		g.scale(2);
@@ -366,19 +359,34 @@ public:
 		}
 		g.popMatrix();
 
-        // Interaction line
-		g.pushMatrix();
-		g.translate(0,0, 4);
-		g.scale(0.5);
-		g.draw(mInteractionLine);
-		g.popMatrix();
+//        // Interaction line
+//		g.pushMatrix();
+//		g.translate(0,0, 4);
+//		g.scale(0.5);
+//		g.draw(mInteractionLine);
+//		g.popMatrix();
 
 
 //        mOfrendaMaterial();
 
-        g.lighting(false);
-        shader().uniform("lighting", 0.0);
 
+
+        g.fog(30, 2, Color(0,0,0, 0.2));
+        g.pushMatrix();
+//        mtrl.specular(RGB(0));
+//        mtrl.shininess(shininess.get());
+//        mtrl();
+//        light.dir(1,1,1);
+//        light();
+//        waterMesh.colors()[0] = waterMesh.get();
+//        waterMesh.colors()[0] .a = 1.0;
+        g.translate(0, 1.3, -4.0);
+        g.rotate(70, 1, 0, 0);
+        g.draw(waterMesh);
+        g.popMatrix();
+
+		g.lighting(false);
+        shader().uniform("lighting", 0.0);
         shader().uniform("enableFog", 0);
         for (unsigned int i = 0; i < NUM_OFRENDAS; i++) {
             if (state().ofrendas[i]) {

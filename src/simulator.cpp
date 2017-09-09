@@ -92,7 +92,7 @@ public:
 
         for (unsigned int i = 0; i < NUM_OFRENDAS; i++) {
             mOfrendas.ofrendas[i].envelope.decay(2500.0);
-            mOfrendas.ofrendas[i].envelope.value(i/(float)NUM_OFRENDAS);
+//            mOfrendas.ofrendas[i].envelope.value(i/(float)NUM_OFRENDAS);
         }
 
         mRecvFromControl.handler(*this);
@@ -132,21 +132,21 @@ public:
 //            }
 //        }
 
-        float timeOut = 3.0;
-        for (int it = state().interactionBegin; it != state().interactionEnd; it++) {
-            if (it == INTERACTION_POINTS) {
-                it = 0;
-            }
-            if (curTime - state().interactionTimes[it] > timeOut) {
-                state().interactionBegin++;
-                if (state().interactionBegin == INTERACTION_POINTS) {
-                    state().interactionBegin = 0;
-                }
-            } else {
-                break;
-            }
+//        float timeOut = 3.0;
+//        for (int it = state().interactionBegin; it != state().interactionEnd; it++) {
+//            if (it == INTERACTION_POINTS) {
+//                it = 0;
+//            }
+//            if (curTime - state().interactionTimes[it] > timeOut) {
+//                state().interactionBegin++;
+//                if (state().interactionBegin == INTERACTION_POINTS) {
+//                    state().interactionBegin = 0;
+//                }
+//            } else {
+//                break;
+//            }
 
-        }
+//        }
 
         float * dev_ = state().dev;
         unsigned int count = 0;
@@ -158,18 +158,18 @@ public:
                 }
             }
         }
-
-        /* States */
         for (unsigned int i = 0; i < NUM_OFRENDAS; i++) {
-            float env = mOfrendas.ofrendas[i].envelope();
-            if (mOfrendas.ofrendas[i].envelope.done(0.1)) {
-                state().posOfrendas[i].x = rnd::gaussian()* 0.9;
-                mOfrendas.ofrendas[i].envelope.reset();
-            } else {
-                state().posOfrendas[i].y = env * 36.0f - 18.0f;
-                float randomVal = rnd::gaussian();
-                state().posOfrendas[i].x += randomVal * 0.03f;
-                state().posOfrendas[i][3] += randomVal * 1.1f;
+            if (state().ofrendas[i]) {
+                float env = mOfrendas.ofrendas[i].envelope();
+                if (mOfrendas.ofrendas[i].envelope.done(0.1)) {
+                    state().ofrendas[i] = false;
+                    //                state().posOfrendas[i].x = rnd::gaussian()* 0.9;
+                } else {
+                    state().posOfrendas[i].y = env * 25.0f - 8.0f;
+                    float randomVal = rnd::gaussian();
+                    state().posOfrendas[i].x += randomVal * 0.03f;
+                    state().posOfrendas[i][3] += randomVal * 1.1f;
+                }
             }
         }
 
@@ -181,6 +181,19 @@ public:
         float chaosSpeed = 0.1; //0.01
 
         if (mDist > 0) {
+            float dist = mDist;
+            mDist = 0;
+            if(state().chaos > 0.15 && state().chaos <= 0.45 && rnd::prob(0.01)) {
+                for (unsigned int i = 0; i < NUM_OFRENDAS; i++) {
+                    if (!state().ofrendas[i]) {
+                        state().ofrendas[i] = true;
+                        mOfrendas.ofrendas[i].envelope.reset();
+                        state().posOfrendas[i].x = rnd::gaussian()* 0.9;
+                        break;
+                    }
+                }
+
+            }
             if(state().chaos > 0.45 && rnd::prob(0.2)){
                 if (mPairHash.hashComplete()) {
 //                    std::cout << mPairHash.mHash << std::endl;
@@ -213,7 +226,8 @@ public:
 //                    module->addBehavior(std::make_shared<FadeOut>(7* window().fps(),3* window().fps()));
                 }
             }
-            state().chaos += mDist* chaosSpeed;
+            state().chaos += dist* chaosSpeed;
+
         }
 
         if(mPosX >= -50.0 && mPosY >= -50.0){
