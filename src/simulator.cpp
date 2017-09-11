@@ -67,7 +67,6 @@ using namespace al;
 using namespace std;
 // #define BUILDING_FOR_ALLOSPHERE
 
-
 class Simulator :  public osc::PacketHandler {
 public:
     Simulator(SharedState *state) :
@@ -153,7 +152,11 @@ public:
         for (int x = 0; x < GRID_SIZE; x++) {
             for (int y = 0; y < GRID_SIZE; y++) {
                 for (int z = 0; z < GRID_SIZE; z++) {
-                    *dev_++ = mFilters[count](mNoise[count]() * (mChaos.get() * 5.0f));
+                    if (mChaos.get() < 0.3f) {
+                        *dev_++ = 0.0;
+                    } else {
+                        *dev_++ = mFilters[count](mNoise[count]() * (5.0f * (mChaos.get() - 0.3f)/0.7f));
+                    }
                     count++;
                 }
             }
@@ -165,13 +168,21 @@ public:
                     state().ofrendas[i] = false;
                     //                state().posOfrendas[i].x = rnd::gaussian()* 0.9;
                 } else {
-                    state().posOfrendas[i].y = env * 25.0f - 8.0f;
+//                    state().posOfrendas[i].y = env * 25.0f - 8.0f;
+                    state().posOfrendas[i].y = -9.8 + LAGOON_Y +  env * 10;
                     float randomVal = rnd::gaussian();
                     state().posOfrendas[i].x += randomVal * 0.03f;
                     state().posOfrendas[i][3] += randomVal * 1.1f;
                 }
             }
         }
+
+        // Light movement
+        if (state().chaos > 0.3) {
+			state().lightPhase += 1./5600; if(state().lightPhase > 1) state().lightPhase -= 1;
+		} else if (state().chaos > 0.6) {
+			state().lightPhase += 1./1800; if(state().lightPhase > 1) state().lightPhase -= 1;
+		}
 
 
         // Wave equation
@@ -183,22 +194,23 @@ public:
         if (mDist > 0) {
             float dist = mDist;
             mDist = 0;
-            if(state().chaos > 0.15 && state().chaos <= 0.45 && rnd::prob(0.01)) {
+            if(state().chaos > 0.05 && state().chaos <= 0.4 && rnd::prob(0.02)) {
                 for (unsigned int i = 0; i < NUM_OFRENDAS; i++) {
                     if (!state().ofrendas[i]) {
                         state().ofrendas[i] = true;
                         mOfrendas.ofrendas[i].envelope.reset();
-                        state().posOfrendas[i].x = rnd::gaussian()* 0.9;
+                        state().posOfrendas[i].x = rnd::gaussian()* 0.3;
                         break;
                     }
                 }
 
             }
-            if(state().chaos > 0.45 && rnd::prob(0.2)){
+            if(state().chaos > 0.4 && rnd::prob(0.2)){
                 if (mPairHash.hashComplete()) {
 //                    std::cout << mPairHash.mHash << std::endl;
 //                    showBitcoinReport(mPairHash.mHash, )
                     mSenderToControl.send("/showBitcoinReport", mPairHash.mHash, mPairHash.isBitcoin());
+                    mSenderToGraphics.send("/showBitcoinReport", mPairHash.mHash, mPairHash.isBitcoin());
                     mPairHash.clearHash();
                 } else {
 //                    std::cout << mDeltaX << "...." << mDeltaY << std::endl;
@@ -215,15 +227,7 @@ public:
                     newPair += mHexChars[value2];
                     mPairHash.nextHash(newPair, mPosX, mPosY);
                     mSenderToControl.send("/addBitcoinMarker", newPair, mPosX, mPosY);
-
-//                    auto module = mRenderTree.createModule<TextRenderModule>();
-//                    module->setFontSize(24);
-//                    module->setScale(0.3);
-//                    module->setText(newPair);
-//                    module->setPosition(Vec3d(mPosX- 0.5, mPosY- 0.5, 0.2999));
-//                    module->addBehavior(std::make_shared<Timeout>(10 * window().fps()));
-//                    module->addBehavior(std::make_shared<Sink>(3* window().fps(), -0.3));
-//                    module->addBehavior(std::make_shared<FadeOut>(7* window().fps(),3* window().fps()));
+                    mSenderToGraphics.send("/addBitcoinMarker", newPair, mPosX, mPosY);
                 }
             }
             state().chaos += dist* chaosSpeed;
@@ -296,7 +300,7 @@ public:
     }
 
     virtual void onMessage(osc::Message &m) override {
-        m.print();
+//        m.print();
         if (m.addressPattern() == "/dist" && m.typeTags() == "fff") {
             m >> mDist >> mDeltaX >> mDeltaY;
         } else if (m.addressPattern() == "/drop" && m.typeTags() == "ff") {
@@ -339,6 +343,7 @@ public:
     SharedState &state() {return *mState;}
 
     osc::Send mSenderToControl {CONTROL_IN_PORT, CONTROL_IP_ADDRESS};
+    osc::Send mSenderToGraphics {GRAPHICS_IN_PORT, GRAPHICS_IP_ADDRESS};
     osc::Recv mRecvFromControl {SIMULATOR_IN_PORT};
 };
 
@@ -376,7 +381,6 @@ public:
 	Parameter gainBackground3 {"background3", "", 0.2f, "", 0.0f, 1.0f};
 
 	ParameterGUI mParameterGUI;
-
 
 	// This constructor is where we initialize the application
 	MyApp(): mPainter(&mState, &shader()),

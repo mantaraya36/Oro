@@ -39,6 +39,13 @@ using namespace std;
 #define SIMULATOR_IP_ADDRESS "localhost"
 #define SIMULATOR_IN_PORT 10200
 
+// Graphics master server
+#define GRAPHICS_IP_ADDRESS "localhost"
+#define GRAPHICS_IN_PORT 10100
+
+
+#define LAGOON_Y 2.0
+
 struct Ofrenda {
     gam::Decay<float> envelope;
 };
@@ -144,7 +151,7 @@ inline int indexAt(int x, int y, int z){
 }
 
 typedef struct {
-    double lightPhase;
+    double lightPhase = 0.75;
     float dev[GRID_SIZE * GRID_SIZE * GRID_SIZE];
 
     float chaos;
@@ -163,7 +170,36 @@ typedef struct {
 
 } SharedState;
 
-class SharedPainter {
+// -------------- Painter
+#include "render_tree.hpp"
+
+class Sink2 : public Behavior {
+    friend class RenderModule;
+public:
+    Sink2(unsigned long numTicks, float zDelta) : Behavior() {
+        mNumTicks = numTicks;
+        mDelta = zDelta/numTicks;
+    }
+
+    virtual void init() override {
+        mTargetTicks = mModule->getTicks() + mNumTicks;
+    }
+
+    virtual void tick() override {
+        if (mModule->getTicks() < mTargetTicks) {
+            Vec3f pos = mModule->getPosition();
+            pos.y -= mDelta;
+            mModule->setPosition(pos);
+        }
+    }
+
+private:
+    unsigned long mTargetTicks;
+    unsigned long mNumTicks;
+    float mDelta;
+};
+
+class SharedPainter : osc::PacketHandler {
 public:
 
     Light mLight;			// Necessary to light objects in the scene
@@ -181,6 +217,12 @@ public:
 
     Image imagesOfrendas[NUM_OFRENDAS];
     Texture textureOfrendas[NUM_OFRENDAS];
+
+	RenderTree mRenderTree;
+
+	float fps = 60;
+
+	osc::Recv mRecvFromSimulator {GRAPHICS_IN_PORT};
 
     SharedPainter(SharedState *state, ShaderProgram *shader) {
         mState = state;
@@ -219,6 +261,10 @@ public:
 			}
 		}
 
+		// Initialize OSC server
+		mRecvFromSimulator.handler(*this);
+        mRecvFromSimulator.timeout(0.005);
+        mRecvFromSimulator.start();
     }
 
     void onInit() {
@@ -271,7 +317,6 @@ public:
         float fogColor[4] = {0.0f, 0.0f, 0.0f, 0.2f};
         shader().uniform4("fogColor", fogColor, 4);
 
-		state().lightPhase += 1./1800; if(state().lightPhase > 1) state().lightPhase -= 1;
 		float x = cos(7*state().lightPhase*2*M_PI);
 		float y = sin(11*state().lightPhase*2*M_PI);
 		float z = cos(state().lightPhase*2*M_PI)*0.5 - 0.6;
@@ -318,10 +363,16 @@ public:
 
         float fogStart = 2;
         float fogEnd = 30;
-        if (state().chaos < 0.3) {
-            fogStart = 0.1;
-            fogEnd = 0.2;
-        }
+		fogStart = 0.1;
+        fogEnd = 0.2;
+        if (state().chaos > 0.2 && state().chaos < 0.5) {
+			fogStart += (2 - 0.1) * (state().chaos - 0.1) / 0.3;
+			fogEnd += (30 - 0.2) * (state().chaos - 0.1) / 0.3;
+		} else if (state().chaos >= 0.4) {
+			fogStart = 2;
+			fogEnd = 30;
+		}
+
         g.fog(fogEnd, fogStart, Color(0,0,0, 0.2));
 
 		g.pushMatrix();
@@ -380,8 +431,13 @@ public:
 //        light();
 //        waterMesh.colors()[0] = waterMesh.get();
 //        waterMesh.colors()[0] .a = 1.0;
-        g.translate(0, 1.3, -4.0);
-        g.rotate(70, 1, 0, 0);
+        g.translate(0, LAGOON_Y, -3.0);
+        g.rotate(-90, 1, 0, 0);
+		float waterScale = 1.5;
+		if (state().chaos > 0.6) {
+			waterScale += 2.0 * (state().chaos - 0.6) * 0.4;
+		}
+		g.scale(waterScale, waterScale*waterScale, waterScale);
         g.draw(waterMesh);
         g.popMatrix();
 
@@ -404,9 +460,67 @@ public:
                 g.popMatrix();
             }
         }
+		mRenderTree.render(g);
 
         g.blendOff();
 	}
+
+	virtual void onMessage(osc::Message &m) {
+		if (m.addressPattern() == "/addBitcoinMarker" && m.typeTags() == "sff") {
+			string chars;
+			float x,y;
+			m >> chars >> x >> y;
+			addBitcoinMarker(chars, x, y);
+		} else if (m.addressPattern() == "/showBitcoinReport" && m.typeTags() == "si") {
+			string chars;
+			int isBitcoin;
+			m >> chars >> isBitcoin;
+			showBitcoinReport(chars, isBitcoin != 0);
+		}
+	}
+
+	void showBitcoinReport(std::string hash, bool isBitcoin) {
+
+		auto module = mRenderTree.createModule<TextRenderModule>();
+        module->setFontSize(18);
+        module->setScale(0.4);
+        module->setText(hash);
+        module->setPosition(Vec3d(rnd::gaussian() * 1.2, LAGOON_Y, -1.5));
+
+        module->addBehavior(std::make_shared<Sink2>(5* fps, -0.08));
+        module->addBehavior(std::make_shared<FadeOut>(6* fps,3* fps));
+
+        auto module2 = mRenderTree.createModule<TextRenderModule>();
+        module2->setFontSize(18);
+        module2->setScale(0.2);
+        if (isBitcoin) {
+            module2->setText("Bitcoin!!");
+        } else {
+            module2->setText("Not a Bitcoin");
+        }
+        module2->setPosition(Vec3d(-0.4, 0.4, 0.079990));
+//                    module2->addBehavior(std::make_shared<FadeIn>(2* fps));
+        module2->addBehavior(std::make_shared<Sink2>(4* fps, 0.08));
+        module2->addBehavior(std::make_shared<FadeOut>(4* fps,5* fps));
+
+//        auto lineStrip = mRenderTree.createModule<LineStripModule>();
+//        for (int i = 0; i < 32; i++) {
+//            lineStrip->addVertex(mPairHash.mHashX[i] * window(0).width()/2, mPairHash.mHashY[i] * window(0).height()/2, 0.1);
+//        }
+//        lineStrip->addBehavior(std::make_shared<FadeOut>(7* fps,3* fps));
+    }
+
+    void addBitcoinMarker(std::string text, float x, float y) {
+        auto module = mRenderTree.createModule<TextRenderModule>();
+        module->setFontSize(24);
+        module->setScale(1.0);
+        module->setText(text);
+//        module->setPosition(Vec3d(x- 0.5, LAGOON_Y, y - 3));
+		module->setPosition(Vec3d(2 * (x - 0.5), LAGOON_Y - 1, y - 2.0));
+        module->addBehavior(std::make_shared<Timeout>(10 * fps));
+        module->addBehavior(std::make_shared<Sink2>(10* fps, 3.0 + rnd::gaussian()*0.5));
+        module->addBehavior(std::make_shared<FadeOut>(7* fps,3* fps));
+    }
 
     SharedState &state() {return *mState;}
     SharedState *mState;

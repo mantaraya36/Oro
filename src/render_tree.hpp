@@ -118,7 +118,7 @@ public:
 
 protected:
     virtual void init(Graphics &g) = 0;
-    virtual void render(Graphics &g) = 0;
+    virtual void render(Graphics &g, float dt = -1.0) = 0;
     virtual void cleanup() {}
 
 	// Only use this lock to protect data when setting it in child classes. The initInternal()
@@ -137,7 +137,7 @@ private:
         }
     }
 
-    void renderInternal(Graphics &g) {
+    void renderInternal(Graphics &g, float dt = -1.0) {
 		std::lock_guard<std::mutex> locker(mModuleLock);
 //        We should do some form of depth sorting here? It might help with occlusion in many cases...
         g.blending(true);
@@ -146,7 +146,7 @@ private:
         g.color(mColor);
         g.translate(mPosition[0], mPosition[1], mPosition[2]);
         g.scale(mScale);
-        render(g);
+        render(g, dt);
         g.popMatrix();
         for(auto child : mChildren) {
             g.pushMatrix();
@@ -155,7 +155,7 @@ private:
     //        g.rotate();
 
 //            g.scale(mScale);
-            child->renderInternal(g);
+            child->renderInternal(g, dt);
             g.popMatrix();
         }
         std::vector<std::shared_ptr<Behavior>> behaviorsToRemove;
@@ -325,7 +325,7 @@ protected:
         initDone = true;
     }
 
-    virtual void render(Graphics &g)
+    virtual void render(Graphics &g, float dt = 1.0f)
     {
         g.pushMatrix();
         mFont.texture().bind();
@@ -391,7 +391,7 @@ protected:
     {
     }
 
-    virtual void render(Graphics &g) override
+    virtual void render(Graphics &g, float dt = 1.0f) override
     {
 //        mMesh.reset();
 //        addCube(mMesh);
@@ -441,7 +441,7 @@ protected:
         mQuad.vertex( 1,  1, 0);
     }
 
-    virtual void render(Graphics &g) override
+    virtual void render(Graphics &g, float dt = 1.0f) override
     {
         g.blendModeTrans();
         mTexture.bind(0);
@@ -470,7 +470,7 @@ protected:
         addSphereWithTexcoords(mMesh);
     }
 
-    virtual void render(Graphics &g) override
+    virtual void render(Graphics &g, float dt = 1.0f) override
     {
         mTexture.bind(0);
         g.draw(mMesh);
@@ -499,7 +499,8 @@ public:
 
     virtual bool addModule(std::shared_ptr<RenderModule> module);
 
-    void render(Graphics &g);
+    void render(Graphics &g, float dt = 1.0f);
+
     template<class ModuleType>
     std::shared_ptr<ModuleType> createModule() {
         auto module = ModuleType::create();
@@ -523,7 +524,7 @@ bool RenderTree::addModule(std::shared_ptr<RenderModule> module)
     mModulesPendingInit.push_back(module);
 }
 
-void RenderTree::render(Graphics &g)
+void RenderTree::render(Graphics &g, float dt)
 {
     std::lock_guard<std::mutex> locker(mRenderChainLock);
     for(auto module: mModulesPendingInit) {
