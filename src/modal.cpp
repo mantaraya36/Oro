@@ -30,48 +30,54 @@ using namespace al;
 #define SYNTH_POLYPHONY 16
 #define WIDTHFACTOR 100
 
-namespace gam{
-template <class Tv=gam::real, class Tp=gam::real, class Td=DomainObserver>
-class Mode : public Filter2<Tv,Tp,Td>{
-public:
+//namespace gam{
+//template <class Tv=gam::real, class Tp=gam::real, class Td=DomainObserver>
+//class Mode : public Filter2<Tv,Tp,Td>{
+//public:
 
-    /// \param[in] frq	Center frequency
-    /// \param[in] wid	Bandwidth
-    Mode(Tp frq = Tp(1000), Tp wid = Tp(100))
-        :	Base(frq, wid)
-    {
-        onDomainChange(1);
-    }
+//    /// \param[in] frq	Center frequency
+//    /// \param[in] wid	Bandwidth
+//    Mode(Tp frq = Tp(1000), Tp wid = Tp(100))
+//        :	Base(frq, wid)
+//    {
+//        b0 =   alpha
+//                b1 =   0
+//                b2 =  -alpha
+//                a0 =   1 + alpha
+//                a1 =  -2*cos(w0)
+//                a2 =   1 - alpha
+//        onDomainChange(1);
+//    }
 
-    /// Set center frequency
-    void freq(Tp v){
-        Base::freqRef(v);
-        mSin = scl::cosP3<Tp>(scl::foldOnce<Tp>(v - Tp(0.25), Tp(0.5)));
-        computeGain();
-    }
+//    /// Set center frequency
+//    void freq(Tp v){
+//        Base::freqRef(v);
+//        mSin = scl::cosP3<Tp>(scl::foldOnce<Tp>(v - Tp(0.25), Tp(0.5)));
+//        computeGain();
+//    }
 
-    /// Set bandwidth
-    void width(Tp v){ Base::width(v); computeGain(); }
+//    /// Set bandwidth
+//    void width(Tp v){ Base::width(v); computeGain(); }
 
-    void set(Tp frq, Tp wid){ Base::width(wid); freq(frq); }
+//    void set(Tp frq, Tp wid){ Base::width(wid); freq(frq); }
 
-    /// Filter sample
-    Tv operator()(Tv in){
-        Tv t = in * gain() + d1*mC[1] + d2*mC[2];
-        this->delay(t);
-        return t;
-    }
+//    /// Filter sample
+//    Tv operator()(Tv in){
+//        Tv t = in * gain() + d1*mC[1] + d2*mC[2];
+//        this->delay(t);
+//        return t;
+//    }
 
-    void onDomainChange(double r){ freq(mFreq); width(mWidth); }
+//    void onDomainChange(double r){ freq(mFreq); width(mWidth); }
 
-protected:
-    INHERIT_FILTER2;
-    Tp mSin;
+//protected:
+//    INHERIT_FILTER2;
+//    Tp mSin;
 
-    // compute constant gain factor
-    void computeGain(){ gain() = 1.0; /*(Tp(1) - mRad*mRad) * mSin;*/ }
-};
-}
+//    // compute constant gain factor
+//    void computeGain(){ gain() = 1.0; /*(Tp(1) - mRad*mRad) * mSin;*/ }
+//};
+//}
 
 class ModalSynthParameters {
 public:
@@ -92,6 +98,9 @@ public:
 class ModalSynth {
 public:
     ModalSynth(){
+        for (int i = 0; i < NUM_VOICES; i++) {
+            mResonators[i].type(gam::BAND_PASS_UNIT);
+        }
     }
 
     void trigger(ModalSynthParameters &params) {
@@ -104,7 +113,9 @@ public:
         mNoiseEnv.reset();
 
         for (int i = 0; i < NUM_VOICES; i++) {
-            mResonators[i].set(params.mFundamental * mFrequencyFactors[i], mWidths[i] * params.mFundamental * mFrequencyFactors[i] / WIDTHFACTOR);
+            mResonators[i].freq(params.mFundamental * mFrequencyFactors[i]);
+            mResonators[i].res(params.mFundamental * mFrequencyFactors[i]/(mWidths[i] * params.mFundamental * mFrequencyFactors[i] / WIDTHFACTOR));
+//            mResonators[i].set(params.mFundamental * mFrequencyFactors[i], );
         }
         mDone = false;
         mOutputChannel = params.mOutputChannel;
@@ -116,7 +127,7 @@ public:
         while (io()) {
             noise = mNoise() * mNoiseEnv();
             for (int i = 0; i < NUM_VOICES; i++) {
-                float value = mResonators[i](noise) * mAmplitudes[i] *  std::pow(10, (mLevel-100)/ 20.0);
+                float value = 100000 * mResonators[i](noise) * mAmplitudes[i] *  std::pow(10, (mLevel-100)/ 20.0);
 				io.out(mOutputChannel) +=  value;
                 if(value > max) {max = value;};
 			}
@@ -140,7 +151,8 @@ private:
     // Instance parameters
 
     // Synthesis
-    gam::Mode<> mResonators[NUM_VOICES];
+//    gam::Mode<> mResonators[NUM_VOICES];
+    gam::Biquad<> mResonators[NUM_VOICES];
     float mWidths[NUM_VOICES];
     float mAmplitudes[NUM_VOICES];
     gam::AD<> mNoiseEnv {0.001f, 0.001f};
@@ -232,6 +244,9 @@ private:
         {"amp7", "", 1.0f, "", 0.0, 3.0},
         {"amp8", "", 1.0f, "", 0.0, 3.0}
     };
+
+    Parameter keyboardOffset {"Key Offset", "", 0.0, "", -20, 40};
+
     // Presets
     PresetHandler mPresetHandler {"modalPresets"};
 
@@ -333,6 +348,7 @@ void ModalSynthApp::initializeGui()
 //    gui << mArcStart << mArcSpan;
 //	gui << mAttackCurve << mReleaseCurve;
     gui << midiLight;
+    gui << keyboardOffset;
 
 //    gui << SequencerGUI::makeSequencerPlayerView(sequencer)
 //        << SequencerGUI::makeRecorderView(recorder);
@@ -604,7 +620,7 @@ void ModalSynthApp::randomizeWidths(float max, bool sortPartials)
         sort(randomFactors.begin(), randomFactors.end());
     }
     for (int i = 0; i < NUM_VOICES; i++) {
-        mWidths[i].set(randomFactors[i]);
+        mWidths[i].set(randomFactors[i] * WIDTHFACTOR);
     }
 }
 
@@ -672,47 +688,48 @@ inline float mtof(int m) {
 void ModalSynthApp::triggerKey(int id)
 {
     float frequency = 440;
+    int keyOffset = (int) keyboardOffset.get();
     switch(id){
-    case '1': frequency = mtof(40);break;
-    case '2': frequency = mtof(41);break;
-    case '3': frequency = mtof(42);break;
-    case '4': frequency = mtof(43);break;
-    case '5': frequency = mtof(44);break;
-    case '6': frequency = mtof(45);break;
-    case '7': frequency = mtof(46);break;
-    case '8': frequency = mtof(47);break;
-    case '9': frequency = mtof(48);break;
-    case '0': frequency = mtof(49);break;
-    case 'q': frequency = mtof(50);break;
-    case 'w': frequency = mtof(51);break;
-    case 'e': frequency = mtof(52);break;
-    case 'r': frequency = mtof(53);break;
-    case 't': frequency = mtof(54);break;
-    case 'y': frequency = mtof(55);break;
-    case 'u': frequency = mtof(56);break;
-    case 'i': frequency = mtof(57);break;
-    case 'o': frequency = mtof(58);break;
-    case 'p': frequency = mtof(59);break;
-    case 'a': frequency = mtof(60);break;
-    case 's': frequency = mtof(61);break;
-    case 'd': frequency = mtof(62);break;
-    case 'f': frequency = mtof(63);break;
-    case 'g': frequency = mtof(64);break;
-    case 'h': frequency = mtof(65);break;
-    case 'j': frequency = mtof(66);break;
-    case 'k': frequency = mtof(67);break;
-    case 'l': frequency = mtof(68);break;
-    case ';': frequency = mtof(69);break;
-    case 'z': frequency = mtof(70);break;
-    case 'x': frequency = mtof(71);break;
-    case 'c': frequency = mtof(72);break;
-    case 'v': frequency = mtof(73);break;
-    case 'b': frequency = mtof(74);break;
-    case 'n': frequency = mtof(75);break;
-    case 'm': frequency = mtof(76);break;
-    case ',': frequency = mtof(77);break;
-    case '.': frequency = mtof(78);break;
-    case '/': frequency = mtof(79);break;
+    case '1': frequency = mtof(50 + keyOffset);break;
+    case '2': frequency = mtof(51 + keyOffset);break;
+    case '3': frequency = mtof(52 + keyOffset);break;
+    case '4': frequency = mtof(53 + keyOffset);break;
+    case '5': frequency = mtof(54 + keyOffset);break;
+    case '6': frequency = mtof(55 + keyOffset);break;
+    case '7': frequency = mtof(56 + keyOffset);break;
+    case '8': frequency = mtof(57 + keyOffset);break;
+    case '9': frequency = mtof(58 + keyOffset);break;
+    case '0': frequency = mtof(59 + keyOffset);break;
+    case 'q': frequency = mtof(60 + keyOffset);break;
+    case 'w': frequency = mtof(61 + keyOffset);break;
+    case 'e': frequency = mtof(62 + keyOffset);break;
+    case 'r': frequency = mtof(63 + keyOffset);break;
+    case 't': frequency = mtof(64 + keyOffset);break;
+    case 'y': frequency = mtof(65 + keyOffset);break;
+    case 'u': frequency = mtof(66 + keyOffset);break;
+    case 'i': frequency = mtof(67 + keyOffset);break;
+    case 'o': frequency = mtof(68 + keyOffset);break;
+    case 'p': frequency = mtof(69 + keyOffset);break;
+    case 'a': frequency = mtof(70 + keyOffset);break;
+    case 's': frequency = mtof(71 + keyOffset);break;
+    case 'd': frequency = mtof(72 + keyOffset);break;
+    case 'f': frequency = mtof(73 + keyOffset);break;
+    case 'g': frequency = mtof(74 + keyOffset);break;
+    case 'h': frequency = mtof(75 + keyOffset);break;
+    case 'j': frequency = mtof(76 + keyOffset);break;
+    case 'k': frequency = mtof(77 + keyOffset);break;
+    case 'l': frequency = mtof(78 + keyOffset);break;
+    case ';': frequency = mtof(79 + keyOffset);break;
+    case 'z': frequency = mtof(80 + keyOffset);break;
+    case 'x': frequency = mtof(81 + keyOffset);break;
+    case 'c': frequency = mtof(82 + keyOffset);break;
+    case 'v': frequency = mtof(83 + keyOffset);break;
+    case 'b': frequency = mtof(84 + keyOffset);break;
+    case 'n': frequency = mtof(85 + keyOffset);break;
+    case 'm': frequency = mtof(86 + keyOffset);break;
+    case ',': frequency = mtof(87 + keyOffset);break;
+    case '.': frequency = mtof(88 + keyOffset);break;
+    case '/': frequency = mtof(89 + keyOffset);break;
     }
 
     std::cout << id << ".." << frequency << std::endl;
