@@ -539,6 +539,8 @@ private:
         {"modFreq23", "",1.0f, "", 0.0, 30.0},
         {"modFreq24", "",1.0f, "", 0.0, 30.0}
                                               };
+    Parameter keyboardOffset {"Key Offset", "", 0.0, "", -20, 40};
+
     // Presets
     PresetHandler mPresetHandler;
 
@@ -796,6 +798,7 @@ void AddSynthApp::initializeGui()
 	gui << mAttackCurve << mReleaseCurve;
     gui << mLayer;
     gui << midiLight;
+    gui <<keyboardOffset;
 
     glv::Button *keyboardButton = new glv::Button;
     glv::Table *table = new glv::Table("><");
@@ -1307,100 +1310,68 @@ void AddSynthApp::onSound(AudioIOData &io)
     }
 }
 
+inline float mtof(int m) {
+    return 440.0 * pow (2, (m - 69)/ 12.0);
+}
+
 void AddSynthApp::onKeyDown(const Keyboard &k)
 {
     if (!mPresetKeyboardActive) {
         return;
     }
-    if (k.ctrl() || k.alt() || k.meta()) {
-        trigger(100);
-    }
-//    switch(k.key()){
-//    case '1': trigger(40);
-//    case '2': trigger(41);
-//    case '3': trigger(42);
-//    case '4': trigger(43);
-//    case '5': trigger(44);
-//    case '6': trigger(45);
-//    case '7': trigger(46);
-//    case '8': trigger(47);
-//    case '9': trigger(48);
-//    case '0': trigger(49);
-//    case 'q': trigger(50);
-//    case 'w': trigger(51);
-//    case 'e': trigger(52);
-//    case 'r': trigger(53);
-//    case 't': trigger(54);
-//    case 'y': trigger(55);
-//    case 'u': trigger(56);
-//    case 'i': trigger(57);
-//    case 'o': trigger(58);
-//    case 'p': trigger(59);
-//    case 'a': trigger(60);
-//    case 's': trigger(61);
-//    case 'd': trigger(62);
-//    case 'f': trigger(63);
-//    case 'g': trigger(64);
-//    case 'h': trigger(65);
-//    case 'j': trigger(66);
-//    case 'k': trigger(67);
-//    case 'l': trigger(68);
-//    case ';': trigger(69);
-//    case 'z': trigger(70);
-//    case 'x': trigger(71);
-//    case 'c': trigger(72);
-//    case 'v': trigger(73);
-//    case 'b': trigger(74);
-//    case 'n': trigger(75);
-//    case 'm': trigger(76);
-//    case ',': trigger(77);
-//    case '.': trigger(78);
-//    case '/': trigger(79);
-//    default: break;
+//    if (k.ctrl() || k.alt() || k.meta()) {
+//        trigger(100);
 //    }
 
-    switch(k.key()){
-    case '1': mPresetHandler.recallPreset(0) ; trigger(0);  break;
-    case '2': mPresetHandler.recallPreset(1) ; trigger(1);  break;
-    case '3': mPresetHandler.recallPreset(2) ; trigger(2);  break;
-    case '4': mPresetHandler.recallPreset(3) ; trigger(3);  break;
-    case '5': mPresetHandler.recallPreset(4) ; trigger(4);  break;
-    case '6': mPresetHandler.recallPreset(5) ; trigger(5);  break;
-    case '7': mPresetHandler.recallPreset(6) ; trigger(6);  break;
-    case '8': mPresetHandler.recallPreset(7) ; trigger(7);  break;
-    case '9': mPresetHandler.recallPreset(8) ; trigger(8);  break;
-    case '0': mPresetHandler.recallPreset(9) ; trigger(9);  break;
-    case 'q': mPresetHandler.recallPreset(10); trigger(10); break;
-    case 'w': mPresetHandler.recallPreset(11); trigger(11); break;
-    case 'e': mPresetHandler.recallPreset(12); trigger(12); break;
-    case 'r': mPresetHandler.recallPreset(13); trigger(13); break;
-    case 't': mPresetHandler.recallPreset(14); trigger(14); break;
-    case 'y': mPresetHandler.recallPreset(15); trigger(15); break;
-    case 'u': mPresetHandler.recallPreset(16); trigger(16); break;
-    case 'i': mPresetHandler.recallPreset(17); trigger(17); break;
-    case 'o': mPresetHandler.recallPreset(18); trigger(18); break;
-    case 'p': mPresetHandler.recallPreset(19); trigger(19); break;
-    case 'a': mPresetHandler.recallPreset(20); trigger(20); break;
-    case 's': mPresetHandler.recallPreset(21); trigger(21); break;
-    case 'd': mPresetHandler.recallPreset(22); trigger(22); break;
-    case 'f': mPresetHandler.recallPreset(23); trigger(23); break;
-    case 'g': mPresetHandler.recallPreset(24); trigger(24); break;
-    case 'h': mPresetHandler.recallPreset(25); trigger(25); break;
-    case 'j': mPresetHandler.recallPreset(26); trigger(26); break;
-    case 'k': mPresetHandler.recallPreset(27); trigger(27); break;
-    case 'l': mPresetHandler.recallPreset(28); trigger(28); break;
-    case ';': mPresetHandler.recallPreset(29); trigger(29); break;
-    case 'z': mPresetHandler.recallPreset(30); trigger(30); break;
-    case 'x': mPresetHandler.recallPreset(31); trigger(31); break;
-    case 'c': mPresetHandler.recallPreset(32); trigger(32); break;
-    case 'v': mPresetHandler.recallPreset(33); trigger(33); break;
-    case 'b': mPresetHandler.recallPreset(34); trigger(34); break;
-    case 'n': mPresetHandler.recallPreset(35); trigger(35); break;
-    case 'm': mPresetHandler.recallPreset(36); trigger(36); break;
-    case ',': mPresetHandler.recallPreset(37); trigger(37); break;
-    case '.': mPresetHandler.recallPreset(38); trigger(38); break;
-    case '/': mPresetHandler.recallPreset(39); trigger(39); break;
+    float frequency = 440;
+    int keyOffset = (int) keyboardOffset.get();
+    int id = k.key();
+    switch(id){
+    case '1': frequency = mtof(50 + keyOffset);break;
+    case '2': frequency = mtof(51 + keyOffset);break;
+    case '3': frequency = mtof(52 + keyOffset);break;
+    case '4': frequency = mtof(53 + keyOffset);break;
+    case '5': frequency = mtof(54 + keyOffset);break;
+    case '6': frequency = mtof(55 + keyOffset);break;
+    case '7': frequency = mtof(56 + keyOffset);break;
+    case '8': frequency = mtof(57 + keyOffset);break;
+    case '9': frequency = mtof(58 + keyOffset);break;
+    case '0': frequency = mtof(59 + keyOffset);break;
+    case 'q': frequency = mtof(60 + keyOffset);break;
+    case 'w': frequency = mtof(61 + keyOffset);break;
+    case 'e': frequency = mtof(62 + keyOffset);break;
+    case 'r': frequency = mtof(63 + keyOffset);break;
+    case 't': frequency = mtof(64 + keyOffset);break;
+    case 'y': frequency = mtof(65 + keyOffset);break;
+    case 'u': frequency = mtof(66 + keyOffset);break;
+    case 'i': frequency = mtof(67 + keyOffset);break;
+    case 'o': frequency = mtof(68 + keyOffset);break;
+    case 'p': frequency = mtof(69 + keyOffset);break;
+    case 'a': frequency = mtof(70 + keyOffset);break;
+    case 's': frequency = mtof(71 + keyOffset);break;
+    case 'd': frequency = mtof(72 + keyOffset);break;
+    case 'f': frequency = mtof(73 + keyOffset);break;
+    case 'g': frequency = mtof(74 + keyOffset);break;
+    case 'h': frequency = mtof(75 + keyOffset);break;
+    case 'j': frequency = mtof(76 + keyOffset);break;
+    case 'k': frequency = mtof(77 + keyOffset);break;
+    case 'l': frequency = mtof(78 + keyOffset);break;
+    case ';': frequency = mtof(79 + keyOffset);break;
+    case 'z': frequency = mtof(80 + keyOffset);break;
+    case 'x': frequency = mtof(81 + keyOffset);break;
+    case 'c': frequency = mtof(82 + keyOffset);break;
+    case 'v': frequency = mtof(83 + keyOffset);break;
+    case 'b': frequency = mtof(84 + keyOffset);break;
+    case 'n': frequency = mtof(85 + keyOffset);break;
+    case 'm': frequency = mtof(86 + keyOffset);break;
+    case ',': frequency = mtof(87 + keyOffset);break;
+    case '.': frequency = mtof(88 + keyOffset);break;
+    case '/': frequency = mtof(89 + keyOffset);break;
     }
+
+//    std::cout << id << ".." << frequency << std::endl;
+    mFundamental.set(frequency);
+    trigger(id);
 }
 
 void AddSynthApp::onKeyUp(const Keyboard &k)
@@ -1408,52 +1379,7 @@ void AddSynthApp::onKeyUp(const Keyboard &k)
     if (!mPresetKeyboardActive) {
         return;
     }
-    if (k.ctrl() || k.alt() || k.meta()) {
-        release(100);
-    }
-    switch(k.key()){
-    case '1': release(0);
-    case '2': release(1);
-    case '3': release(2);
-    case '4': release(3);
-    case '5': release(4);
-    case '6': release(5);
-    case '7': release(6);
-    case '8': release(7);
-    case '9': release(8);
-    case '0': release(9);
-    case 'q': release(10);
-    case 'w': release(11);
-    case 'e': release(12);
-    case 'r': release(13);
-    case 't': release(14);
-    case 'y': release(15);
-    case 'u': release(16);
-    case 'i': release(17);
-    case 'o': release(18);
-    case 'p': release(19);
-    case 'a': release(20);
-    case 's': release(21);
-    case 'd': release(22);
-    case 'f': release(23);
-    case 'g': release(24);
-    case 'h': release(25);
-    case 'j': release(26);
-    case 'k': release(27);
-    case 'l': release(28);
-    case ';': release(29);
-    case 'z': release(30);
-    case 'x': release(31);
-    case 'c': release(32);
-    case 'v': release(33);
-    case 'b': release(34);
-    case 'n': release(35);
-    case 'm': release(36);
-    case ',': release(37);
-    case '.': release(38);
-    case '/': release(39);
-    default: break;
-    }
+    release(k.key());
 }
 
 void AddSynthApp::multiplyPartials(float factor)
