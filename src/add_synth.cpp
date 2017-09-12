@@ -265,7 +265,7 @@ public:
                           ;
 #else
         int outChans = 2;
-        outputRouting = {0, 1};
+        outputRouting = {{0, 1}, {0,1}, {0,1}};
 #endif
         initAudio(44100, 2048, outChans, 0);
         gam::sampleRate(audioIO().fps());
