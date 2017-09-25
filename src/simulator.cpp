@@ -72,7 +72,8 @@ public:
     Simulator(SharedState *state) :
         mChaos("chaos", "", 0),
 	mVideoDomain(30),
-	mMaker("192.168.10.255")
+//	mMaker("192.168.10.255")
+    mMaker("127.0.0.1")
     {
         mState = state;
         mMouseSpeed = 0;
@@ -101,6 +102,12 @@ public:
         /* States */
         mMaker.start();
     }
+
+    ~Simulator() {
+        mMaker.stop();
+        mRecvFromControl.stop();
+    }
+
 
     int indexAt(int x, int y, int z){
         //return (z*Nx + y)*Ny + x;
@@ -147,6 +154,7 @@ public:
 
 //        }
 
+        // Calculate grid deviations
         float * dev_ = state().dev;
         unsigned int count = 0;
         for (int x = 0; x < GRID_SIZE; x++) {
@@ -161,6 +169,8 @@ public:
                 }
             }
         }
+
+        // Make ofrendas come down
         for (unsigned int i = 0; i < NUM_OFRENDAS; i++) {
             if (state().ofrendas[i]) {
                 float env = mOfrendas.ofrendas[i].envelope();
@@ -191,20 +201,22 @@ public:
 
         float chaosSpeed = 0.1; //0.01
 
+        // Activate ofrendas
         if (mDist > 0) {
             float dist = mDist;
             mDist = 0;
             if(state().chaos > 0.05 && state().chaos <= 0.4 && rnd::prob(0.02)) {
                 for (unsigned int i = 0; i < NUM_OFRENDAS; i++) {
                     if (!state().ofrendas[i]) {
-                        state().ofrendas[i] = true;
                         mOfrendas.ofrendas[i].envelope.reset();
                         state().posOfrendas[i].x = rnd::gaussian()* 0.3;
+                        state().ofrendas[i] = true;
                         break;
                     }
                 }
 
             }
+            // Activate bitcoin markers
             if(state().chaos > 0.4 && rnd::prob(0.2)){
                 if (mPairHash.hashComplete()) {
 //                    std::cout << mPairHash.mHash << std::endl;
@@ -280,6 +292,7 @@ public:
 		}}
         zcurr = zprev;
 
+        state().zcurr = zcurr;
         velocity.set(0.001 + (state().chaos*state().chaos* 0.49));
 
         decay.set(0.93 + (state().chaos* 0.068));
@@ -348,8 +361,7 @@ public:
 };
 
 
-
-class MyApp : public OmniApp {
+class MyApp : public App {
 public:
 
     SharedState mState;
@@ -383,7 +395,7 @@ public:
 	ParameterGUI mParameterGUI;
 
 	// This constructor is where we initialize the application
-	MyApp(): mPainter(&mState, &shader()),
+	MyApp(): mPainter(&mState, &mShader, GRAPHICS_IN_PORT, 12098),
         mSimulator(&mState),
 	    granX("Bounced Files/Piezas oro 1.wav"),
 	    granY("Bounced Files/Piezas oro 2.wav"),
@@ -417,7 +429,7 @@ public:
 		initAudio(48000, 256, 8, 0);
 #else
 		audioIO().device(0);
-		initAudio("ECHO X5", 48000, 64, 0, 60);
+		initAudio(48000, 64, 60, 0);
 #endif
 #endif
 
@@ -425,33 +437,34 @@ public:
 //		mParameterGUI << new glv::Label("Parameter GUI example");
 //		mParameterGUI << gainBackground1 << gainBackground2 << gainBackground3;
 
+        mPainter.setTreeMaster();
 		std::cout << "Constructor done" << std::endl;
 	}
 
-	virtual bool onCreate() override {
+	virtual void onCreate(const ViewpointWindow& win) override {
 //		mShader.compile(fogVert, fogFrag);
-        OmniApp::onCreate();
+//        OmniApp::onCreate();
 
-        nav().pos().set(0,3,10);
+//        nav().pos().set(0,3,10);
 //		nav().quat().fromAxisAngle(0.*M_2PI, 0,1,0);
-        omni().clearColor() = Color(0.02, 0.02, 0.04, 0.0);
+//        omni().clearColor() = Color(0.02, 0.02, 0.04, 0.0);
 
-        return true;
+//        return true;
 	}
 
     void setup() {
 
         mPainter.onInit();
 
-        auto& s = shader();
-        s.begin();
-        // the shader will look for texture0 uniform's data
-        // at binding point '0' >> we will bind the texture at '0'
-        s.uniform("texture0", 0);
-        // how much we mix the texture
-        s.uniform("texture", 1.0);
-        s.uniform("lighting", 0.9);
-        s.end();
+//        auto& s = mShader;
+//        s.begin();
+//        // the shader will look for texture0 uniform's data
+//        // at binding point '0' >> we will bind the texture at '0'
+//        s.uniform("texture0", 0);
+//        // how much we mix the texture
+//        s.uniform("texture", 1.0);
+//        s.uniform("lighting", 0.9);
+//        s.end();
     }
 
 	virtual void onAnimate(double dt) override {
@@ -529,7 +542,7 @@ public:
 	}
 
 	// This is called whenever a key is pressed.
-	virtual bool onKeyDown(const Keyboard& k) override {
+	virtual void onKeyDown(const Keyboard& k) override {
 
 		// Use a switch to do something when a particular key is pressed
 		switch(k.key()){
@@ -546,7 +559,7 @@ public:
 		case Keyboard::DELETE: printf("Pressed delete.\n"); break;
 		case Keyboard::F1: printf("Pressed F1.\n"); break;
 		}
-        return true;
+        return;
 	}
 
 //	// This is called whenever a mouse button is pressed.
@@ -580,8 +593,8 @@ public:
 //        return true;
 //    }
 
-    virtual std::string vertexCode() override;
-    virtual std::string fragmentCode() override;
+//    virtual std::string vertexCode() override;
+//    virtual std::string fragmentCode() override;
 
 
 	// *****************************************************
@@ -590,13 +603,13 @@ public:
 };
 
 
-inline std::string MyApp::vertexCode() {
-  return vertexShader;
-}
+//inline std::string MyApp::vertexCode() {
+//  return vertexShader;
+//}
 
-inline std::string MyApp::fragmentCode() {
-  return fragmentShader;
-}
+//inline std::string MyApp::fragmentCode() {
+//  return fragmentShader;
+//}
 
 
 int main(){

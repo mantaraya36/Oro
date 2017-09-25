@@ -147,6 +147,9 @@ public:
 
     void setup() {
 
+        for (int x = 0; x < Nx; x++) {
+
+        }
         mPainter.onInit();
 
         auto& s = shader();

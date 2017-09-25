@@ -43,8 +43,13 @@ using namespace std;
 #define GRAPHICS_IP_ADDRESS "localhost"
 #define GRAPHICS_IN_PORT 10100
 
+// Graphics slaves port
+#define GRAPHICS_SLAVE_PORT 21000
 
 #define LAGOON_Y 2.0
+
+// Wave function grid size
+static const int Nx = 200, Ny = Nx;
 
 struct Ofrenda {
     gam::Decay<float> envelope;
@@ -143,8 +148,6 @@ private:
 	int mMaxOverlap;
 };
 
-static const int Nx = 200, Ny = Nx;
-
 inline int indexAt(int x, int y, int z){
     //return (z*Nx + y)*Ny + x;
     return (y*Nx + x)*2 + z; // may give slightly faster accessing
@@ -165,6 +168,7 @@ typedef struct {
     bool ofrendas[NUM_OFRENDAS]; //if ofrendas are on or off
     Nav nav;
     float wave[Nx*Ny*2];
+	int zcurr {0};
 
     bool down;
 
@@ -219,12 +223,18 @@ public:
     Texture textureOfrendas[NUM_OFRENDAS];
 
 	RenderTree mRenderTree;
+	RenderTreeHandler mRenderTreeHandler {mRenderTree};
 
 	float fps = 60;
 
-	osc::Recv mRecvFromSimulator {GRAPHICS_IN_PORT};
+	osc::Recv mRecvFromSimulator;
+	osc::Recv mRecvFromGraphicsMaster;
 
-    SharedPainter(SharedState *state, ShaderProgram *shader) {
+    SharedPainter(SharedState *state, ShaderProgram *shader,
+	              uint16_t port = GRAPHICS_IN_PORT,
+	              uint16_t masterPort = GRAPHICS_SLAVE_PORT) :
+	    mRecvFromSimulator(port), mRecvFromGraphicsMaster(masterPort)
+	{
         mState = state;
         mShader = shader;
 
@@ -234,6 +244,19 @@ public:
 
         // Add a tessellated plane
 		addSurface(waterMesh, Nx,Ny);
+
+		for(int j=0; j<Ny; ++j){
+			for(int i=0; i<Nx; ++i){
+				int idx = j*Nx + i;
+				float r = sqrt((j - (Ny/2))*(j - (Ny/2)) + (i- (Nx/2))*(i- (Nx/2)));
+				if (r > Nx) {
+					waterMesh.color(Color(0.0, 0.0, 0.0, 0.0));
+				} else {
+					waterMesh.color(Color(1.0, 1.0, 1.0, 1.0));
+				}
+			}
+		}
+
 
 		for (Mesh &m: mGrid) {
 //			addCylinder(m, 0.01, 1);
@@ -265,6 +288,14 @@ public:
 		mRecvFromSimulator.handler(*this);
         mRecvFromSimulator.timeout(0.005);
         mRecvFromSimulator.start();
+
+		// For simplicty I'm routing both simulator and graphics master messages to
+		// the same function...
+
+		// Initialize graphics master OSC server
+		mRecvFromGraphicsMaster.handler(*this);
+        mRecvFromGraphicsMaster.timeout(0.005);
+        mRecvFromGraphicsMaster.start();
     }
 
     void onInit() {
@@ -300,6 +331,32 @@ public:
         mQuad.vertex( 1,  1, 0);
         mQuad.texCoord(1, 1);
     }
+
+	void setTreeMaster() {
+		int port = GRAPHICS_SLAVE_PORT;
+//		std::vector<std::string> addresses = {
+//		    "gr02",
+//		    "gr03",
+//		    "gr04",
+//		    "gr05",
+//		    "gr06",
+//		    "gr07",
+//		    "gr08",
+//		    "gr09",
+//		    "gr10",
+//		    "gr11",
+//		    "gr12",
+//		    "gr13",
+//		    "gr14"
+//		};
+//		mRecvFromGraphicsMaster.stop();
+		std::vector<std::string> addresses = {
+		    "localhost"
+		};
+		for (auto relayTo: addresses) {
+			mRenderTree.addRelayAddress(relayTo, port);
+		}
+	}
 
 
     void onDraw(Graphics& g){
@@ -420,8 +477,6 @@ public:
 
 //        mOfrendaMaterial();
 
-
-
         g.fog(30, 2, Color(0,0,0, 0.2));
         g.pushMatrix();
 //        mtrl.specular(RGB(0));
@@ -476,6 +531,8 @@ public:
 			int isBitcoin;
 			m >> chars >> isBitcoin;
 			showBitcoinReport(chars, isBitcoin != 0);
+		} else {
+			mRenderTreeHandler.consumeMessage(m, "");
 		}
 	}
 
@@ -515,7 +572,6 @@ public:
         module->setFontSize(24);
         module->setScale(1.0);
         module->setText(text);
-//        module->setPosition(Vec3d(x- 0.5, LAGOON_Y, y - 3));
 		module->setPosition(Vec3d(2 * (x - 0.5), LAGOON_Y - 1, y - 2.0));
         module->addBehavior(std::make_shared<Timeout>(10 * fps));
         module->addBehavior(std::make_shared<Sink2>(10* fps, 3.0 + rnd::gaussian()*0.5));

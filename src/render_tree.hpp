@@ -8,6 +8,7 @@
 #include <mutex>
 #include <map>
 #include <inttypes.h>
+#include <cassert>
 
 #include "allocore/graphics/al_Graphics.hpp"
 #include "allocore/graphics/al_Texture.hpp"
@@ -40,7 +41,56 @@ protected:
     RenderModule *mModule {nullptr};
 };
 
-// TODO add cleanup for modules
+class Relayer {
+public:
+
+	void relay(std::string addr) {
+		osc::Packet p;
+		p.addMessage(addr);
+		relay(p);
+	}
+
+	template <class T>
+	void relay(std::string &addr, T &value) {
+		osc::Packet p;
+		p.addMessage(addr, value);
+		relay(p);
+	}
+
+	template <class T1, class T2>
+	void relay(std::string addr, T1 &value1, T2 &value2) {
+		osc::Packet p;
+		p.addMessage(addr, value1, value2);
+		relay(p);
+	}
+
+	template <class T1, class T2, class T3>
+	void relay(std::string addr, T1 &value1, T2 &value2, T3 &value3) {
+		osc::Packet p;
+		p.addMessage(addr, value1, value2, value3);
+		relay(p);
+	}
+
+	void relay(std::string addr, Vec3f &vec) {
+		osc::Packet p;
+		p.addMessage(addr, vec[0], vec[1], vec[2]);
+		relay(p);
+	}
+
+	void relay(osc::Packet &p) {
+		for (auto &sender: mSenders) {
+			sender->send(p);
+		}
+	}
+
+	virtual void addRelayAddress(std::string address, int port) {
+		mSenders.push_back(std::unique_ptr<osc::Send>(new osc::Send(port, address.c_str())));
+	}
+
+private:
+	std::vector<std::unique_ptr<osc::Send>> mSenders;
+};
+
 class RenderModule : public OSCNotifier {
     friend class RenderTree;
     friend class RenderTreeHandler;
@@ -48,10 +98,10 @@ public:
     RenderModule() {} // perhaps have non public constructor and factory function in chain?
     virtual ~RenderModule() {}
 
-    void setPosition(Vec3f pos) { mPosition = pos; notifyListeners(moduleAddress() + "/position", pos);}
-    void setRotation(Vec3f rot) { mRotation = rot; notifyListeners(moduleAddress() + "/rotation", rot);}
-    void setScale(Vec3f scale) { mScale = scale; notifyListeners(moduleAddress() + "/scale", scale);}
-    void setColor(Color color) { mColor = color; /*notifyListeners(moduleAddress() + "/color", color.rgb());*/}
+    void setPosition(Vec3f pos) { mPosition = pos; relay(moduleAddress() + "/setPosition", pos);}
+    void setRotation(Vec3f rot) { mRotation = rot; relay(moduleAddress() + "/setRotation", rot);}
+    void setScale(Vec3f scale) { mScale = scale; relay(moduleAddress() + "/setScale", scale);}
+    void setColor(Color color) { mColor = color; /*notifyListeners(moduleAddress() + "/setColor", color.rgb());*/}
     void setId(u_int32_t id) { mId = id;}
 
     std::string getType() { return mType; }
@@ -69,6 +119,7 @@ public:
 
     void addChild(std::shared_ptr<RenderModule> child) {
         std::lock_guard<std::mutex> locker(mModuleLock);
+		child->setRelayer(mRelayer);
         mChildren.push_back(child);
     }
 
@@ -78,6 +129,16 @@ public:
         behavior->init();
         mBehaviors.push_back(behavior);
     }
+
+	void setRelayer(Relayer *relayer) {
+		std::lock_guard<std::mutex> locker(mModuleLock);
+		mRelayer = relayer;
+		relayCreation();
+
+		for (auto child : mChildren) {
+			child->setRelayer(mRelayer);
+		}
+	}
 
     virtual void executeCommand(std::string command, std::vector<std::string> arguments)
     {
@@ -114,20 +175,60 @@ public:
     virtual bool done() { return mDone; } // Lets render tree know it's time to remove this node
     virtual void setDone(bool done) { mDone = done; }
 
-	std::string moduleAddress() { return "/" + std::to_string(mId);}
+	std::string moduleAddress() {
+		assert(mId != UINT32_MAX);
+		return "/" + std::to_string(mId);
+	}
 
 protected:
     virtual void init(Graphics &g) = 0;
     virtual void render(Graphics &g, float dt = -1.0) = 0;
     virtual void cleanup() {}
 
+	void relay(std::string addr, Vec3f vec) {
+		if (mRelayer) {
+			mRelayer->relay(addr, vec);
+		}
+	}
+
+	template<class T1>
+	void relay(std::string addr, const T1 &value) {
+		if (mRelayer) {
+			mRelayer->relay(addr, value);
+		}
+	}
+
+	template<class T1, class T2>
+	void relay(std::string addr, const T1 &value, const T2 &value2) {
+		if (mRelayer) {
+			mRelayer->relay(addr, value, value2);
+		}
+	}
+
+	template<class T1, class T2, class T3>
+	void relay(std::string addr, const T1 &value, const T2 &value2, const T3 &value3) {
+		if (mRelayer) {
+			mRelayer->relay(addr, value, value2, value3);
+		}
+	}
+
+	virtual void relayCreation() {
+		if (mRelayer) {
+			mRelayer->relay("/create", mType, mId);
+		}
+	}
+
+//	static std::string moduleClassName(); // Don't override this, it will be declared by the REGISTER_MODULE macro
+//	static std::shared_ptr<RenderModule> create(); // Don't override this, it will be declared by the REGISTER_MODULE macro
+
 	// Only use this lock to protect data when setting it in child classes. The initInternal()
 	// and renderInternal() functions take care of locking it for you
 	std::mutex mModuleLock;
 
-    std::string mType;
+    std::string mType = "";
     bool mDone {false};
     unsigned long mTicks {0};
+
 private:
     void initInternal(Graphics &g) {
 		std::lock_guard<std::mutex> locker(mModuleLock);
@@ -172,15 +273,17 @@ private:
         mTicks++;
     }
 
+	Relayer *mRelayer {nullptr};
+
     Vec3f mPosition {0, 0, 0};
     Vec3f mRotation {0, 0, 0};
     Vec3f mScale {1, 1, 1};
-    Color mColor {1.0,1.0,1.0, 1.0};
-    u_int32_t mModuleType {0};
+    Color mColor {1.0,1.0,1.0,1.0};
+//    u_int32_t mModuleType {0};
     std::vector<std::shared_ptr<RenderModule>> mChildren;
     std::vector<std::shared_ptr<Behavior>> mBehaviors;
 	std::map<std::string, bool> mFlags;
-    u_int32_t mId;
+	u_int32_t mId {UINT32_MAX};
 };
 
 class Timeout : public Behavior {
@@ -201,6 +304,8 @@ public:
 private:
     unsigned long mNumTicks;
 };
+
+// Behaviors ------------------------
 
 class FadeOut : public Behavior {
     friend class RenderModule;
@@ -280,15 +385,30 @@ private:
     float mDelta;
 };
 
-// TODO add cleanup for modules
+// Yes this is absolutely gross. Please fix it if you can!
+
+static std::map<std::string, std::function<std::shared_ptr<RenderModule> ()>> __renderModuleMap;
+
+static bool registerModule(std::string moduleName, std::function<std::shared_ptr<RenderModule>()> creator)
+{
+	__renderModuleMap[moduleName] = creator;
+	return true;
+}
+
+#define REGISTER_MODULE(MODULETYPENAME) bool _Registered_##MODULETYPENAME = registerModule(#MODULETYPENAME, MODULETYPENAME::createBase);
+
+// Modules
 class TextRenderModule : public RenderModule {
 public:
     TextRenderModule() { mType = "TextRenderModule"; } // perhaps have non public constructor and factory function in chain?
 
     static std::shared_ptr<TextRenderModule> create() { return std::make_shared<TextRenderModule>();}
+	static std::shared_ptr<RenderModule> createBase() { return std::static_pointer_cast<RenderModule>(create());}
+
     void loadFont(const std::string& filename, int fontSize=10, bool antialias=true)
     {
         mFont.load(filename, fontSize, antialias);
+		relay(moduleAddress() + "/loadFont", filename, fontSize, antialias ? 1: 0);
     }
 
     void setText(std::string text) {
@@ -296,6 +416,7 @@ public:
         if (initDone) {
             mFont.write(mTextMesh, mText);
         }
+		relay(moduleAddress() + "/setText", text);
     }
     void setFontSize(float size) {
         mFontSize = size;
@@ -306,12 +427,15 @@ public:
     virtual void executeCommand(std::string command, std::vector<std::string> arguments) override
     {
         RenderModule::executeCommand(command, arguments);
-        if (command == "setText") {
+		if (command == "loadFont") {
+            if (arguments.size() > 0) {
+                loadFont(arguments.at(0), std::atoi(arguments.at(1).c_str()), arguments.at(1) == "1");
+            }
+        } else if (command == "setText") {
             if (arguments.size() > 0) {
                 setText(arguments.at(0));
             }
-        }
-        if (command == "setFontSize") {
+        } else if (command == "setFontSize") {
             if (arguments.size() > 0) {
                 setFontSize(std::stoi(arguments.at(0)));
             }
@@ -335,7 +459,8 @@ protected:
         g.popMatrix();
     }
 
-    virtual void cleanup() {}
+
+//    virtual void cleanup() {}
 
 private:
     std::string mText {"Test"};
@@ -348,6 +473,7 @@ private:
 
 };
 
+REGISTER_MODULE(TextRenderModule);
 
 class LineStripModule : public RenderModule {
 public:
@@ -359,6 +485,7 @@ public:
     }
 
     static std::shared_ptr<LineStripModule> create() { return std::make_shared<LineStripModule>();}
+	static std::shared_ptr<RenderModule> createBase() { return std::static_pointer_cast<RenderModule>(create());}
 
     void setDelta(float delta) { mDelta = delta; }
     void setThickness(float thickness) { mThickness = thickness; }
@@ -410,12 +537,16 @@ private:
     Mesh mMesh;
 };
 
+REGISTER_MODULE(LineStripModule);
+
 class ImageRenderModule : public RenderModule {
 public:
     ImageRenderModule() {
         mType = "LineStripModule";
     } // Non public constructor?
     static std::shared_ptr<ImageRenderModule> create() { return std::make_shared<ImageRenderModule>();}
+	static std::shared_ptr<RenderModule> createBase() { return std::static_pointer_cast<RenderModule>(create());}
+
     void loadImage(std::string filename)
     {
         std::lock_guard<std::mutex> locker(mModuleLock);
@@ -455,12 +586,15 @@ private:
     Mesh mQuad;
 };
 
+REGISTER_MODULE(ImageRenderModule);
+
 class MeshModule : public RenderModule {
 public:
     MeshModule() {
         mType = "MeshModule";
     } // Non public constructor?
     static std::shared_ptr<MeshModule> create() { return std::make_shared<MeshModule>();}
+	static std::shared_ptr<RenderModule> createBase() { return std::static_pointer_cast<RenderModule>(create());}
 
 protected:
     virtual void init(Graphics &g) override
@@ -482,9 +616,13 @@ private:
     Mesh mMesh;
 };
 
-class RenderTree {
+REGISTER_MODULE(MeshModule);
+
+// ------------------------------ Render Tree
+
+class RenderTree : public Relayer {
 public:
-    ~RenderTree()
+    virtual ~RenderTree()
     {
         clear();
     }
@@ -511,6 +649,8 @@ public:
     std::vector<std::shared_ptr<RenderModule>> modulesInTree() { return mModules; }
 
 private:
+
+	u_int32_t mCounter {0};
     std::vector<std::shared_ptr<RenderModule>> mModules;
     std::mutex mRenderChainLock;
 
@@ -520,7 +660,9 @@ private:
 bool RenderTree::addModule(std::shared_ptr<RenderModule> module)
 {
     std::lock_guard<std::mutex> locker(mRenderChainLock);
-    mModules.push_back(module); // TODO Should we keep track of shared ptrs here too?
+	module->setId(mCounter++);
+	module->setRelayer(this);
+    mModules.push_back(module);
     mModulesPendingInit.push_back(module);
 }
 
@@ -606,20 +748,6 @@ private:
 };
 
 
-
-class RenderTreeRelayer {
-public:
-    RenderTreeRelayer(RenderTree &tree) : mTree(&tree)
-    {
-
-    }
-
-
-private:
-    RenderTree *mTree;
-
-};
-
 /**
  * @brief The
  *
@@ -657,6 +785,29 @@ public:
                     ));
     }
 
+	std::vector<std::string> separateArguments(osc::Message &m, int argOffset = 0) {
+		std::vector<std::string> arguments;
+		for (size_t i = 0; i < m.typeTags().size() - argOffset ; i++) {
+			std::string argument;
+			if (m.typeTags()[i + argOffset] == 's') {
+				m >> argument;
+//				std::cout << "processed " << argument << std::endl;
+			} else if (m.typeTags()[i + argOffset] == 'i') {
+				int intArg;
+				m >> intArg;
+				argument = std::to_string(intArg);
+//				std::cout << "processed " << argument << std::endl;
+			} else if (m.typeTags()[i + argOffset] == 'f') {
+				float floatArg;
+				m >> floatArg;
+				argument = std::to_string(floatArg);
+//				std::cout << "processed " << argument << std::endl;
+			}
+			arguments.push_back(argument);
+		}
+		return arguments;
+    }
+
     virtual bool consumeMessage(osc::Message& m, std::string rootOSCPath) override
     {
         std::string basePath = rootOSCPath;
@@ -668,7 +819,7 @@ public:
                 return true;
             }
         }
-
+		m.print();
         if (m.addressPattern() == basePath + "/listModules" && m.typeTags() == "i") {
             int port;
             m >> port;
@@ -683,37 +834,20 @@ public:
                 sender.endMessage();
                 sender.send();
             }
-
         } else if (m.addressPattern() == basePath + "/moduleCommand") {
             if (m.typeTags().size() > 1 && m.typeTags()[0] == 'i' && m.typeTags()[1] == 's') {
                 int id;
-                m >> id;
-                std::cout << "got command for id " << id << std::endl;
+				std::string command;
+                m >> id >> command;
+//                std::cout << "got command for id " << id << std::endl;
+				std::vector<std::string> arguments = separateArguments(m, 2);
                 for (auto module : mTree->modulesInTree()) {
                     if (module->getId() == id) {
-                        std::string command;
-                        m >> command;
-                        std::vector<std::string> arguments;
-                        for (size_t i = m.typeTags().size() - 2; i > 0 ; --i) {
-                            std::string argument;
-                            m >> argument;
-                            std::cout << "processed " << argument << std::endl;
-                            arguments.push_back(argument);
-                        }
                         module->executeCommand(command, arguments);
                         return true;
                     }
                     for (auto child: module->mChildren) {
                         if (child->getId() == id) {
-                            std::string command;
-                            m >> command;
-                            std::vector<std::string> arguments;
-                            for (size_t i = m.typeTags().size() - 2; i > 0 ; --i) {
-                                std::string argument;
-                                m >> argument;
-                                std::cout << "processed " << argument << std::endl;
-                                arguments.push_back(argument);
-                            }
                             child->executeCommand(command, arguments);
                             return true;
                         }
@@ -721,7 +855,44 @@ public:
                 }
                 return true;
             }
-        }
+        } else if (m.addressPattern() == basePath + "/create") {
+			if (m.typeTags().size() == 2 && m.typeTags()[0] == 's' && m.typeTags()[1] == 'i') {
+				std::string name;
+				int id;
+				m >> name >> id;
+				for (auto moduleInfo : __renderModuleMap) {
+					if (moduleInfo.first == name) {
+						std::shared_ptr<RenderModule> module = moduleInfo.second();
+						mTree->addModule(module);
+						module->setId(id);
+						module->relayCreation();
+					}
+				}
+                return true;
+            }
+        } else {
+			auto secondSlash = m.addressPattern().find("/", 1);
+			if (secondSlash != std::string::npos) {
+				std::string target = m.addressPattern().substr(1, secondSlash);
+				std::string command = m.addressPattern().substr(secondSlash + 1, 128);
+				uint32_t id = atoi(target.c_str());
+				std::vector<std::string> arguments = separateArguments(m);
+				std::cout << "Processing command " << command << "for target " << target <<std::endl;
+				for (auto module : mTree->modulesInTree()) {
+					if (module->getId() == id) {
+                        module->executeCommand(command, arguments);
+						return true;
+					}
+
+					for (auto child: module->mChildren) {
+						if (child->getId() == id) {
+                            child->executeCommand(command, arguments);
+							return true;
+						}
+					}
+				}
+			}
+		}
         return false;
     }
 
@@ -738,16 +909,9 @@ private:
     std::vector<std::shared_ptr<OSCAction>> mOSCActions;
 };
 
-
-
-
 }
 
-
-
 //--------------------------------------------------------------------------------------------------
-
-
 
 
 #endif // RENDER_TREE_HPP
