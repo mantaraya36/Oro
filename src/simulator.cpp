@@ -62,18 +62,19 @@ Lance Putnam, 6/2011, putnam.lance@gmail.com
 
 #include "common.hpp"
 
-//#define SURROUND
 using namespace al;
 using namespace std;
-// #define BUILDING_FOR_ALLOSPHERE
 
 class Simulator :  public osc::PacketHandler {
 public:
     Simulator(SharedState *state) :
         mChaos("chaos", "", 0),
-	mVideoDomain(30),
-//	mMaker("192.168.10.255")
-    mMaker("127.0.0.1")
+        mVideoDomain(30),
+#ifdef BUILDING_FOR_ALLOSPHERE
+      mMaker("192.168.10.255")
+#else
+      mMaker("127.0.0.1")
+#endif
     {
         mState = state;
         mMouseSpeed = 0;
@@ -421,8 +422,8 @@ public:
 		fluctuation2.freq(0.3f);
 #ifdef BUILDING_FOR_ALLOSPHERE
 
-//		audioIO().device("ECHO X5");
-		initAudio("ECHO X5", 48000, 64, 0, 60);
+//		audioIO().device(AudioDevice("ECHO X5"));
+		initAudio(48000, 256, 60, 0);
 #else
 #ifdef SURROUND
 		audioIO().device(5);

@@ -71,9 +71,22 @@ public:
 		relay(p);
 	}
 
+	template <class T1, class T2, class T3, class T4>
+	void relay(std::string addr, T1 &value1, T2 &value2, T3 &value3, T4 &value4) {
+		osc::Packet p;
+		p.addMessage(addr, value1, value2, value3, value4);
+		relay(p);
+	}
+
 	void relay(std::string addr, Vec3f &vec) {
 		osc::Packet p;
 		p.addMessage(addr, vec[0], vec[1], vec[2]);
+		relay(p);
+	}
+
+	void relay(std::string addr, Vec4f &vec) {
+		osc::Packet p;
+		p.addMessage(addr, vec[0], vec[1], vec[2], vec[3]);
 		relay(p);
 	}
 
@@ -96,12 +109,16 @@ class RenderModule : public OSCNotifier {
     friend class RenderTreeHandler;
 public:
     RenderModule() {} // perhaps have non public constructor and factory function in chain?
-    virtual ~RenderModule() {}
+    virtual ~RenderModule() {relay(moduleAddress() + "/destroy");}
 
     void setPosition(Vec3f pos) { mPosition = pos; relay(moduleAddress() + "/setPosition", pos);}
     void setRotation(Vec3f rot) { mRotation = rot; relay(moduleAddress() + "/setRotation", rot);}
     void setScale(Vec3f scale) { mScale = scale; relay(moduleAddress() + "/setScale", scale);}
-    void setColor(Color color) { mColor = color; /*notifyListeners(moduleAddress() + "/setColor", color.rgb());*/}
+    void setColor(Color color) {
+		mColor = color;
+		float * comp = color.components;
+		relay(moduleAddress() + "/setColor", comp[0], comp[1], comp[2], comp[3]);
+	}
     void setId(u_int32_t id) { mId = id;}
 
     std::string getType() { return mType; }
@@ -167,6 +184,8 @@ public:
                 Vec3f newScale = Vec3f(std::stod(arguments[0]), std::stod(arguments[1]), std::stod(arguments[2]));
                 setScale(newScale);
             }
+        } else if (command == "done") {
+			setDone(true);
         } /*else if (command == "setRotation") {
 
         }*/
@@ -185,7 +204,19 @@ protected:
     virtual void render(Graphics &g, float dt = -1.0) = 0;
     virtual void cleanup() {}
 
+	void relay(std::string addr) {
+		if (mRelayer) {
+			mRelayer->relay(addr);
+		}
+	}
+
 	void relay(std::string addr, Vec3f vec) {
+		if (mRelayer) {
+			mRelayer->relay(addr, vec);
+		}
+	}
+
+	void relay(std::string addr, Vec4f vec) {
 		if (mRelayer) {
 			mRelayer->relay(addr, vec);
 		}
@@ -209,6 +240,13 @@ protected:
 	void relay(std::string addr, const T1 &value, const T2 &value2, const T3 &value3) {
 		if (mRelayer) {
 			mRelayer->relay(addr, value, value2, value3);
+		}
+	}
+
+	template<class T1, class T2, class T3, class T4>
+	void relay(std::string addr, const T1 &value, const T2 &value2, const T3 &value3, const T4 &value4) {
+		if (mRelayer) {
+			mRelayer->relay(addr, value, value2, value3, value4);
 		}
 	}
 
@@ -321,7 +359,9 @@ public:
 
     virtual void tick() override {
         if (mDelayTicks == 0) {
-            mModule->getColor().a -= mAlphaDec;
+			Color &c = mModule->getColor();
+            c.a -= mAlphaDec;
+			mModule->setColor(c);
             if (mNumTicks-- == 0) {
                 mModule->setDone(true);
             }
@@ -348,7 +388,9 @@ public:
     }
 
     virtual void tick() override {
-        mModule->getColor().a += mAlphaInc;
+        Color &c = mModule->getColor();
+		c.a += mAlphaInc;
+		mModule->setColor(c);
         if (mNumTicks-- == 0) {
             mDone = true;
         }
@@ -376,7 +418,9 @@ public:
             Vec3f pos = mModule->getPosition();
             pos.z += mDelta;
             mModule->setPosition(pos);
-        }
+		} else {
+			mDone = true;
+		}
     }
 
 private:
@@ -542,7 +586,7 @@ REGISTER_MODULE(LineStripModule);
 class ImageRenderModule : public RenderModule {
 public:
     ImageRenderModule() {
-        mType = "LineStripModule";
+        mType = "ImageRenderModule";
     } // Non public constructor?
     static std::shared_ptr<ImageRenderModule> create() { return std::make_shared<ImageRenderModule>();}
 	static std::shared_ptr<RenderModule> createBase() { return std::static_pointer_cast<RenderModule>(create());}
@@ -814,12 +858,12 @@ public:
         if (mOSCsubPath.size() > 0) {
             basePath += "/" + mOSCsubPath;
         }
+		m.print();
         for(auto action : mOSCActions) {
             if (action->process(m)) {
                 return true;
             }
         }
-		m.print();
         if (m.addressPattern() == basePath + "/listModules" && m.typeTags() == "i") {
             int port;
             m >> port;
@@ -877,7 +921,7 @@ public:
 				std::string command = m.addressPattern().substr(secondSlash + 1, 128);
 				uint32_t id = atoi(target.c_str());
 				std::vector<std::string> arguments = separateArguments(m);
-				std::cout << "Processing command " << command << "for target " << target <<std::endl;
+//				std::cout << "Processing command " << command << "for target " << target <<std::endl;
 				for (auto module : mTree->modulesInTree()) {
 					if (module->getId() == id) {
                         module->executeCommand(command, arguments);

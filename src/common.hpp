@@ -25,12 +25,32 @@
 #include "Cuttlebone/Cuttlebone.hpp"
 
 //#define SURROUND
+//#define BUILDING_FOR_ALLOSPHERE
+
 using namespace al;
 using namespace std;
 
 #define GRID_SIZE 7
 #define INTERACTION_POINTS 32
 #define NUM_OFRENDAS 8
+
+#ifdef BUILDING_FOR_ALLOSPHERE
+
+// OSC communication between simulator and control
+#define CONTROL_IP_ADDRESS "192.168.0.178"
+#define CONTROL_IN_PORT 10300
+
+#define SIMULATOR_IP_ADDRESS "audio.mat.ucsb.edu"
+#define SIMULATOR_IN_PORT 10200
+
+// Graphics master server
+#define GRAPHICS_IP_ADDRESS "audio.mat.ucsb.edu"
+#define GRAPHICS_IN_PORT 10100
+
+// Graphics slaves port
+#define GRAPHICS_SLAVE_PORT 21000
+
+#else
 
 // OSC communication between simulator and control
 #define CONTROL_IP_ADDRESS "localhost"
@@ -46,7 +66,9 @@ using namespace std;
 // Graphics slaves port
 #define GRAPHICS_SLAVE_PORT 21000
 
-#define LAGOON_Y 2.0
+#endif
+
+#define LAGOON_Y 3.0
 
 // Wave function grid size
 static const int Nx = 200, Ny = Nx;
@@ -86,7 +108,7 @@ class InteractionActor {
 public:
     InteractionActor(std::shared_ptr<void> data) {}
 
-    void addController(void *data) {};
+    void addController(void *data) {}
 
 private:
     std::shared_ptr<void> mData;
@@ -180,7 +202,7 @@ typedef struct {
 class Sink2 : public Behavior {
     friend class RenderModule;
 public:
-    Sink2(unsigned long numTicks, float zDelta) : Behavior() {
+	Sink2(unsigned long numTicks, float zDelta) : Behavior() {
         mNumTicks = numTicks;
         mDelta = zDelta/numTicks;
     }
@@ -194,7 +216,9 @@ public:
             Vec3f pos = mModule->getPosition();
             pos.y -= mDelta;
             mModule->setPosition(pos);
-        }
+		} else {
+			mDone = true;
+		}
     }
 
 private:
@@ -330,29 +354,34 @@ public:
         mQuad.texCoord(0, 1);
         mQuad.vertex( 1,  1, 0);
         mQuad.texCoord(1, 1);
+
+		showCasas();
     }
 
 	void setTreeMaster() {
 		int port = GRAPHICS_SLAVE_PORT;
-//		std::vector<std::string> addresses = {
-//		    "gr02",
-//		    "gr03",
-//		    "gr04",
-//		    "gr05",
-//		    "gr06",
-//		    "gr07",
-//		    "gr08",
-//		    "gr09",
-//		    "gr10",
-//		    "gr11",
-//		    "gr12",
-//		    "gr13",
-//		    "gr14"
-//		};
-//		mRecvFromGraphicsMaster.stop();
+#ifdef BUILDING_FOR_ALLOSPHERE
+		std::vector<std::string> addresses = {
+		    "gr02",
+		    "gr03",
+		    "gr04",
+		    "gr05",
+		    "gr06",
+		    "gr07",
+		    "gr08",
+		    "gr09",
+		    "gr10",
+		    "gr11",
+		    "gr12",
+		    "gr13",
+		    "gr14"
+		};
+#else
 		std::vector<std::string> addresses = {
 		    "localhost"
 		};
+#endif
+		//		mRecvFromGraphicsMaster.stop();
 		for (auto relayTo: addresses) {
 			mRenderTree.addRelayAddress(relayTo, port);
 		}
@@ -434,7 +463,7 @@ public:
 
 		g.pushMatrix();
 		g.scale(2);
-		g.translate(- GRID_SIZE/2,- GRID_SIZE/4, -4.0);
+		g.translate(- GRID_SIZE/2,- GRID_SIZE/2, -4.0);
 		unsigned int count = 0;
 		float *dev = state().dev;
 		for (int x = 0; x < GRID_SIZE; x++) {
@@ -486,9 +515,9 @@ public:
 //        light();
 //        waterMesh.colors()[0] = waterMesh.get();
 //        waterMesh.colors()[0] .a = 1.0;
-        g.translate(0, LAGOON_Y, -3.0);
+        g.translate(0, LAGOON_Y, -2.0);
         g.rotate(-90, 1, 0, 0);
-		float waterScale = 1.5;
+		float waterScale = 4.5;
 		if (state().chaos > 0.6) {
 			waterScale += 2.0 * (state().chaos - 0.6) * 0.4;
 		}
@@ -572,11 +601,21 @@ public:
         module->setFontSize(24);
         module->setScale(1.0);
         module->setText(text);
-		module->setPosition(Vec3d(2 * (x - 0.5), LAGOON_Y - 1, y - 2.0));
+		module->setPosition(Vec3d(2 * (x - 0.5), LAGOON_Y - 2, y - 2));
+        module->addBehavior(std::make_shared<Timeout>(10 * fps));
+        module->addBehavior(std::make_shared<Sink2>(10* fps, 3.0 + rnd::gaussian()*0.5));
+        module->addBehavior(std::make_shared<FadeOut>(6* fps,15* fps));
+    }
+
+	void showCasas() {
+
+		auto module = mRenderTree.createModule<ImageRenderModule>();
+        module->loadImage("Fotos/casas1.jpg");
+		module->setPosition(Vec3f(0, 0,  3.0));
         module->addBehavior(std::make_shared<Timeout>(10 * fps));
         module->addBehavior(std::make_shared<Sink2>(10* fps, 3.0 + rnd::gaussian()*0.5));
         module->addBehavior(std::make_shared<FadeOut>(7* fps,3* fps));
-    }
+	}
 
     SharedState &state() {return *mState;}
     SharedState *mState;
