@@ -56,20 +56,6 @@ public:
 //        }
         connectCallbacks();
 
-        for (int i = 0; i < 5; i++) {
-            mPhaserL[i].a()[0] = 1.0f;
-            mPhaserL[i].a()[1] = 1.0f;
-            mPhaserL[i].a()[2] = 0.0f;
-            mPhaserL[i].b()[0] = 1.0f;
-            mPhaserL[i].b()[1] = 1.0f;
-            mPhaserL[i].b()[2] = 0.0f;
-            mPhaserR[i].a()[0] = 1.0f;
-            mPhaserR[i].a()[1] = 1.0f;
-            mPhaserR[i].a()[2] = 0.0f;
-            mPhaserR[i].b()[0] = 1.0f;
-            mPhaserR[i].b()[1] = 1.0f;
-            mPhaserR[i].b()[2] = 0.0f;
-        }
         mEnv.sustainPoint(1);
 
 
@@ -102,7 +88,7 @@ public:
 
     // basstone |
     Parameter phsrFreq1 {"phsrFreq1", "", 440, "", 0.0, 9999.0};
-    Parameter phsrFreq2 {"phsrFreq1", "", 440, "", 0.0, 9999.0};
+    Parameter phsrFreq2 {"phsrFreq2", "", 440, "", 0.0, 9999.0};
     Parameter bassFilterFreq {"bassFilterFreq", "", 0, "", 0.0, 9999.0};
 
     gam::Saw<> mOsc1, mOsc2;
@@ -111,7 +97,7 @@ public:
 
     // envelope
     Parameter envFreq1 {"envFreq1", "", 0.2, "", -9.0, 9.0};
-    Parameter envFreq2 {"envFreq1", "", -0.21, "", -9.0, 9.0};
+    Parameter envFreq2 {"envFreq2", "", -0.21, "", -9.0, 9.0};
     gam::SineR<> mEnvOsc1, mEnvOsc2;
 
     // noise
@@ -121,15 +107,14 @@ public:
     gam::Accum<> mTrigger;
     gam::AD<> mNoiseEnv{0.003, 0.025};
 
+    // Randomness
+    Parameter changeProb {"changeProb", "", 0.02, "", 0, 1};
+    Parameter changeDev {"changeDev", "", 0.1, "", 0, 99.0};
+    float freqDev1 = 0 , freqDev2 = 0;
+
     //
     float mLevel;
     al::Reverb<> mReverb;
-
-    Parameter phaserOscL {"phaserOscL", "", 0.15, "", 0.0, 2.0};
-    Parameter phaserOscR {"phaserOscR", "", 0.15, "", 0.0, 2.0};
-    gam::Saw<> mPhaserOscL, mPhaserOscR;
-    gam::Biquad<> mPhaserL[5];
-    gam::Biquad<> mPhaserR[5];
 
     gam::BlockDC<> mDCBlockL, mDCBlockR;
     gam::AD<> mEnv{0.5, 3};
@@ -159,14 +144,6 @@ public:
             static_cast<ChaosSynth *>(userData)->mTrigger.freq(value);
         }, this);
 
-        phaserOscL.registerChangeCallback([] (float value, void *sender,
-                                         void *userData, void * blockSender){
-            static_cast<ChaosSynth *>(userData)->mPhaserOscL.freq(value);
-        }, this);
-        phaserOscR.registerChangeCallback([] (float value, void *sender,
-                                         void *userData, void * blockSender){
-            static_cast<ChaosSynth *>(userData)->mPhaserOscR.freq(value);
-        }, this);
     }
 
     void resetNoisy()  {
@@ -186,8 +163,8 @@ public:
         // noise |
         noiseRnd = rnd::uniform(0, 22050);
 
-        phaserOscL = 0.05 + rnd::uniform(0, 150)/1000.0;
-        phaserOscR = 0.05 + rnd::uniform(0, 150)/1000.0;
+        changeProb.set(rnd::uniform(0.4));
+        changeDev.set(rnd::uniform(20.0));
     }
 
     void resetClean()  {
@@ -206,6 +183,8 @@ public:
 
         // noise |
         noiseRnd = rnd::uniform(0, 100);
+        changeProb.set(rnd::uniform(0.1));
+        changeDev.set(rnd::uniform(2.0));
     }
 
     void generateAudio(AudioIOData &io) {
@@ -213,6 +192,12 @@ public:
         float max = 0.0;
         while (io()) {
             float outL, outR;
+            if (rnd::prob(changeProb.get()/1000.0)) {
+                freqDev1 = phsrFreq1 * changeDev.get() * 0.01 * rnd::uniform(1.0, -1.0);
+                freqDev2 = phsrFreq2 * changeDev.get() * 0.01 * rnd::uniform(1.0, -1.0);
+                mOsc1.freq(phsrFreq1 + freqDev1);
+                mOsc2.freq(phsrFreq2 + freqDev2);
+            }
             float env = al::clip((mEnvOsc1() + mEnvOsc2()), 0.0, 1.0);
             // basstone |
             float basstone = (env * 0.5) * (mOsc1() + mOsc2());
@@ -227,7 +212,7 @@ public:
             if (rnd::prob(0.0001)) {
                 mNoiseEnv.reset();
             }
-            noiseOut = noiseHold * mNoiseEnv();
+            noiseOut = noiseHold * mNoiseEnv() * 0.2;
 
 
             // output
@@ -235,24 +220,11 @@ public:
             float revOutL, revOutR;
             mReverb(basstone + noiseOut, revOutL, revOutR);
 
-            float phaserL = revOutL, phaserR = revOutR;
-            float phaserOscL = 0.97 - 0.3 * pow(fabs(mPhaserOscL()), 2.0);
-            float phaserOscR = 0.97 - 0.3 * pow(fabs(mPhaserOscR()), 2.0);
-            for (int i = 0; i < 5; i++) {
-                mPhaserL[i].a()[1] = phaserOscL;
-                mPhaserL[i].b()[0] = - phaserOscL;
-                mPhaserR[i].a()[1] = phaserOscR;
-                mPhaserR[i].b()[0] = - phaserOscR;
-                phaserL = mPhaserL[i](phaserL);
-                phaserR = mPhaserR[i](phaserR);
-            }
-
-
-
-            outL = mDCBlockL(/*phaserL + */revOutL + noiseOut);
-            outR = mDCBlockR(/*phaserR + */revOutR + noiseOut);
-            io.out(0) = outL * mLevel;
-            io.out(1) = outR * mLevel;
+            outL = mDCBlockL(revOutL + noiseOut);
+            outR = mDCBlockR(revOutR + noiseOut);
+            float outerenv = mEnv();
+            io.out(0) = outL * mLevel * 0.3 * outerenv;
+            io.out(1) = outR * mLevel * 0.3 * outerenv;
 
 //            noise = mNoise() * mNoiseEnv();
 //            for (int i = 0; i < NUM_VOICES; i++) {
@@ -469,8 +441,8 @@ void ChaosSynthApp::initializeGui()
         controlsBox << ParameterGUI::makeParameterView(synth[i].phsrFreq1);
         controlsBox << ParameterGUI::makeParameterView(synth[i].phsrFreq2);
         controlsBox << ParameterGUI::makeParameterView(synth[i].noiseRnd);
-        controlsBox << ParameterGUI::makeParameterView(synth[i].phaserOscL);
-        controlsBox << ParameterGUI::makeParameterView(synth[i].phaserOscR);
+        controlsBox << ParameterGUI::makeParameterView(synth[i].changeProb);
+        controlsBox << ParameterGUI::makeParameterView(synth[i].changeDev);
     }
     controlsBox.fit();
     controlsBox.enable(glv::DrawBack);
@@ -488,8 +460,7 @@ void ChaosSynthApp::initializePresets()
     mPresetHandler << synth[0].envFreq1 << synth[0].envFreq2;
     mPresetHandler << synth[0].phsrFreq1 << synth[0].phsrFreq2;
     mPresetHandler << synth[0].noiseRnd;
-    mPresetHandler << synth[0].phaserOscL << synth[0].phaserOscR;
-
+    mPresetHandler << synth[0].changeProb << synth[0].changeDev;
 
     // MIDI Control of parameters
     unsigned int midiControllerPort = 0;
