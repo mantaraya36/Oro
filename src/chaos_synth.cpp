@@ -55,7 +55,24 @@ public:
 //            mResonators[i].type(gam::BAND_PASS_UNIT);
 //        }
         connectCallbacks();
+
+        for (int i = 0; i < 5; i++) {
+            mPhaserL[i].a()[0] = 1.0f;
+            mPhaserL[i].a()[1] = 1.0f;
+            mPhaserL[i].a()[2] = 0.0f;
+            mPhaserL[i].b()[0] = 1.0f;
+            mPhaserL[i].b()[1] = 1.0f;
+            mPhaserL[i].b()[2] = 0.0f;
+            mPhaserR[i].a()[0] = 1.0f;
+            mPhaserR[i].a()[1] = 1.0f;
+            mPhaserR[i].a()[2] = 0.0f;
+            mPhaserR[i].b()[0] = 1.0f;
+            mPhaserR[i].b()[1] = 1.0f;
+            mPhaserR[i].b()[2] = 0.0f;
+        }
         mEnv.sustainPoint(1);
+
+
         resetClean();
     }
 
@@ -107,6 +124,13 @@ public:
     //
     float mLevel;
     al::Reverb<> mReverb;
+
+    Parameter phaserOscL {"phaserOscL", "", 0.15, "", 0.0, 2.0};
+    Parameter phaserOscR {"phaserOscR", "", 0.15, "", 0.0, 2.0};
+    gam::Saw<> mPhaserOscL, mPhaserOscR;
+    gam::Biquad<> mPhaserL[5];
+    gam::Biquad<> mPhaserR[5];
+
     gam::BlockDC<> mDCBlockL, mDCBlockR;
     gam::AD<> mEnv{0.5, 3};
 
@@ -134,6 +158,15 @@ public:
                                          void *userData, void * blockSender){
             static_cast<ChaosSynth *>(userData)->mTrigger.freq(value);
         }, this);
+
+        phaserOscL.registerChangeCallback([] (float value, void *sender,
+                                         void *userData, void * blockSender){
+            static_cast<ChaosSynth *>(userData)->mPhaserOscL.freq(value);
+        }, this);
+        phaserOscR.registerChangeCallback([] (float value, void *sender,
+                                         void *userData, void * blockSender){
+            static_cast<ChaosSynth *>(userData)->mPhaserOscR.freq(value);
+        }, this);
     }
 
     void resetNoisy()  {
@@ -152,6 +185,9 @@ public:
 
         // noise |
         noiseRnd = rnd::uniform(0, 22050);
+
+        phaserOscL = 0.05 + rnd::uniform(0, 150)/1000.0;
+        phaserOscR = 0.05 + rnd::uniform(0, 150)/1000.0;
     }
 
     void resetClean()  {
@@ -198,8 +234,23 @@ public:
 
             float revOutL, revOutR;
             mReverb(basstone + noiseOut, revOutL, revOutR);
-            outL = mDCBlockL(revOutL + noiseOut);
-            outR = mDCBlockR(revOutR + noiseOut);
+
+            float phaserL = revOutL, phaserR = revOutR;
+            float phaserOscL = 0.97 - 0.3 * pow(fabs(mPhaserOscL()), 2.0);
+            float phaserOscR = 0.97 - 0.3 * pow(fabs(mPhaserOscR()), 2.0);
+            for (int i = 0; i < 5; i++) {
+                mPhaserL[i].a()[1] = phaserOscL;
+                mPhaserL[i].b()[0] = - phaserOscL;
+                mPhaserR[i].a()[1] = phaserOscR;
+                mPhaserR[i].b()[0] = - phaserOscR;
+                phaserL = mPhaserL[i](phaserL);
+                phaserR = mPhaserR[i](phaserR);
+            }
+
+
+
+            outL = mDCBlockL(/*phaserL + */revOutL + noiseOut);
+            outR = mDCBlockR(/*phaserR + */revOutR + noiseOut);
             io.out(0) = outL * mLevel;
             io.out(1) = outR * mLevel;
 
@@ -418,6 +469,8 @@ void ChaosSynthApp::initializeGui()
         controlsBox << ParameterGUI::makeParameterView(synth[i].phsrFreq1);
         controlsBox << ParameterGUI::makeParameterView(synth[i].phsrFreq2);
         controlsBox << ParameterGUI::makeParameterView(synth[i].noiseRnd);
+        controlsBox << ParameterGUI::makeParameterView(synth[i].phaserOscL);
+        controlsBox << ParameterGUI::makeParameterView(synth[i].phaserOscR);
     }
     controlsBox.fit();
     controlsBox.enable(glv::DrawBack);
@@ -432,6 +485,11 @@ void ChaosSynthApp::initializeGui()
 void ChaosSynthApp::initializePresets()
 {
     mPresetHandler << mLevel; // << mFundamental;
+    mPresetHandler << synth[0].envFreq1 << synth[0].envFreq2;
+    mPresetHandler << synth[0].phsrFreq1 << synth[0].phsrFreq2;
+    mPresetHandler << synth[0].noiseRnd;
+    mPresetHandler << synth[0].phaserOscL << synth[0].phaserOscR;
+
 
     // MIDI Control of parameters
     unsigned int midiControllerPort = 0;
