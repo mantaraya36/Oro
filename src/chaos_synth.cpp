@@ -474,7 +474,7 @@ void ChaosSynthApp::initializePresets()
     presetMIDI.init(midiControllerPort, mPresetHandler);
     presetMIDI.setMorphControl(102, 1, 0.0, 8.0);
     // MIDI preset mapping
-//    presetMIDI.connectNoteToPreset(1, 0, 36, 24, 59);
+    presetMIDI.connectProgramToPreset(1, 0, 36, 24, 59);
     unsigned portToOpen = 0;
     // Print out names of available input ports
     for(unsigned i=0; i< midiIn.getPortCount(); ++i){
