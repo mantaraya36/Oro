@@ -255,7 +255,7 @@ public:
     AddSynthApp(int midiChannel) : /*mKeyboardPresets(nav()),*/ mMidiChannel(midiChannel - 1)
     {
         initializeValues();
-        initWindow();
+        initWindow(Window::Dim(800,600), "Add Synth MIDI channel " + std::to_string(midiChannel));
 #ifdef SURROUND
         int outChans = 8;
         outputRouting = { {4, 3, 7, 6, 2 },
