@@ -202,16 +202,16 @@ public:
         mRenderTree.render(g);
 	}
 
-    void onMouseDown(const Mouse &m) override {
+    virtual void onMouseDown(const Mouse &m) override {
         mDown = m.down(0);
-//        mOSCSender.send("/mouseDown", m.down(0));
+        mOSCSender.send("/mouseDown", 1.0f);
     }
-    void onMouseUp(const Mouse &m) override  {
+    virtual void onMouseUp(const Mouse &m) override  {
         mDown = m.down(0);
-//        mOSCSender.send("/mouseDown", m.down(0));
+        mOSCSender.send("/mouseDown", 0.0f);
     }
 
-    void onMouseDrag(const Mouse &m) override {
+    virtual void onMouseDrag(const Mouse &m) override {
         float oldX = mPosX;
         float oldY = mPosY;
         mPosX = m.x()/(float)window(0).width();

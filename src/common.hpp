@@ -30,14 +30,18 @@
 using namespace al;
 using namespace std;
 
-#define GRID_SIZE 7
+#define GRID_SIZEX 8
+#define GRID_SIZEY 5
+#define GRID_SIZEZ 10
 #define INTERACTION_POINTS 32
+
 #define NUM_OFRENDAS 8
+#define NUM_CASAS 6
 
 #ifdef BUILDING_FOR_ALLOSPHERE
 
 // OSC communication between simulator and control
-#define CONTROL_IP_ADDRESS "192.168.0.178"
+#define CONTROL_IP_ADDRESS "control.1g"
 #define CONTROL_IN_PORT 10300
 
 #define SIMULATOR_IP_ADDRESS "audio.mat.ucsb.edu"
@@ -129,47 +133,6 @@ private:
 
 };
 
-
-
-class Granulator {
-public:
-	Granulator(std::string path, int maxOverlap = 10):
-	    mSamples(nullptr), mFrameCounter(0), mMaxOverlap(maxOverlap) {
-		gam::SoundFile file(path);
-		if (file.openRead()) {
-			mNumChannels = file.channels();
-			mNumFrames = file.frames();
-			std::unique_ptr<float[]> samples(new float[mNumChannels * mNumFrames], std::default_delete<float[]>() );
-			file.readAll(samples.get());
-			mSamples = (float **) calloc((size_t) mNumChannels, sizeof(float *));
-			for (int i = 0; i < mNumChannels; i++) {
-				mSamples[i] = (float *) calloc((size_t) mNumFrames, sizeof(float));
-				for (int samp = 0; samp < mNumFrames; samp++) {
-					mSamples[i][samp] = samples[samp * mNumChannels + i];
-				}
-			}
-		} else {
-			std::cout << "Error opening '" << path << "' for reading." << std::endl;
-		}
-	}
-
-	float operator()(int index = 0) {
-		float out = mSamples[index][mFrameCounter++];
-		if (mFrameCounter == mNumFrames) {
-			mFrameCounter = 0;
-		}
-		return out;
-	}
-
-private:
-	float **mSamples;
-	int mNumChannels;
-	int mNumFrames;
-
-	int mFrameCounter;
-	int mMaxOverlap;
-};
-
 inline int indexAt(int x, int y, int z){
     //return (z*Nx + y)*Ny + x;
     return (y*Nx + x)*2 + z; // may give slightly faster accessing
@@ -177,7 +140,7 @@ inline int indexAt(int x, int y, int z){
 
 typedef struct {
     double lightPhase = 0.75;
-    float dev[GRID_SIZE * GRID_SIZE * GRID_SIZE];
+    float dev[GRID_SIZEX * GRID_SIZEY * GRID_SIZEZ];
 
     float chaos;
     float decay, velocity;
@@ -191,8 +154,8 @@ typedef struct {
     Nav nav;
     float wave[Nx*Ny*2];
 	int zcurr {0};
-
-    bool down;
+	float casasPhase = 0.0f;
+    bool mouseDown;
 
 } SharedState;
 
@@ -246,6 +209,9 @@ public:
     Image imagesOfrendas[NUM_OFRENDAS];
     Texture textureOfrendas[NUM_OFRENDAS];
 
+	Image imagesCasas[NUM_CASAS];
+    Texture textureCasas[NUM_CASAS];
+
 	RenderTree mRenderTree;
 	RenderTreeHandler mRenderTreeHandler {mRenderTree};
 
@@ -262,9 +228,9 @@ public:
         mState = state;
         mShader = shader;
 
-        mGrid.resize(GRID_SIZE * GRID_SIZE * GRID_SIZE);
-		mGridVertical.resize(GRID_SIZE * GRID_SIZE * GRID_SIZE);
-		mGridHorizontal.resize(GRID_SIZE * GRID_SIZE * GRID_SIZE);
+        mGrid.resize(GRID_SIZEX * GRID_SIZEY * GRID_SIZEZ);
+		mGridVertical.resize(GRID_SIZEX * GRID_SIZEY * GRID_SIZEZ);
+		mGridHorizontal.resize(GRID_SIZEX * GRID_SIZEY * GRID_SIZEZ);
 
         // Add a tessellated plane
 		addSurface(waterMesh, Nx,Ny);
@@ -288,7 +254,7 @@ public:
 			m.generateNormals();
 			int cylinderVertices = m.vertices().size();
 			for(int i = 0; i < cylinderVertices; i++) {
-				m.color(HSV(0.16, 0.5, al::fold(0.5/(GRID_SIZE * GRID_SIZE * GRID_SIZE), 0.5)+0.5));
+				m.color(HSV(0.16, 0.5, al::fold(0.5/(GRID_SIZEX * GRID_SIZEY * GRID_SIZEZ), 0.5)+0.5));
 			}
 		}
 		for (Mesh &m: mGridVertical) {
@@ -296,7 +262,7 @@ public:
 			m.generateNormals();
 			int cylinderVertices = m.vertices().size();
 			for(int i = 0; i < cylinderVertices; i++) {
-				m.color(HSV(0.13, 0.5, al::fold(0.5/(GRID_SIZE * GRID_SIZE * GRID_SIZE), 0.5)+0.5));
+				m.color(HSV(0.13, 0.5, al::fold(0.5/(GRID_SIZEX * GRID_SIZEY * GRID_SIZEZ), 0.5)+0.5));
 			}
 		}
 		for (Mesh &m: mGridHorizontal) {
@@ -304,7 +270,7 @@ public:
 			m.generateNormals();
 			int cylinderVertices = m.vertices().size();
 			for(int i = 0; i < cylinderVertices; i++) {
-				m.color(HSV(0.14, 0.5, al::fold(0.5/(GRID_SIZE * GRID_SIZE * GRID_SIZE), 0.5)+0.5));
+				m.color(HSV(0.14, 0.5, al::fold(0.5/(GRID_SIZEX * GRID_SIZEY * GRID_SIZEZ), 0.5)+0.5));
 			}
 		}
 
@@ -328,7 +294,6 @@ public:
         {"Fotos/MO_01alpha.png",  "Fotos/MO_04alpha.png", "Fotos/MO_07alpha.png",
          "Fotos/MO_02alpha.png",  "Fotos/MO_05alpha.png",  "Fotos/MO_03alpha.png",
          "Fotos/MO_06.png" };
-
         int counter = 0;
         for (string filename: ofrendaImageFiles) {
             if (imagesOfrendas[counter].load(filename)) {
@@ -355,7 +320,30 @@ public:
         mQuad.vertex( 1,  1, 0);
         mQuad.texCoord(1, 1);
 
-		showCasas();
+
+		std::vector<std::string> mFotos = {
+		    "Fotos/5623_155776159.jpg",
+		    "Fotos/casas1.jpg",
+		    "Fotos/casas5.jpg",
+		    "Fotos/destruction-of-the-indies.jpg",
+		    "Fotos/dsc01195.jpg",
+		    "Fotos/Narratio_Regionum_indicarum_per_Hispanos_Quosdam_devastatarum_verissima_Theodore_de_Bry.jpg"
+		};
+
+		counter = 0;
+		for (string filename: mFotos) {
+			if (imagesCasas[counter].load(filename)) {
+				cout << "Read image from " << filename << "  " << imagesOfrendas[counter].format() << endl;
+				//                printf("Read image from %s\n", filename);
+				textureCasas[counter].allocate(imagesCasas[counter].array());
+				textureCasas[counter].submit();
+			} else {
+				//                printf("Failed to read image from %s!  Quitting.\n", filename);
+				exit(-1);
+			}
+			counter++;
+		}
+
     }
 
 	void setTreeMaster() {
@@ -463,16 +451,16 @@ public:
 
 		g.pushMatrix();
 		g.scale(2);
-		g.translate(- GRID_SIZE/2,- GRID_SIZE/2, -4.0);
+		g.translate(- GRID_SIZEX/2,- GRID_SIZEY/2, -4.0);
 		unsigned int count = 0;
 		float *dev = state().dev;
-		for (int x = 0; x < GRID_SIZE; x++) {
+		for (int x = 0; x < GRID_SIZEX; x++) {
 			g.pushMatrix();
 			g.translate(x, 0, -*dev/2);
-			for (int y = 0; y < GRID_SIZE; y++) {
+			for (int y = 0; y < GRID_SIZEY; y++) {
 				g.pushMatrix();
 				g.translate(0, y-*dev/2, 0);
-				for (int z = 0; z < GRID_SIZE; z++) {
+				for (int z = 0; z < GRID_SIZEZ; z++) {
 					g.pushMatrix();
 					g.translate(*dev/-2.0f, 0.0f, -z + *dev);
 					g.draw(mGrid[count]);
@@ -544,9 +532,71 @@ public:
                 g.popMatrix();
             }
         }
-		mRenderTree.render(g);
 
-        g.blendOff();
+//		g.lighting(true);
+		float casasIndex = state().chaos;
+		shader().uniform("lighting", 0.0);
+		shader().uniform("texture", casasIndex);
+//        shader().uniform("enableFog", 1.0);
+		if (state().mouseDown) {
+			g.color(casasIndex, casasIndex, casasIndex, 0.5);
+		} else {
+			g.color(casasIndex* 0.2, 0.0, 0.0, 0.3);
+			shader().uniform("texture", casasIndex/3);
+		}
+		dev = state().dev;
+		for (unsigned int i = 0; i < NUM_CASAS; i++) {
+			if (true) {
+				textureCasas[i].bind(0);
+				for (int j = 0; j < 3; j++) {
+					g.pushMatrix();
+					g.rotate(i*20 + j *120, 0, 0.1, 1);
+					g.translate(0.1 + state().chaos, 0, -2 - 0.01 * i);
+
+					g.translate(*dev* 0.01, 0, *dev* 0.1);
+
+//					g.rotate(10, 0.3, 0.12, 0.0);
+
+//					g.translate(0, *dev* 0.15, 0);
+					g.rotate(state().casasPhase, 0.64, 0.12, 1);
+					//                Vec4f posOfrenda = state().posOfrendas[i];
+					//				Vec4f posOfrenda = state().posOfrendas[i];
+					//                g.rotate(posOfrenda[3], 0, 0, 1);
+
+					//				g.rotate(i*20, 0, 0, 1);
+					g.scale(0.4 + casasIndex* 0.9);
+					g.draw(mQuad);
+					g.popMatrix();
+				}
+				for (int j = 0; j < 3; j++) {
+					g.pushMatrix();
+					g.rotate(i*20 + j *140, 0, 0.1, 1);
+					g.translate(0.3 + state().chaos* 2.0, 0, -2 + 0.01 * i);
+
+					g.translate(*dev* 0.01, *dev* 0.05, 0);
+					g.rotate((1-casasIndex)*10, 0.3, 0.12, 0.0);
+
+					g.translate(*dev* 0.05, *dev* 0.15, 0);
+					g.rotate(state().casasPhase* 1.2124, 0.1, 0.22, 0.6);
+					//                Vec4f posOfrenda = state().posOfrendas[i];
+					//				Vec4f posOfrenda = state().posOfrendas[i];
+					//                g.rotate(posOfrenda[3], 0, 0, 1);
+
+					//				g.rotate(i*20, 0, 0, 1);
+					g.scale(casasIndex* 2  + 0.3);
+					g.draw(mQuad);
+					g.popMatrix();
+				}
+				textureCasas[i].unbind();
+				dev++;
+            }
+        }
+
+
+		shader().uniform("texture", 1.0);
+		mRenderTree.render(g);
+		g.blendOff();
+
 	}
 
 	virtual void onMessage(osc::Message &m) {
@@ -571,20 +621,21 @@ public:
         module->setFontSize(18);
         module->setScale(0.4);
         module->setText(hash);
-        module->setPosition(Vec3d(rnd::gaussian() * 1.2, LAGOON_Y, -1.5));
+		float randPosX = rnd::gaussian() * 1.2;
+        module->setPosition(Vec3d(randPosX, -0.4, -1));
 
         module->addBehavior(std::make_shared<Sink2>(5* fps, -0.08));
         module->addBehavior(std::make_shared<FadeOut>(6* fps,3* fps));
 
         auto module2 = mRenderTree.createModule<TextRenderModule>();
         module2->setFontSize(18);
-        module2->setScale(0.2);
+        module2->setScale(0.3);
         if (isBitcoin) {
             module2->setText("Bitcoin!!");
         } else {
             module2->setText("Not a Bitcoin");
         }
-        module2->setPosition(Vec3d(-0.4, 0.4, 0.079990));
+        module2->setPosition(Vec3d(randPosX, -0.42, -1));
 //                    module2->addBehavior(std::make_shared<FadeIn>(2* fps));
         module2->addBehavior(std::make_shared<Sink2>(4* fps, 0.08));
         module2->addBehavior(std::make_shared<FadeOut>(4* fps,5* fps));
@@ -601,21 +652,11 @@ public:
         module->setFontSize(24);
         module->setScale(1.0);
         module->setText(text);
-		module->setPosition(Vec3d(2 * (x - 0.5), LAGOON_Y - 2, y - 2));
+		module->setPosition(Vec3d(2 * (x - 0.5), LAGOON_Y - 2, (y * -2) - 3));
         module->addBehavior(std::make_shared<Timeout>(10 * fps));
         module->addBehavior(std::make_shared<Sink2>(10* fps, 3.0 + rnd::gaussian()*0.5));
         module->addBehavior(std::make_shared<FadeOut>(6* fps,15* fps));
     }
-
-	void showCasas() {
-
-		auto module = mRenderTree.createModule<ImageRenderModule>();
-        module->loadImage("Fotos/casas1.jpg");
-		module->setPosition(Vec3f(0, 0,  3.0));
-        module->addBehavior(std::make_shared<Timeout>(10 * fps));
-        module->addBehavior(std::make_shared<Sink2>(10* fps, 3.0 + rnd::gaussian()*0.5));
-        module->addBehavior(std::make_shared<FadeOut>(7* fps,3* fps));
-	}
 
     SharedState &state() {return *mState;}
     SharedState *mState;

@@ -83,8 +83,8 @@ public:
 
         /* States */
 
-        mNoise.resize(GRID_SIZE * GRID_SIZE * GRID_SIZE);
-        mFilters.resize(GRID_SIZE * GRID_SIZE * GRID_SIZE);
+        mNoise.resize(GRID_SIZEX * GRID_SIZEY * GRID_SIZEZ);
+        mFilters.resize(GRID_SIZEX * GRID_SIZEY * GRID_SIZEZ);
 
         for (gam::Biquad<> &b:mFilters) {
             b.domain(mVideoDomain);
@@ -158,9 +158,9 @@ public:
         // Calculate grid deviations
         float * dev_ = state().dev;
         unsigned int count = 0;
-        for (int x = 0; x < GRID_SIZE; x++) {
-            for (int y = 0; y < GRID_SIZE; y++) {
-                for (int z = 0; z < GRID_SIZE; z++) {
+        for (int x = 0; x < GRID_SIZEX; x++) {
+            for (int y = 0; y < GRID_SIZEY; y++) {
+                for (int z = 0; z < GRID_SIZEZ; z++) {
                     if (mChaos.get() < 0.3f) {
                         *dev_++ = 0.0;
                     } else {
@@ -181,8 +181,10 @@ public:
                 } else {
 //                    state().posOfrendas[i].y = env * 25.0f - 8.0f;
                     state().posOfrendas[i].y = -9.8 + LAGOON_Y +  env * 10;
-                    float randomVal = rnd::gaussian();
-                    state().posOfrendas[i].x += randomVal * 0.03f;
+                    float randomVal = rnd::uniform(-1.0, 1.0);
+                    sideSpeed[i] *= 0.5;
+                    sideSpeed[i] += randomVal* 0.03f;
+                    state().posOfrendas[i].x += sideSpeed[i];
                     state().posOfrendas[i][3] += randomVal * 1.1f;
                 }
             }
@@ -205,17 +207,21 @@ public:
         // Activate ofrendas
         if (mDist > 0) {
             float dist = mDist;
+            if (mDist > 0.1) {
+                dist /=20.0;
+            }
             mDist = 0;
             if(state().chaos > 0.05 && state().chaos <= 0.4 && rnd::prob(0.02)) {
                 for (unsigned int i = 0; i < NUM_OFRENDAS; i++) {
                     if (!state().ofrendas[i]) {
                         mOfrendas.ofrendas[i].envelope.reset();
                         state().posOfrendas[i].x = rnd::gaussian()* 0.3;
+                        state().posOfrendas[i].y = -9.8 + LAGOON_Y;
                         state().ofrendas[i] = true;
+                        sideSpeed[i] = 0;
                         break;
                     }
                 }
-
             }
             // Activate bitcoin markers
             if(state().chaos > 0.4 && rnd::prob(0.2)){
@@ -299,9 +305,13 @@ public:
         decay.set(0.93 + (state().chaos* 0.068));
 //        shininess.set(50 - (state().chaos* 20));
 
-        state().chaos = state().chaos * 0.9997f;
+        state().chaos = state().chaos * 0.9996f;
         state().decay = decay.get();
         state().velocity = velocity.get();
+        state().mouseDown = mMouseDown == 1.0;
+
+        state().casasPhase += 0.2 + state().chaos * 0.2;
+//		if (state().casasPhase > 360) { state().casasPhase -= 360;}
 
         mMaker.set(state());
         mChaos.set(state().chaos);
@@ -319,6 +329,9 @@ public:
             m >> mDist >> mDeltaX >> mDeltaY;
         } else if (m.addressPattern() == "/drop" && m.typeTags() == "ff") {
             m >> mPosX >> mPosY;
+        } else if (m.addressPattern() == "/mouseDown" && m.typeTags() == "f") {
+            m >> mMouseDown;
+            std::cout << mMouseDown << std::endl;
         }
     }
 
@@ -343,12 +356,15 @@ public:
     float mDeltaX {0};
     float mDeltaY {0};
     float mDist {0};
+    float mMouseDown;
 
     // For onAnimate computation
     gam::Domain mVideoDomain; // Simulation frame rate
     Ofrenda_Data mOfrendas;
     std::vector<gam::Biquad<> > mFilters;
     std::vector<gam::NoiseBrown<> > mNoise;
+
+    float sideSpeed[NUM_OFRENDAS];
 
     cuttlebone::Maker<SharedState> mMaker;
 
@@ -382,11 +398,11 @@ public:
 	ShaderProgram mShader;
 
     // Audio
-	Granulator granX, granY, granZ;
-	Granulator background1;
-	Granulator background2;
-	Granulator background3;
-    gam::SineR<float> fluctuation1, fluctuation2;
+//	Granulator granX, granY, granZ;
+//	Granulator background1;
+//	Granulator background2;
+//	Granulator background3;
+//    gam::SineR<float> fluctuation1, fluctuation2;
 
     // Parameters
 	Parameter gainBackground1 {"background1", "", 0.2f, "", 0.0f, 1.0f};
@@ -397,13 +413,13 @@ public:
 
 	// This constructor is where we initialize the application
 	MyApp(): mPainter(&mState, &mShader, GRAPHICS_IN_PORT, 12098),
-        mSimulator(&mState),
+        mSimulator(&mState)/*,
 	    granX("Bounced Files/Piezas oro 1.wav"),
 	    granY("Bounced Files/Piezas oro 2.wav"),
 	    granZ("Bounced Files/Piezas oro 2.wav"),
 	    background1("Bounced Files/Modal.csd-000.wav"),
 	    background2("Bounced Files/Modal.csd-000.wav"),
-	    background3("Bounced Files/Bajo agua.wav")
+	    background3("Bounced Files/Bajo agua.wav")*/
 
 	{
 		AudioDevice::printAll();
@@ -418,19 +434,19 @@ public:
 
         // Audio
 
-        fluctuation1.freq(0.2f);
-		fluctuation2.freq(0.3f);
+//        fluctuation1.freq(0.2f);
+//		fluctuation2.freq(0.3f);
 #ifdef BUILDING_FOR_ALLOSPHERE
 
 //		audioIO().device(AudioDevice("ECHO X5"));
-		initAudio(48000, 256, 60, 0);
+//		initAudio(48000, 256, 60, 0);
 #else
 #ifdef SURROUND
-		audioIO().device(5);
-		initAudio(48000, 256, 8, 0);
+//		audioIO().device(5);
+//		initAudio(48000, 256, 8, 0);
 #else
-		audioIO().device(0);
-		initAudio(48000, 64, 60, 0);
+//		audioIO().device(0);
+//		initAudio(48000, 64, 60, 0);
 #endif
 #endif
 
@@ -503,8 +519,8 @@ public:
 		float mouseSpeedScale = 50.0f;
 		while(io()){
 			//float in = io.in(0);
-			float fluct1 = fluctuation1();
-			float fluct2 = fluctuation2();
+//			float fluct1 = fluctuation1();
+//			float fluct2 = fluctuation2();
 
 			float out1;
 			float out2;

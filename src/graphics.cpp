@@ -87,50 +87,41 @@ public:
 //    float mMouseX, mMouseY;
 //    float mSpeedX, mSpeedY;
     // From control interface
-    float mPosX {0};
-    float mPosY {0};
-    float mDeltaX {0};
-    float mDeltaY {0};
+//    float mPosX {0};
+//    float mPosY {0};
+//    float mDeltaX {0};
+//    float mDeltaY {0};
 
 	ShaderProgram mShader;
 
-    // Audio
-	Granulator granX, granY, granZ;
-	Granulator background1;
-	Granulator background2;
-	Granulator background3;
-    gam::SineR<float> fluctuation1, fluctuation2;
+//    // Audio
+//	Granulator granX, granY, granZ;
+//	Granulator background1;
+//	Granulator background2;
+//	Granulator background3;
+//    gam::SineR<float> fluctuation1, fluctuation2;
 
-    // Parameters
-	Parameter gainBackground1 {"background1", "", 0.2f, "", 0.0f, 1.0f};
-	Parameter gainBackground2 {"background2", "", 0.2f, "", 0.0f, 1.0f};
-	Parameter gainBackground3 {"background3", "", 0.2f, "", 0.0f, 1.0f};
+//    // Parameters
+//	Parameter gainBackground1 {"background1", "", 0.2f, "", 0.0f, 1.0f};
+//	Parameter gainBackground2 {"background2", "", 0.2f, "", 0.0f, 1.0f};
+//	Parameter gainBackground3 {"background3", "", 0.2f, "", 0.0f, 1.0f};
 
-	ParameterGUI mParameterGUI;
+//	ParameterGUI mParameterGUI;
 
 	// This constructor is where we initialize the application
-	Renderer(): mPainter(&mState, &shader(), GRAPHICS_IN_PORT, GRAPHICS_SLAVE_PORT),
-	    granX("Bounced Files/Piezas oro 1.wav"),
-	    granY("Bounced Files/Piezas oro 2.wav"),
-	    granZ("Bounced Files/Piezas oro 2.wav"),
-	    background1("Bounced Files/Modal.csd-000.wav"),
-	    background2("Bounced Files/Modal.csd-000.wav"),
-	    background3("Bounced Files/Bajo agua.wav")
+	Renderer(): mPainter(&mState, &shader(), GRAPHICS_IN_PORT, GRAPHICS_SLAVE_PORT)
 
 	{
-		AudioDevice::printAll();
-
-        fluctuation1.freq(0.2f);
-		fluctuation2.freq(0.3f);
+//		AudioDevice::printAll();
 
 //		mParameterGUI.setParentApp(this);
 //		mParameterGUI << new glv::Label("Parameter GUI example");
 //		mParameterGUI << gainBackground1 << gainBackground2 << gainBackground3;
 
 //        mPainter.setTreeMaster();
-        std::shared_ptr<TextRenderModule> module = mPainter.mRenderTree.createModule<TextRenderModule>();
-        module->setText("Hello");
-        module->setPosition(Vec3f(0, 0, -1));
+//        std::shared_ptr<TextRenderModule> module = mPainter.mRenderTree.createModule<TextRenderModule>();
+//        module->setText("Hello");
+//        module->setPosition(Vec3f(0, 0, -1));
 		std::cout << "Constructor done" << std::endl;
 	}
 
