@@ -90,9 +90,9 @@ std::string wbFragmentCode() {
     return R"(
 #version 120
 uniform sampler2D texture_warp;
-uniform sampler2D texture_blend;
+// uniform sampler2D texture_blend;
 void main() {
-    float blend = texture2D(texture_blend, gl_TexCoord[0].st).r;
+    // float blend = texture2D(texture_blend, gl_TexCoord[0].st).r;
     vec4 textureColor = texture2D(texture_warp, gl_TexCoord[0].st);
     textureColor += vec4(1.0, 1.0, 1.0, 0.0);
     textureColor *= vec4(0.5, 0.5, 0.5, 1.0);
@@ -383,7 +383,7 @@ public:
         wb_shader.printLog();
         wb_shader.begin();
         wb_shader.uniform("texture_warp", 0);
-        wb_shader.uniform("texture_blend", 1);
+        // wb_shader.uniform("texture_blend", 1);
         wb_shader.end();
     }
 
@@ -437,6 +437,7 @@ public:
         wb_fbo.begin();
         g.clearColor(1, 0, 0, 1);
         g.clear(Graphics::COLOR_BUFFER_BIT | Graphics::DEPTH_BUFFER_BIT);
+        g.blending(false);
         wb_shader.begin();
         auto& o = omni();
         for (int i = 0; i < o.numProjections(); i += 1) {
@@ -452,7 +453,7 @@ public:
             g.modelView(Matrix4d::identity());
 
             p.warp().bind(0);
-            p.blend().bind(1);
+            // p.blend().bind(1);
 
             Mesh m {Graphics::TRIANGLE_STRIP};
             m.vertex(-1, -1, 0);
@@ -468,7 +469,7 @@ public:
             g.draw(m);
 
             p.warp().unbind(0);
-            p.blend().unbind(1);
+            // p.blend().unbind(1);
         }
         wb_shader.end();
         wb_fbo.end();
@@ -482,6 +483,7 @@ public:
         fbo.attachRBO(rbo, FBO::DEPTH_ATTACHMENT);
         fbo.attachTexture2D(capture_tex[capture_idx].id(), FBO::COLOR_ATTACHMENT0);
         fbo.begin();
+        g.blending(false);
         effectShader.begin();
         effectShader.uniform("radius", 3.0);
         effectShader.uniform("time", t);
@@ -498,20 +500,21 @@ public:
 
         // opaque render previous frame
         g.blending(false);
-        capture_tex[1 - capture_idx].quadViewport(g, Color(1, 1, 1, 1));
+        // capture_tex[1 - capture_idx].quadViewport(g, Color(1, 1, 1, 1));
 
         // blend current new frame
-        g.blending(true);
-        g.blendMode(Graphics::SRC_ALPHA, Graphics::ONE_MINUS_SRC_ALPHA, Graphics::FUNC_ADD);
-        g.blendTrans();
-        capture_tex[capture_idx].quadViewport(g, Color(1, 1, 1, 0.8));
+        // g.blending(true);
+        // g.blendMode(Graphics::ONE, Graphics::ONE_MINUS_SRC_ALPHA, Graphics::FUNC_ADD);
+        // g.blendTrans();
+        capture_tex[capture_idx].quadViewport(g, Color(1, 1, 1, 0.5));
 
         // copy again composited result
-        capture_tex[capture_idx].copyFrameBuffer();
+        // capture_tex[capture_idx].copyFrameBuffer();
 
         // debug wb texture
         // g.blending(false);
         // wb_tex.quadViewport(g, Color(1, 1, 1, 1), 1, 1, -0.5, -0.5);
+        wb_tex.quadViewport(g, Color(1, 1, 1, 1), 2, 2, -1, -1);
 
         // and swap capture texture
         capture_idx = 1- capture_idx;

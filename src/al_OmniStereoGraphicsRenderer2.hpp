@@ -120,7 +120,7 @@ inline OmniStereoGraphicsRenderer2::OmniStereoGraphicsRenderer2()
 }
 
 inline void OmniStereoGraphicsRenderer2::initOmni(std::string path) {
-  mOmni.resolution(256);
+  mOmni.resolution(2048);
   mOmni.configure(path, mHostName);
   if (mOmni.activeStereo()) {
     mOmni.mode(OmniStereo::ACTIVE).stereo(true);
