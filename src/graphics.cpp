@@ -96,7 +96,7 @@ void main() {
     vec4 textureColor = texture2D(texture_warp, gl_TexCoord[0].st);
     textureColor += vec4(1.0, 1.0, 1.0, 0.0);
     textureColor *= vec4(0.5, 0.5, 0.5, 1.0);
-    textureColor.a = blend;
+    textureColor.a = 1.0;
     gl_FragColor = textureColor;
 }
 )";
@@ -261,9 +261,9 @@ void main() {
   float noise = snoise(space_time);
   float noise2 = snoise(space_time2);
   float n = (noise + 0.5 * noise2) / 1.5;
-  textureColor.r *= 0.5 + 0.5 * n;
-  textureColor.g *= 0.55 + 0.45 * n;
-  textureColor.b *= 0.6 + 0.4 * n;
+  textureColor.r *= 0.7 + 0.3 * n;
+  textureColor.g *= 0.75 + 0.25 * n;
+  textureColor.b *= 0.8 + 0.2 * n;
   gl_FragColor = textureColor;
 }
 )";
@@ -504,7 +504,7 @@ public:
         g.blending(true);
         g.blendMode(Graphics::SRC_ALPHA, Graphics::ONE_MINUS_SRC_ALPHA, Graphics::FUNC_ADD);
         g.blendTrans();
-        capture_tex[capture_idx].quadViewport(g, Color(1, 1, 1, 0.5));
+        capture_tex[capture_idx].quadViewport(g, Color(1, 1, 1, 0.8));
 
         // copy again composited result
         capture_tex[capture_idx].copyFrameBuffer();

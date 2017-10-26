@@ -545,6 +545,10 @@ public:
 			shader().uniform("texture", casasIndex/3);
 		}
 		dev = state().dev;
+
+		g.pushMatrix();
+		g.rotate(180, 0, 1, 0);
+
 		for (unsigned int i = 0; i < NUM_CASAS; i++) {
 			if (true) {
 				textureCasas[i].bind(0);
@@ -568,6 +572,7 @@ public:
 					g.draw(mQuad);
 					g.popMatrix();
 				}
+
 				for (int j = 0; j < 3; j++) {
 					g.pushMatrix();
 					g.rotate(i*20 + j *140, 0, 0.1, 1);
@@ -592,6 +597,7 @@ public:
             }
         }
 
+        g.popMatrix();
 
 		shader().uniform("texture", 1.0);
 		mRenderTree.render(g);
