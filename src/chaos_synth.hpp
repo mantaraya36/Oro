@@ -39,18 +39,29 @@ public:
 //        mEnv.sustainPoint(1);
 
         resetClean();
+		mEnv.release();
     }
 
     static inline float midi2cps(int midiNote) {
         return 440.0 * pow(2, (midiNote - 69.0)/ 12.0);
     }
 
-    void trigger(ChaosSynthParameters &params) {
+	void setOutputIndeces(int index1, int index2) {
+		mOutputChannels[0] = index1;
+		mOutputChannels[1] = index2;
+	}
+
+	bool done() {
+		return mEnv.done();
+	}
+
+    void trigger(int id) {
+		mId = id;
 //        mLevel = params.mLevel;
         mEnv.reset();
     }
 
-    void release() {
+    void release(int id) {
         mEnv.release();
     }
 
@@ -89,7 +100,7 @@ public:
     al::Reverb<> mReverb;
 
     gam::BlockDC<> mDCBlockL, mDCBlockR;
-    gam::ADSR<> mEnv{0.5, 0.0, 1.0, 3.0};
+    gam::ADSR<> mEnv{3.0, 0.0, 1.0, 3.0};
 
     void generateAudio(AudioIOData &io) {
         float noise;

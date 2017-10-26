@@ -8,7 +8,7 @@
 #include "allocore/ui/al_ParameterMIDI.hpp"
 #include "allocore/io/al_MIDI.hpp"
 
-#define SURROUND
+#include "common.hpp"
 
 #include "chaos_synth.hpp"
 #include "add_synth.hpp"
@@ -72,9 +72,9 @@ public:
             {16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45},
             {48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59}
         };
-        mOSCRecv.handler(*this);
-        mOSCRecv.timeout(0.005);
-        mOSCRecv.start();
+        mChaosRecv.handler(*this);
+        mChaosRecv.timeout(0.005);
+        mChaosRecv.start();
 
     }
 
@@ -83,7 +83,12 @@ public:
     }
 
     virtual void onSound(AudioIOData &io) override;
-    virtual void onMessage(osc::Message &m) override { m.print();}
+    virtual void onMessage(osc::Message &m) override {
+        if (m.addressPattern() == "/chaos" && m.typeTags() == "f") {
+            m >> mChaos;
+        }
+        m.print();
+    }
 
 private:
 
@@ -167,12 +172,22 @@ private:
     MsgQueue msgQueue;
 
     DownMixer mDownMixer;
+
+    osc::Recv mChaosRecv {AUDIO_IN_PORT, AUDIO_IP_ADDRESS};
+
+    float mChaos {0};
 };
 
 static void releaseAddSynth(al_sec timestamp, AddSynth *addSynth, int id)
 {
     addSynth->release(id);
     std::cout << "release" << std::endl;
+}
+
+static void releaseChaosSynth(al_sec timestamp, ChaosSynth *chaosSynth, int id)
+{
+    chaosSynth->release(id);
+    std::cout << "release chaos" << std::endl;
 }
 
 void AudioApp::onSound(AudioIOData &io)
@@ -200,6 +215,17 @@ void AudioApp::onSound(AudioIOData &io)
         addSynth.trigger(0);
         msgQueue.send(msgQueue.now() + 2.5, releaseAddSynth, &addSynth, 0);
     }
+    // Chaos Synth triggers
+    if (mChaos > 0.3 && mChaos < 0.7) {
+        if (rnd::prob(0.0082)) {
+            if (chaosSynth[0].done()) {
+                chaosSynth[0].setOutputIndeces(rnd::uniform(47, 16));
+                chaosSynth[0].trigger(0);
+                msgQueue.send(msgQueue.now() + 7, releaseChaosSynth, &chaosSynth[0], 0);
+            }
+        }
+    }
+
     for (int i = 0; i < CHAOS_SYNTH_POLYPHONY; i++) {
         if (!chaosSynth[i].done()) {
             chaosSynth[i].generateAudio(io);

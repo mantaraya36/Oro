@@ -321,6 +321,9 @@ public:
         mSenderToControl.send("/decay", decay.get());
         mSenderToControl.send("/velocity", velocity.get());
 
+        // Send to Audio
+        mSenderToAudio.send("/chaos", state().chaos);
+
     }
 
     virtual void onMessage(osc::Message &m) override {
@@ -372,6 +375,7 @@ public:
 
     SharedState &state() {return *mState;}
 
+    osc::Send mSenderToAudio {AUDIO_IN_PORT, AUDIO_IP_ADDRESS};
     osc::Send mSenderToControl {CONTROL_IN_PORT, CONTROL_IP_ADDRESS};
     osc::Send mSenderToGraphics {GRAPHICS_IN_PORT, GRAPHICS_IP_ADDRESS};
     osc::Recv mRecvFromControl {SIMULATOR_IN_PORT};

@@ -285,12 +285,9 @@ void ChaosSynthApp::randomizeClean()
 
 void ChaosSynthApp::trigger(int id)
 {
-    ChaosSynthParameters params;
-    params.id = id;
-
     for (int i = 0; i < SYNTH_POLYPHONY; i++) {
 //        if (synth[i].done()) {
-            synth[i].trigger(params);
+            synth[i].trigger(id);
             break;
 //        }
     }
@@ -300,7 +297,7 @@ void ChaosSynthApp::release(int id)
 {
     for (int i = 0; i < SYNTH_POLYPHONY; i++) {
 //        if (synth[i].done()) {
-            synth[i].release();
+            synth[i].release(id);
             break;
 //        }
     }
