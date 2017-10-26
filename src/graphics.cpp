@@ -264,6 +264,7 @@ void main() {
   textureColor.r *= 0.7 + 0.3 * n;
   textureColor.g *= 0.75 + 0.25 * n;
   textureColor.b *= 0.8 + 0.2 * n;
+  textureColor = vec4(n, n, n, 1.0);
   gl_FragColor = textureColor;
 }
 )";
@@ -514,7 +515,7 @@ public:
         // debug wb texture
         // g.blending(false);
         // wb_tex.quadViewport(g, Color(1, 1, 1, 1), 1, 1, -0.5, -0.5);
-        wb_tex.quadViewport(g, Color(1, 1, 1, 1), 2, 2, -1, -1);
+        // wb_tex.quadViewport(g, Color(1, 1, 1, 1), 2, 2, -1, -1);
 
         // and swap capture texture
         capture_idx = 1- capture_idx;
