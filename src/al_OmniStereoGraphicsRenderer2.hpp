@@ -38,7 +38,7 @@ class OmniStereoGraphicsRenderer2 : public Window,
 
   void start();
   void initWindow(const Window::Dim& dims = Window::Dim(800, 400),
-                  const std::string title = "OmniStereoGraphicsRenderer2",
+                  const std::string title = "",
                   double fps = 60,
                   Window::DisplayMode mode = Window::DEFAULT_BUF);
   void initOmni(std::string path = "");
