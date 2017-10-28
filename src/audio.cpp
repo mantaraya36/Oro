@@ -335,11 +335,11 @@ void AudioApp::onSound(AudioIOData &io)
         *swBuffer++ *= 0.07;
     }
 
-    std::cout << "-------------" << std::endl;
-    for (int i= 0; i < 60; i++) {
-        std::cout << io.out(i, 0) << " ";
-    }
-    std::cout << std::endl;
+//    std::cout << "-------------" << std::endl;
+//    for (int i= 0; i < 60; i++) {
+//        std::cout << io.out(i, 0) << " ";
+//    }
+//    std::cout << std::endl;
 
 //    mDownMixer.process(io);
 

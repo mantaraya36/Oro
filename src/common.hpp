@@ -35,7 +35,7 @@ using namespace std;
 #define GRID_SIZEZ 10
 #define INTERACTION_POINTS 32
 
-#define NUM_OFRENDAS 17
+#define NUM_OFRENDAS 16
 #define NUM_CASAS 6
 
 #ifdef BUILDING_FOR_ALLOSPHERE
@@ -293,6 +293,10 @@ public:
         mRecvFromGraphicsMaster.timeout(0.005);
         mRecvFromGraphicsMaster.start();
     }
+	~SharedPainter() {
+		mRecvFromSimulator.stop();
+		mRecvFromGraphicsMaster.stop();
+	}
 
     void onInit() {
 
@@ -318,7 +322,7 @@ public:
         vector<string> ofrendaImageFiles =
         {"Fotos/MO_01alpha.png",  "Fotos/MO_04alpha.png", "Fotos/MO_07alpha.png",
          "Fotos/MO_02alpha.png",  "Fotos/MO_05alpha.png",  "Fotos/MO_03alpha.png",
-         "Fotos/MO_06.png ", "Fotos/MO_07alpha.png",
+//         "Fotos/MO_06.png ",
 		 "Fotos/MO_08alpha.png",
 		 "Fotos/MO_09alpha.png",
 		 "Fotos/MO_10alpha.png",

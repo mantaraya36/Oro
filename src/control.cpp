@@ -218,11 +218,13 @@ public:
         if (mPosX > 1.0) mPosX = 1.0;
         mPosY = 1.0 - m.y()/(float)window(0).height();
         if (mPosY > 1.0) mPosY = 1.0;
-//        std::cout << mPosX << std::endl;
         mDist = sqrt((oldX - mPosX)* (oldX - mPosX) + (oldY - mPosY)*(oldY - mPosY));
+        std::cout << mDist << std::endl;
         mDeltaX = mPosX - oldX;
         mDeltaY = mPosY - oldY;
-        mOSCSender.send("/dist", mDist, mDeltaX, mDeltaY);
+		if (mDist != 0.0f) {
+			mOSCSender.send("/dist", mDist, mDeltaX, mDeltaY);
+		}
         if (mIntroTextModule) {
             if (mIntroTextModule->done()) {
                 mIntroTextModule = nullptr;
