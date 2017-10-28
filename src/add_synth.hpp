@@ -210,7 +210,7 @@ public:
     void updateOutMap(float arcStart, float arcSpan, vector<int> outputRouting) {
         int numSpeakers = outputRouting.size();
         for (int i = 0; i < NUM_VOICES; i++) {
-            mOutMap[i] = outputRouting[fmod(((arcStart + (arcSpan * i/(float) (NUM_VOICES))) * numSpeakers ), numSpeakers)];
+            mOutMap[i] = outputRouting[fmod(((arcStart + (arcSpan * i/(float) (NUM_VOICES - 1))) * numSpeakers ), outputRouting.size())];
 //            std::cout << mOutMap[i] << std::endl;
         }
     }

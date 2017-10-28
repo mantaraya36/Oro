@@ -109,7 +109,7 @@ class RenderModule : public OSCNotifier {
     friend class RenderTreeHandler;
 public:
     RenderModule() {} // perhaps have non public constructor and factory function in chain?
-    virtual ~RenderModule() {relay(moduleAddress() + "/destroy");}
+    virtual ~RenderModule() { relayDestruction();}
 
     void setPosition(Vec3f pos) { mPosition = pos; relay(moduleAddress() + "/setPosition", pos);}
     void setRotation(Vec3f rot) { mRotation = rot; relay(moduleAddress() + "/setRotation", rot);}
@@ -186,6 +186,8 @@ public:
             }
         } else if (command == "done") {
 			setDone(true);
+        } else if (command == "destroy") {
+			setDone(true);
         } /*else if (command == "setRotation") {
 
         }*/
@@ -254,6 +256,13 @@ protected:
 		if (mRelayer) {
 			mRelayer->relay("/create", mType, mId);
 		}
+	}
+
+	virtual void relayDestruction() {
+		relay(moduleAddress() + "/destroy");
+//		if (mRelayer) {
+//			mRelayer->relay("/destroy", mId);
+//		}
 	}
 
 //	static std::string moduleClassName(); // Don't override this, it will be declared by the REGISTER_MODULE macro

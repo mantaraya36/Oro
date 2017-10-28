@@ -328,14 +328,11 @@ int main(int argc, char *argv[] )
     app.initializePresets(); // Must be called before initializeGui
     app.initializeGui();
     app.initWindow();
-#ifdef SURROUND
-    int outChans = 8;
+    int outChans = 5;
     app.outputRouting = {4, 3, 7, 6, 2 };
-#else
-    int outChans = 2;
-    app.outputRouting = {0, 1};
-#endif
-    app.initAudio(44100, 2048, outChans, 0);
+
+    app.audioIO().device(AudioDevice("ECHO X5"));
+    app.initAudio(44100, 2048, 60, 0);
     gam::sampleRate(app.audioIO().fps());
 
     AudioDevice::printAll();

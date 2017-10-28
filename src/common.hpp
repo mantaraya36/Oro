@@ -25,7 +25,7 @@
 #include "Cuttlebone/Cuttlebone.hpp"
 
 //#define SURROUND
-//#define BUILDING_FOR_ALLOSPHERE
+#define BUILDING_FOR_ALLOSPHERE
 
 using namespace al;
 using namespace std;
@@ -35,7 +35,7 @@ using namespace std;
 #define GRID_SIZEZ 10
 #define INTERACTION_POINTS 32
 
-#define NUM_OFRENDAS 8
+#define NUM_OFRENDAS 17
 #define NUM_CASAS 6
 
 #ifdef BUILDING_FOR_ALLOSPHERE
@@ -296,10 +296,40 @@ public:
 
     void onInit() {
 
+
+//		MO_01	741	683
+//		MO_02	921	716
+//		MO_03	654	598
+//		MO_04	556	596
+//		MO_05	557	608
+//		MO_06	473	512
+//		MO_07	559	661
+//		MO_08	454	496
+//		MO_09	1050	395
+//		MO_10	386	673
+//		MO_11	530	481
+//		MO_12_poporo_alpha	330	571
+//		MO_13	454	689
+//		MO_14	299	510
+//		MO_15	625	659
+//		MO_16	736	454
+//		MO_17	945	485
+
         vector<string> ofrendaImageFiles =
         {"Fotos/MO_01alpha.png",  "Fotos/MO_04alpha.png", "Fotos/MO_07alpha.png",
          "Fotos/MO_02alpha.png",  "Fotos/MO_05alpha.png",  "Fotos/MO_03alpha.png",
-         "Fotos/MO_06.png" };
+         "Fotos/MO_06.png ", "Fotos/MO_07alpha.png",
+		 "Fotos/MO_08alpha.png",
+		 "Fotos/MO_09alpha.png",
+		 "Fotos/MO_10alpha.png",
+		 "Fotos/MO_11alpha.png",
+		 "Fotos/MO_12_poporo_alpha.png",
+		 "Fotos/MO_13alpha.png",
+		 "Fotos/MO_14alpha.png",
+		 "Fotos/MO_15alpha.png",
+		 "Fotos/MO_16alpha.png",
+		 "Fotos/MO_17alpha.png"
+ };
         int counter = 0;
         for (string filename: ofrendaImageFiles) {
             if (imagesOfrendas[counter].load(filename)) {
@@ -513,12 +543,13 @@ public:
         g.rotate(-90, 1, 0, 0);
 		float waterScale = 4.5;
 		if (state().chaos > 0.6) {
-			waterScale += 2.0 * (state().chaos - 0.6) * 0.4;
+			waterScale += 2.0 * sqrt(state().chaos - 0.6) * 0.4;
 		}
 		g.scale(waterScale, waterScale*waterScale, waterScale);
         g.draw(waterMesh);
         g.popMatrix();
 
+		// Ofrendas de oro
 		g.lighting(false);
         shader().uniform("lighting", 0.0);
         shader().uniform("enableFog", 0);
@@ -551,13 +582,15 @@ public:
 			shader().uniform("texture", casasIndex/3);
 		}
 		dev = state().dev;
+		g.pushMatrix();
+		g.rotate(180, 0, 1, 0);
 		for (unsigned int i = 0; i < NUM_CASAS; i++) {
 			if (true) {
 				textureCasas[i].bind(0);
 				for (int j = 0; j < 3; j++) {
 					g.pushMatrix();
 					g.rotate(i*20 + j *120, 0, 0.1, 1);
-					g.translate(0.1 + state().chaos, 0, -2 - 0.01 * i);
+					g.translate(0.35 + state().chaos * 1.6, 0, -2 - 0.01 * i);
 
 					g.translate(*dev* 0.01, 0, *dev* 0.1);
 
@@ -570,17 +603,17 @@ public:
 					//                g.rotate(posOfrenda[3], 0, 0, 1);
 
 					//				g.rotate(i*20, 0, 0, 1);
-					g.scale(0.4 + casasIndex* 0.9);
+					g.scale(0.3 + casasIndex* 0.5);
 					g.draw(mQuad);
 					g.popMatrix();
 				}
 				for (int j = 0; j < 3; j++) {
 					g.pushMatrix();
 					g.rotate(i*20 + j *140, 0, 0.1, 1);
-					g.translate(0.3 + state().chaos* 2.0, 0, -2 + 0.01 * i);
+					g.translate(0.4 + state().chaos* 2.5, 0, -2 + 0.01 * i);
 
 					g.translate(*dev* 0.01, *dev* 0.05, 0);
-					g.rotate((1-casasIndex)*10, 0.3, 0.12, 0.0);
+					g.rotate((1-casasIndex)*2, 0.1, 0.6, 0.0);
 
 					g.translate(*dev* 0.05, *dev* 0.15, 0);
 					g.rotate(state().casasPhase* 1.2124, 0.1, 0.22, 0.6);
@@ -597,7 +630,7 @@ public:
 				dev++;
             }
         }
-
+		g.popMatrix();
 
 		shader().uniform("texture", 1.0);
 		mRenderTree.render(g);
@@ -641,7 +674,7 @@ public:
         } else {
             module2->setText("Not a Bitcoin");
         }
-        module2->setPosition(Vec3d(randPosX, -0.42, -1));
+        module2->setPosition(Vec3d(randPosX, -0.41, -1));
 //                    module2->addBehavior(std::make_shared<FadeIn>(2* fps));
         module2->addBehavior(std::make_shared<Sink2>(4* fps, 0.08));
         module2->addBehavior(std::make_shared<FadeOut>(4* fps,5* fps));
@@ -658,7 +691,7 @@ public:
         module->setFontSize(24);
         module->setScale(1.0);
         module->setText(text);
-		module->setPosition(Vec3d(2 * (x - 0.5), LAGOON_Y - 2, (y * -2) - 3));
+		module->setPosition(Vec3d(2 * (x - 0.5), LAGOON_Y - 2, (y * -3.5) - 1.5));
         module->addBehavior(std::make_shared<Timeout>(10 * fps));
         module->addBehavior(std::make_shared<Sink2>(10* fps, 3.0 + rnd::gaussian()*0.5));
         module->addBehavior(std::make_shared<FadeOut>(6* fps,15* fps));
