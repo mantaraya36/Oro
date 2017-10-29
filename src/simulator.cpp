@@ -121,6 +121,16 @@ public:
         mMouseY = y;
     }
 
+    void reset() {
+        state().chaos = 0.0;
+        for (int i = 0; i < NUM_OFRENDAS; i++) {
+            state().ofrendas[i] = false;
+            state().posOfrendas[i].y = LAGOON_Y - 0.2;
+        }
+        mSenderToControl.send("/reset");
+        mSenderToGraphics.send("/clear");
+    }
+
     void onAnimate(double dt) {
         al_sec curTime = al_steady_time();
 //        if (mMouseSpeed > 2) {
@@ -210,15 +220,17 @@ public:
             if (mDist > 0.1) {
                 dist /=20.0;
             }
-            mDist = 0;
-            if(state().chaos > 0.05 && state().chaos <= 0.4 && rnd::prob(0.02)) {
+            if(state().chaos > 0.03 && state().chaos <= 0.4 && rnd::prob(0.012)) {
+                int randOffset = rnd::uniform(NUM_OFRENDAS);
                 for (unsigned int i = 0; i < NUM_OFRENDAS; i++) {
-                    if (!state().ofrendas[i]) {
-                        mOfrendas.ofrendas[i].envelope.reset();
-                        state().posOfrendas[i].x = rnd::gaussian()* 0.3;
-                        state().posOfrendas[i].y = -9.8 + LAGOON_Y;
-                        state().ofrendas[i] = true;
-                        sideSpeed[i] = 0;
+                    int index = (randOffset + i)%NUM_OFRENDAS;
+                    if (!state().ofrendas[index]) {
+                        mOfrendas.ofrendas[index].envelope.reset();
+                        state().posOfrendas[index].x = rnd::gaussian()* 0.3;
+                        state().posOfrendas[index].y = -9.8 + LAGOON_Y;
+                        state().posOfrendas[index].z =  - 4 + i/(float)NUM_OFRENDAS;
+                        state().ofrendas[index] = true;
+                        sideSpeed[index] = 0;
                         break;
                     }
                 }
@@ -263,8 +275,8 @@ public:
                     float adjustedY = (mPosY* 9/16.0) + (0.5 * 5/16.0);
                     float y = adjustedY*(Ny - 8) + 4;
                     float v = 0.35*exp(-(i* i/16.0+j*j/16.0)/(0.5*0.5));
-                    state().wave[indexAt(x+i, y+j, zcurr)] += v;
-                    state().wave[indexAt(x+i, y+j, zprev)] += v;
+                    state().wave[indexAt(x+i, y+j, zcurr)] += v * fabs(mDist)* 20;
+                    state().wave[indexAt(x+i, y+j, zprev)] += v * fabs(mDist)* 20;
                     //                            std::cout << x << "  " << y << " "<< v << std::endl;
                 }
             }
@@ -324,6 +336,7 @@ public:
         // Send to Audio
         mSenderToAudio.send("/chaos", state().chaos);
 
+        mDist = 0;
     }
 
     virtual void onMessage(osc::Message &m) override {
@@ -334,7 +347,7 @@ public:
             m >> mPosX >> mPosY;
         } else if (m.addressPattern() == "/mouseDown" && m.typeTags() == "f") {
             m >> mMouseDown;
-            std::cout << mMouseDown << std::endl;
+//            std::cout << mMouseDown << std::endl;
         }
     }
 
@@ -573,6 +586,7 @@ public:
 		case 'y': printf("Pressed y.\n"); break;
 		case 'n': printf("Pressed n.\n"); break;
 		case '.': printf("Pressed period.\n"); break;
+        case 'r': mSimulator.reset();
 
 		// For non-printable keys, we have to use the enums described in the
 		// Keyboard class:

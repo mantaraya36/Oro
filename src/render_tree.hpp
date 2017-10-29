@@ -147,6 +147,16 @@ public:
         mBehaviors.push_back(behavior);
     }
 
+	void removeBehavoir(std::shared_ptr<Behavior> behavior) {
+		std::lock_guard<std::mutex> locker(mModuleLock);
+		std::remove( mBehaviors.begin(), mBehaviors.end(), behavior );
+	}
+
+	void clearBehaviors() {
+		std::lock_guard<std::mutex> locker(mModuleLock);
+		mBehaviors.clear();
+	}
+
 	void setRelayer(Relayer *relayer) {
 		std::lock_guard<std::mutex> locker(mModuleLock);
 		mRelayer = relayer;
@@ -188,7 +198,7 @@ public:
 			setDone(true);
         } else if (command == "destroy") {
 			setDone(true);
-        } /*else if (command == "setRotation") {
+        }/*else if (command == "setRotation") {
 
         }*/
     }
@@ -540,8 +550,8 @@ public:
     static std::shared_ptr<LineStripModule> create() { return std::make_shared<LineStripModule>();}
 	static std::shared_ptr<RenderModule> createBase() { return std::static_pointer_cast<RenderModule>(create());}
 
-    void setDelta(float delta) { mDelta = delta; }
-    void setThickness(float thickness) { mThickness = thickness; }
+    void setDelta(float delta) { mDelta = delta; relay(moduleAddress() + "/setDelta", delta);}
+    void setThickness(float thickness) { mThickness = thickness; relay(moduleAddress() + "/setThickness", thickness);}
 
     void addValue(float value)
     {
@@ -552,6 +562,7 @@ public:
         }
         mMesh.vertices()[mNumVertices++] =  {value, mNumVertices* mDelta, 0};
         mMesh.vertices()[mNumVertices++] =  {value+ mThickness, mNumVertices* mDelta, mThickness};
+		relay(moduleAddress() + "/addValue", value);
     }
 
     void addVertex(float x, float y, float z)
@@ -563,6 +574,29 @@ public:
         }
         mMesh.vertices()[mNumVertices++] =  {x, y, z};
         mMesh.vertices()[mNumVertices++] =  {x+ mThickness, y, z + mThickness};
+		relay(moduleAddress() + "/addVertex", x, y, z);
+    }
+
+	virtual void executeCommand(std::string command, std::vector<std::string> arguments) override
+    {
+        RenderModule::executeCommand(command, arguments);
+		if (command == "addValue") {
+            if (arguments.size() == 1) {
+                addValue(std::atof(arguments.at(0).c_str()));
+            }
+        } else if (command == "addVertex") {
+            if (arguments.size() == 3) {
+                addVertex(std::atof(arguments.at(0).c_str()), std::atof(arguments.at(1).c_str()), std::atof(arguments.at(2).c_str()));
+            }
+        } else if (command == "setDelta") {
+			if (arguments.size() == 1) {
+                setDelta(std::atof(arguments.at(0).c_str()));
+            }
+        } else if (command == "setThickness") {
+			if (arguments.size() == 1) {
+                setThickness(std::atof(arguments.at(0).c_str()));
+            }
+        }
     }
 
 protected:
@@ -686,6 +720,7 @@ public:
             module->cleanup();
         }
         mModules.clear();
+		relay("/clear");
     }
 
     virtual bool addModule(std::shared_ptr<RenderModule> module);
@@ -867,14 +902,16 @@ public:
         if (mOSCsubPath.size() > 0) {
             basePath += "/" + mOSCsubPath;
         }
-//		m.print();
+		m.print();
         for(auto action : mOSCActions) {
             if (action->process(m)) {
                 return true;
             }
         }
-        if (m.addressPattern() == basePath + "/listModules" && m.typeTags() == "i") {
-            int port;
+        if (m.addressPattern() == basePath + "/clear") {
+            mTree->clear();
+        } else if (m.addressPattern() == basePath + "/listModules" && m.typeTags() == "i") {
+			int port;
             m >> port;
             osc::Send sender(port, m.senderAddress().c_str());
             std::cout << "Sending list to: " << m.senderAddress() << ":" << port << std::endl;

@@ -54,18 +54,28 @@ public:
 	}
 
     void reset() {
+//		and the rest of the chieftains with him did the same.”
+		mRenderTree.clear();
+
         mIntroTextModule = mRenderTree.createModule<TextRenderModule>();
         mIntroTextModule->loadFont("fonts/CaslonAntique.ttf", 32, true);
         mIntroTextModule->setScale(0.4);
-        mIntroTextModule->setText("In sacred lagoons in the Colombian Andes,");
-        mIntroTextModule->setPosition(Vec3d(-0.6, 0.08, 0.04999));
+        mIntroTextModule->setText("\"The golden indian would make his offering");
+        mIntroTextModule->setPosition(Vec3d(-0.63, 0.08, 0.04999));
 
         mIntroTextModule2 = mRenderTree.createModule<TextRenderModule>();
         mIntroTextModule2->loadFont("fonts/CaslonAntique.ttf", 32, true);
         mIntroTextModule2->setScale(0.4);
-        mIntroTextModule2->setText("Gold was thrown in as part of a ritual");
-        mIntroTextModule2->setPosition(Vec3d(-0.6, -0.0, 0.04999));
+        mIntroTextModule2->setText("throwing all the gold at his feet in the middle of the lagoon\"");
+        mIntroTextModule2->setPosition(Vec3d(-0.61, -0.0, 0.04999));
+
+		mIntroTextModule3 = mRenderTree.createModule<TextRenderModule>();
+        mIntroTextModule3->loadFont("fonts/CaslonAntique.ttf", 32, true);
+        mIntroTextModule3->setScale(0.4);
+        mIntroTextModule3->setText("Juan Rodriguez Freyle (1566-1642)");
+        mIntroTextModule3->setPosition(Vec3d(-0.3, -0.1, 0.04999));
         mIntroTextFading = false;
+
     }
 
     void showBitcoinReport(std::string hash, bool isBitcoin) {
@@ -126,8 +136,8 @@ public:
                             float adjustedY = (mPosY* 9/16.0) + (0.5 * 5/16.0);
                             float y = adjustedY*(Ny - 8) + 4;
                             float v = 0.35*exp(-(i* i/16.0+j*j/16.0)/(0.5*0.5));
-                            wave[indexAt(x+i, y+j, zcurr)] += v;
-                            wave[indexAt(x+i, y+j, zprev)] += v;
+                            wave[indexAt(x+i, y+j, zcurr)] += v * fabs(mDist)* 20;
+                            wave[indexAt(x+i, y+j, zprev)] += v * fabs(mDist)* 20;
 //                            std::cout << x << "  " << y << " "<< v << std::endl;
                         }
                     }
@@ -185,6 +195,7 @@ public:
             }}
 
         mesh.generateNormals();
+		mDist = 0;
 
     }
 
@@ -219,7 +230,7 @@ public:
         mPosY = 1.0 - m.y()/(float)window(0).height();
         if (mPosY > 1.0) mPosY = 1.0;
         mDist = sqrt((oldX - mPosX)* (oldX - mPosX) + (oldY - mPosY)*(oldY - mPosY));
-        std::cout << mDist << std::endl;
+//        std::cout << mDist << std::endl;
         mDeltaX = mPosX - oldX;
         mDeltaY = mPosY - oldY;
 		if (mDist != 0.0f) {
@@ -233,12 +244,19 @@ public:
                 mIntroTextModule->addBehavior(std::make_shared<Sink>(15* window().fps(), -0.05));
                 mIntroTextModule2->addBehavior(std::make_shared<FadeOut>(20* window().fps()));
                 mIntroTextModule2->addBehavior(std::make_shared<Sink>(20* window().fps(), -0.05));
+				mIntroTextModule3->addBehavior(std::make_shared<FadeOut>(25* window().fps()));
+                mIntroTextModule3->addBehavior(std::make_shared<Sink>(25* window().fps(), -0.05));
                 mIntroTextFading = true;
             }
         }
         if (mIntroTextModule2) {
             if (mIntroTextModule2->done()) {
                 mIntroTextModule2 = nullptr;
+            }
+        }
+		if (mIntroTextModule3) {
+            if (mIntroTextModule3->done()) {
+                mIntroTextModule3 = nullptr;
             }
         }
     }
@@ -291,8 +309,7 @@ public:
     osc::Send mOSCSender {SIMULATOR_IN_PORT, SIMULATOR_IP_ADDRESS};
     osc::Recv mOSCReceiver {CONTROL_IN_PORT};
     RenderTree mRenderTree;
-    std::shared_ptr<TextRenderModule> mIntroTextModule;
-    std::shared_ptr<TextRenderModule> mIntroTextModule2;
+    std::shared_ptr<TextRenderModule> mIntroTextModule, mIntroTextModule2, mIntroTextModule3;
     bool mIntroTextFading {false};
 
     // Remote parameters
