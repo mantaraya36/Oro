@@ -415,7 +415,7 @@ void AudioApp::onSound(AudioIOData &io)
 //    }
 //    std::cout << std::endl;
 
-//    mDownMixer.process(io);
+    mDownMixer.process(io);
 
 }
 
