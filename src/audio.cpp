@@ -55,7 +55,7 @@ public:
         };
 
         for (auto filename: VoicesFilenames) {
-            mVoices.push_back(std::make_shared<SoundFileBuffered>("Texturas Base/Atras/" + filename, true, 8192));
+            mVoices.push_back(std::make_shared<SoundFileBuffered>("Texturas base/Atras/" + filename, true, 8192));
             if (!mVoices.back()->opened()) {
                 std::cout << "Can't find " << filename << std::endl;
             }
@@ -252,6 +252,8 @@ void readFile(std::vector<std::shared_ptr<SoundFileBuffered>> files,
 
 void AudioApp::onSound(AudioIOData &io)
 {
+    int bufferSize = io.framesPerBuffer();
+    float *swBuffer = io.outBuffer(47);
 
     ///// Bases ---------
 
@@ -320,26 +322,6 @@ void AudioApp::onSound(AudioIOData &io)
         readFile(mCamaFiles[fileIndex], readBuffer, io, mBaseRouting, mCamasGains[fileIndex]);
 
     }
-
-
-    for (auto f : mCamaFiles[i]) {
-        assert(bufferSize < 8192);
-        if (f->read(readBuffer, bufferSize) == bufferSize) {
-            float *buf = readBuffer;
-            float *bufsw = swBuffer;
-            float *outbuf = io.outBuffer(mBaseRouting[counter]);
-            while (io()) {
-                float out = *buf++ * 0.4;
-                *outbuf++ += out;
-                *bufsw++ += out;
-            }
-            io.frame(0);
-        } else {
-            //                    std::cout << "Error" << std::endl;
-        }
-        counter++;
-    }
-}
 
     for (int i = 0; i < mVoices.size(); i++) {
         assert(bufferSize < 8192);
