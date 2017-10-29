@@ -55,7 +55,7 @@ public:
         };
 
         for (auto filename: VoicesFilenames) {
-            mVoices.push_back(std::make_shared<SoundFileBuffered>(filename, true, 8192));
+            mVoices.push_back(std::make_shared<SoundFileBuffered>("Texturas Base/Atras/" + filename, true, 8192));
             if (!mVoices.back()->opened()) {
                 std::cout << "Can't find " << filename << std::endl;
             }
