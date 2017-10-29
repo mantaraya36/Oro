@@ -39,12 +39,11 @@ public:
             {48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59}
         };
         for (auto baseNames : mBasesFilenames) {
-            mBaseFiles.push_back(std::vector<std::shared_ptr<SoundFileBuffered>>());
-            mBaseOn.push_back(false);
+            mCamaFiles.push_back(std::vector<std::shared_ptr<SoundFileBuffered>>());
             for (auto components: mComponentMap) {
                 std::string filename = "Texturas base/Camas/" + baseNames + components + ".wav";
-                mBaseFiles.back().push_back(std::make_shared<SoundFileBuffered>(filename, true, 8192));
-                std::cout << filename << "  " << mBaseFiles.back().back()->channels() << std::endl;
+                mCamaFiles.back().push_back(std::make_shared<SoundFileBuffered>(filename, true, 8192));
+                std::cout << filename << "  " << mCamaFiles.back().back()->channels() << std::endl;
             }
         }
 //        mBaseOn[3] = true;
@@ -160,7 +159,7 @@ private:
 
     gam::SineR<float> fluctuation1, fluctuation2;
 
-    std::vector<int> mBaseRouting = {49, 58, 52, 55,23,26, 30, 34 , 38,43, 16 , 20 , 1, 10, 4, 7 };
+    std::vector<int> mBaseRouting = {49, 58, 52, 55,23,26, 30, 34 , 38, 42, 16 , 20 , 1, 10, 4, 7 };
 
     std::vector<std::string> mComponentMap {
         "Lower Circle.L" ,
@@ -188,10 +187,9 @@ private:
         "Cama03_Hydro_16Ch_"
     };
 
-    std::vector<bool> mBaseOn;
     float readBuffer[8192];
 
-    std::vector<std::vector<std::shared_ptr<SoundFileBuffered>>> mBaseFiles;
+    std::vector<std::vector<std::shared_ptr<SoundFileBuffered>>> mCamaFiles;
 
     // Voices
 
@@ -224,33 +222,124 @@ static void releaseChaosSynth(al_sec timestamp, ChaosSynth *chaosSynth, int id)
     std::cout << "release chaos" << std::endl;
 }
 
-void AudioApp::onSound(AudioIOData &io)
-{
+void readFile(std::vector<std::shared_ptr<SoundFileBuffered>> files,
+              float *readBuffer,
+              AudioIOData &io,
+              std::vector<int> routing,
+              float gain = 1.0) {
+    int bufferSize = io.framesPerBuffer();
     float *swBuffer = io.outBuffer(47);
 
-    int bufferSize = io.framesPerBuffer();
-    for (int i = 0; i < mBaseOn.size(); i++) {
-        if (mBaseOn[i]) {
-            int counter = 0;
-            for (auto f : mBaseFiles[i]) {
-                assert(bufferSize < 8192);
-                if (f->read(readBuffer, bufferSize) == bufferSize) {
-                    float *buf = readBuffer;
-                    float *bufsw = swBuffer;
-                    float *outbuf = io.outBuffer(mBaseRouting[counter]);
-                    while (io()) {
-                        float out = *buf++ * 0.4;
-                        *outbuf++ += out;
-                        *bufsw++ += out;
-                    }
-                    io.frame(0);
-                } else {
-//                    std::cout << "Error" << std::endl;
-                }
-                counter++;
+    int counter = 0;
+    for (auto f : files) {
+        assert(bufferSize < 8192);
+        if (f->read(readBuffer, bufferSize) == bufferSize) {
+            float *buf = readBuffer;
+            float *bufsw = swBuffer;
+            float *outbuf = io.outBuffer(routing[counter]);
+            while (io()) {
+                float out = *buf++ * gain;
+                *outbuf++ += out;
+                *bufsw++ += out;
             }
+            io.frame(0);
+        } else {
+            //                    std::cout << "Error" << std::endl;
         }
+        counter++;
     }
+}
+
+void AudioApp::onSound(AudioIOData &io)
+{
+
+    ///// Bases ---------
+
+    std::vector<float> mCamasGains = {1.0, 1.0, 1.0, 1.0, 1.0};
+
+    int fileIndex = 0;
+    if (mChaos < 0.2) {
+        fileIndex = 0;
+        readFile(mCamaFiles[fileIndex], readBuffer, io, mBaseRouting, mCamasGains[fileIndex]);
+    } else if (mChaos < 0.3) {
+        float gainIndex = (mChaos - 0.2) * 10;
+
+        fileIndex = 0;
+        readFile(mCamaFiles[fileIndex], readBuffer, io, mBaseRouting, mCamasGains[fileIndex] * (1.0 - gainIndex));
+
+        fileIndex = 1;
+        readFile(mCamaFiles[fileIndex], readBuffer, io, mBaseRouting, mCamasGains[fileIndex] *gainIndex);
+
+    }  else if (mChaos < 0.4) {
+        fileIndex = 1;
+        readFile(mCamaFiles[fileIndex], readBuffer, io, mBaseRouting, mCamasGains[fileIndex]);
+
+    } else if (mChaos < 0.5) {
+        float gainIndex = (mChaos - 0.4) * 10;
+
+        fileIndex = 1;
+        readFile(mCamaFiles[fileIndex], readBuffer, io, mBaseRouting, mCamasGains[fileIndex] * (1.0 - gainIndex));
+
+        fileIndex = 2;
+        readFile(mCamaFiles[fileIndex], readBuffer, io, mBaseRouting, mCamasGains[fileIndex] *gainIndex);
+
+    } else if (mChaos < 0.6) {
+
+        fileIndex = 2;
+        readFile(mCamaFiles[fileIndex], readBuffer, io, mBaseRouting, mCamasGains[fileIndex]);
+
+    } else if (mChaos < 0.7) {
+
+        float gainIndex = (mChaos - 0.6) * 10;
+
+        fileIndex = 2;
+        readFile(mCamaFiles[fileIndex], readBuffer, io, mBaseRouting, mCamasGains[fileIndex] * (1.0 - gainIndex));
+
+        fileIndex = 3;
+        readFile(mCamaFiles[fileIndex], readBuffer, io, mBaseRouting, mCamasGains[fileIndex] *gainIndex);
+
+
+    } else if (mChaos < 0.8) {
+
+        fileIndex = 3;
+        readFile(mCamaFiles[fileIndex], readBuffer, io, mBaseRouting, mCamasGains[fileIndex]);
+
+
+    }  else if (mChaos < 0.9) {
+
+        float gainIndex = (mChaos - 0.8) * 10;
+
+        fileIndex = 3;
+        readFile(mCamaFiles[fileIndex], readBuffer, io, mBaseRouting, mCamasGains[fileIndex] * (1.0 - gainIndex));
+
+        fileIndex = 4;
+        readFile(mCamaFiles[fileIndex], readBuffer, io, mBaseRouting, mCamasGains[fileIndex] *gainIndex);
+
+    } else {
+        fileIndex = 4;
+        readFile(mCamaFiles[fileIndex], readBuffer, io, mBaseRouting, mCamasGains[fileIndex]);
+
+    }
+
+
+    for (auto f : mCamaFiles[i]) {
+        assert(bufferSize < 8192);
+        if (f->read(readBuffer, bufferSize) == bufferSize) {
+            float *buf = readBuffer;
+            float *bufsw = swBuffer;
+            float *outbuf = io.outBuffer(mBaseRouting[counter]);
+            while (io()) {
+                float out = *buf++ * 0.4;
+                *outbuf++ += out;
+                *bufsw++ += out;
+            }
+            io.frame(0);
+        } else {
+            //                    std::cout << "Error" << std::endl;
+        }
+        counter++;
+    }
+}
 
     for (int i = 0; i < mVoices.size(); i++) {
         assert(bufferSize < 8192);
