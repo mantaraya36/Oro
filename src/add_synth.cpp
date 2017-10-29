@@ -17,6 +17,8 @@
 //#define SURROUND
 #include "add_synth.hpp"
 
+#include "downmixer.hpp"
+
 using namespace std;
 using namespace al;
 
@@ -109,6 +111,8 @@ private:
     ParameterBool midiLight{"MIDI", "", false};
 
     MIDIIn midiIn {"USB Oxygen 49"};
+
+    DownMixer mDownMixer;
 
     static inline float midi2cps(int midiNote) {
         return 440.0 * pow(2, (midiNote - 69.0)/ 12.0);
@@ -815,6 +819,7 @@ void AddSynthApp::initializePresets()
 void AddSynthApp::onSound(AudioIOData &io)
 {
     synth.generateAudio(io);
+    mDownMixer.process(io);
 }
 
 inline float mtof(int m) {

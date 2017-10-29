@@ -14,48 +14,13 @@
 #include "chaos_synth.hpp"
 #include "add_synth.hpp"
 #include "granulator.hpp"
+#include "downmixer.hpp"
 
 #define CHAOS_SYNTH_POLYPHONY 1
 #define ADD_SYNTH_POLYPHONY 1
 
 using namespace std;
 using namespace al;
-
-class DownMixer {
-public:
-    DownMixer() {
-        mDownMixMap[0] = vector<int>();
-        mDownMixMap[1] = vector<int>();
-        for (int i = 0; i < 60; i++) {
-            mDownMixMap[0].push_back(i);
-            mDownMixMap[1].push_back(i);
-        }
-        mGain = 1/30.0;
-    }
-
-    void process(AudioIOData &io) {
-        int counter;
-        for (auto &entry: mDownMixMap) {
-            for (int sourceIndex: entry.second) {
-                float *destBuffer = io.outBuffer(entry.first);
-                float *srcBuffer = io.outBuffer(sourceIndex);
-                counter = io.framesPerBuffer();
-                while (counter--) {
-                    *destBuffer++ += *srcBuffer++;
-                }
-            }
-            float *destBuffer = io.outBuffer(entry.first);
-            counter = io.framesPerBuffer();
-            while (counter--) {
-                *destBuffer++ *= mGain;
-            }
-        }
-    }
-
-private:
-    map<int, vector<int>> mDownMixMap;
-    float mGain;
-};
 
 class AudioApp: public App, public osc::PacketHandler
 {
@@ -82,7 +47,20 @@ public:
                 std::cout << filename << "  " << mBaseFiles.back().back()->channels() << std::endl;
             }
         }
-        mBaseOn[3] = true;
+//        mBaseOn[3] = true;
+
+        std::vector<std::string> VoicesFilenames = {
+            "Cura 7Ch/Cura 7Ch.C.wav",   "Cura 7Ch/Cura 7Ch.L.wav",   "Cura 7Ch/Cura 7Ch.R.wav",
+            "Cura 7Ch/Cura 7Ch.Lc.wav",  "Cura 7Ch/Cura 7Ch.Rc.wav",
+            "Cura 7Ch/Cura 7Ch.Ls.wav",  "Cura 7Ch/Cura 7Ch.Rs.wav"
+        };
+
+        for (auto filename: VoicesFilenames) {
+            mVoices.push_back(std::make_shared<SoundFileBuffered>(filename, true, 8192));
+            if (!mVoices.back()->opened()) {
+                std::cout << "Can't find " << filename << std::endl;
+            }
+        }
     }
 
     static inline float midi2cps(int midiNote) {
@@ -215,6 +193,15 @@ private:
 
     std::vector<std::vector<std::shared_ptr<SoundFileBuffered>>> mBaseFiles;
 
+    // Voices
+
+//    "Cura 7Ch/Cura 7Ch.C.wav",   "Cura 7Ch/Cura 7Ch.L.wav",   "Cura 7Ch/Cura 7Ch.R.wav",
+//    "Cura 7Ch/Cura 7Ch.Lc.wav",  "Cura 7Ch/Cura 7Ch.Rc.wav",
+//    "Cura 7Ch/Cura 7Ch.Ls.wav",  "Cura 7Ch/Cura 7Ch.Rs.wav"
+    std::vector<int> mVoicesRouting = {38, 40, 36, 10, 7, 42, 34 };
+    std::vector<std::shared_ptr<SoundFileBuffered>> mVoices;
+
+
     // Schedule Messages
     MsgQueue msgQueue;
 
@@ -265,6 +252,22 @@ void AudioApp::onSound(AudioIOData &io)
         }
     }
 
+    for (int i = 0; i < mVoices.size(); i++) {
+        assert(bufferSize < 8192);
+        if (mVoices[i]->read(readBuffer, bufferSize) == bufferSize) {
+            float *buf = readBuffer;
+            float *bufsw = swBuffer;
+            float *outbuf = io.outBuffer(mVoicesRouting[i]);
+            while (io()) {
+                float out = *buf++ * 0.3;
+                *outbuf++ += out;
+                *bufsw++ += out;
+            }
+            io.frame(0);
+        } else {
+            //                    std::cout << "Error" << std::endl;
+        }
+    }
 
     msgQueue.advance(io.framesPerBuffer()/io.framesPerSecond());
     if (rnd::prob(0.0075)) {
