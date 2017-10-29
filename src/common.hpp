@@ -233,19 +233,31 @@ public:
 		mGridHorizontal.resize(GRID_SIZEX * GRID_SIZEY * GRID_SIZEZ);
 
         // Add a tessellated plane
-		addSurface(waterMesh, Nx,Ny);
+        addSurface(waterMesh, Nx,Ny);
+        // fill color array
+        for (int i = 0; i < waterMesh.vertices().size(); i += 1) {
+            waterMesh.color(1, 1, 1, 1);
+        }
 
-		for(int j=0; j<Ny; ++j){
-			for(int i=0; i<Nx; ++i){
-				int idx = j*Nx + i;
-				float r = sqrt((j - (Ny/2))*(j - (Ny/2)) + (i- (Nx/2))*(i- (Nx/2)));
-				if (r > Nx) {
-					waterMesh.color(Color(0.0, 0.0, 0.0, 0.0));
-				} else {
-					waterMesh.color(Color(1.0, 1.0, 1.0, 1.0));
-				}
-			}
-		}
+        // required: (a > b) && (a != b)
+        auto smoothstep = [] (float a, float b, float x) -> float {
+            if (x < a) x = a;
+            if (x > b) x = b;
+            x = (x - a) / (b - a); // to [0:1]
+            return x * x * (3.0 - 2.0 * x);
+        };
+
+        float waterMeshHalfWidth = (Nx - 1) / 2.0f;
+        float waterMeshHalfHeight = (Ny - 1) / 2.0f;
+        for (int j=0; j<Ny; ++j) {
+            float y = (j - waterMeshHalfHeight) / waterMeshHalfHeight; // [0:1]
+            for (int i=0; i<Nx; ++i) {
+                float x = (i - waterMeshHalfWidth) / waterMeshHalfWidth; // [0:1]
+                float r = sqrt(x * x + y * y); // [0:sqrt(2)]
+                r = smoothstep(0.4, 0.8, r);
+                waterMesh.colors()[j*Nx + i] = Color(1-r, 1-r, 1-r, 1-r);
+            }
+        }
 
 
 		for (Mesh &m: mGrid) {
@@ -379,14 +391,17 @@ public:
     void onDraw(Graphics& g){
         // it is important that you set both
 
+        g.cullFace(false);
         g.blending(true);
         g.blendModeTrans();
 		g.depthTesting(true);
         shader().uniform("enableFog", 1);
+        shader().uniform("tint", Color{1, 1, 1});
 
 //		g.nicest();
 
         shader().uniform("lighting", 1.0);
+        shader().uniform("texture", 0.0f);
         shader().uniform("fogCurve", 1.0);
         float fogColor[4] = {0.0f, 0.0f, 0.0f, 0.2f};
         shader().uniform4("fogColor", fogColor, 4);
@@ -397,22 +412,22 @@ public:
 
 		mLight.pos(x,y,z);
 
-		// Set up light
-		mLight.globalAmbient(RGB(0.1));	// Ambient reflection for all lights
-		mLight.ambient(RGB(0));			// Ambient reflection for this light
-		mLight.diffuse(RGB(1,1,1));	// Light scattered directly from light
-		mLight.attenuation(1,1,0);		// Inverse distance attenuation
-//		light.attenuation(1,0,1);		// Inverse-squared distance attenuation
+        // Set up light
+        mLight.ambient(RGB(0.0));         // Ambient reflection for this light
+        mLight.diffuse(RGB(0.8)); // Light scattered directly from light
+        mLight.specular(RGB(0.4)); // Light scattered directly from light
+        mLight.attenuation(1,0,0);      // Inverse distance attenuation
 
-		// Activate light
-		mLight();
+        // Activate light
+        mLight();
 
-		// Set up material (i.e., specularity)
-		mGoldMaterial.specular(mLight.diffuse()*0.9); // Specular highlight, "shine"
-		mGoldMaterial.shininess(50);			// Concentration of specular component [0,128]
+        // Set up material (i.e., specularity)
+        // mGoldMaterial.specular(mLight.diffuse()*0.9); // Specular highlight, "shine"
+        // mGoldMaterial.shininess(50);            // Concentration of specular component [0,128]
 
-		// Activate material
-		mGoldMaterial();
+        // Activate material
+        // mGoldMaterial();
+        Material().useColorMaterial(true)();
 
 
 
@@ -448,6 +463,7 @@ public:
 		}
 
         g.fog(fogEnd, fogStart, Color(0,0,0, 0.2));
+        shader().uniform("tint", Color{1, 1- state().chaos, 0}); // put in color here
 
 		g.pushMatrix();
 		g.scale(2);
@@ -496,25 +512,21 @@ public:
 
         g.fog(30, 2, Color(0,0,0, 0.2));
         g.pushMatrix();
-//        mtrl.specular(RGB(0));
-//        mtrl.shininess(shininess.get());
-//        mtrl();
-//        light.dir(1,1,1);
-//        light();
-//        waterMesh.colors()[0] = waterMesh.get();
-//        waterMesh.colors()[0] .a = 1.0;
         g.translate(0, LAGOON_Y, -2.0);
-        g.rotate(-90, 1, 0, 0);
-		float waterScale = 4.5;
-		if (state().chaos > 0.6) {
-			waterScale += 2.0 * (state().chaos - 0.6) * 0.4;
-		}
-		g.scale(waterScale, waterScale*waterScale, waterScale);
+        g.rotate(90, 1, 0, 0);
+        float waterScale = 4.5;
+        if (state().chaos > 0.6) {
+            waterScale += 2.0 * (state().chaos - 0.6) * 0.4;
+        }
+        g.scale(1.4 * waterScale, 1.4 * waterScale, 0.4 * waterScale);
+        shader().uniform("tint", Color{1, 1- state().chaos, 0}); // put in color here
         g.draw(waterMesh);
         g.popMatrix();
+        shader().uniform("tint", Color{1, 1, 1});
 
 		g.lighting(false);
         shader().uniform("lighting", 0.0);
+        shader().uniform("texture", 1.0);
         shader().uniform("enableFog", 0);
         for (unsigned int i = 0; i < NUM_OFRENDAS; i++) {
             if (state().ofrendas[i]) {
@@ -671,14 +683,16 @@ public:
     ShaderProgram *mShader;
 };
 
-static const char* vertexShader = R"(varying vec4 color; varying vec3 normal, lightDir, eyeVec;
-         uniform float fogCurve;
+static const char* vertexShader = R"(
+uniform float fogCurve;
+uniform int enableFog;
 
-          uniform int enableFog;
-         /* The fog amount in [0,1] passed to the fragment shader. */
-         varying float fogFactor;
+/* The fog amount in [0,1] passed to the fragment shader. */
+varying float fogFactor;
+varying vec4 color;
+varying vec3 normal, lightDir, eyeVec;
 
-         void main() {
+void main() {
     color = gl_Color;
     vec4 vertex = gl_ModelViewMatrix * gl_Vertex;
     normal = gl_NormalMatrix * gl_Normal;
@@ -688,25 +702,32 @@ static const char* vertexShader = R"(varying vec4 color; varying vec3 normal, li
     gl_TexCoord[0] = gl_MultiTexCoord0;
     gl_Position = omni_render(vertex);
 
-          if (enableFog == 1) {
-         float z = gl_Position.z;
-         //float z = gl_FragCoord.z / gl_FragCoord.w; /* per-frament fog would use this */
-         fogFactor = (z - gl_Fog.start) * gl_Fog.scale;
-         fogFactor = clamp(fogFactor, 0., 1.);
-         if(fogCurve != 0.){
-             fogFactor = (1. - exp(-fogCurve*fogFactor))/(1. - exp(-fogCurve));
-         }
-         }
-  })";
+     if (enableFog == 1) {
+        float z = gl_Position.z;
+        /* per-frament fog would use this */
+        //float z = gl_FragCoord.z / gl_FragCoord.w;
+        fogFactor = (z - gl_Fog.start) * gl_Fog.scale;
+        fogFactor = clamp(fogFactor, 0., 1.);
+        if(fogCurve != 0.){
+            fogFactor = (1. - exp(-fogCurve*fogFactor))/(1. - exp(-fogCurve));
+        }
+    }
+}
+)";
 
+static const char* fragmentShader = R"(
+uniform float lighting;
+uniform float texture;
+uniform sampler2D texture0;
+uniform vec4 fogColor;
+uniform int enableFog;
+uniform vec4 tint;
 
-static const char* fragmentShader = R"(uniform float lighting; uniform float texture;
-                      uniform sampler2D texture0; varying vec4 color;
-                      varying vec3 normal, lightDir, eyeVec;
-         varying float fogFactor;
-          uniform vec4 fogColor;
-         uniform int enableFog;
-         void main() {
+varying vec4 color;
+varying vec3 normal, lightDir, eyeVec;
+varying float fogFactor;
+
+void main() {
 
     vec4 colorMixed;
     if (texture > 0.0) {
@@ -715,6 +736,9 @@ static const char* fragmentShader = R"(uniform float lighting; uniform float tex
     } else {
       colorMixed = color;
     }
+    colorMixed *= tint;
+
+    float alpha = colorMixed.a;
 
     vec4 final_color = colorMixed * gl_LightSource[0].ambient;
     vec3 N = normalize(normal);
@@ -725,27 +749,28 @@ static const char* fragmentShader = R"(uniform float lighting; uniform float tex
     vec3 R = reflect(-L, N);
     float spec = pow(max(dot(R, E), 0.0), 0.9 + 1e-20);
     final_color += gl_LightSource[0].specular * spec;
+    final_color.a = alpha;
     gl_FragColor = mix(colorMixed, final_color, lighting);
 
-         // fog
-         if (enableFog == 1) {
-         float c = fogFactor;
-         c = (3. - 2.*c) * c*c;		// smooth step
-         // c *= c;					// smooth step sqr, lighter fog
-         // c = c-1.; c = 1. - c*c;	// parabolic, denser fog
+    // fog
+    if (enableFog == 1) {
+        float c = fogFactor;
+        c = (3. - 2.*c) * c*c;      // smooth step
+        // c *= c;                  // smooth step sqr, lighter fog
+        // c = c-1.; c = 1. - c*c;  // parabolic, denser fog
 
-         // vec4 fogCol = texture2D(texture0, fog_xy);
-         // vec4 fogCol = vec4(0.0, 0.0, 0.0, 1.0);
-         vec4 fogCol = fogColor;
+        // vec4 fogCol = texture2D(texture0, fog_xy);
+        // vec4 fogCol = vec4(0.0, 0.0, 0.0, 1.0);
+        vec4 fogCol = fogColor;
 
-//         // This is required if we want blending to work
-//         if(gl_FragColor.a < 0.9999){
-//             gl_FragColor.a = gl_FragColor.a * (1.-c);
-//             // gl_FragColor = vec4(1,0,0,1); return;
-//         }
-                               gl_FragColor.rgb = mix(gl_FragColor.rgb, fogCol.rgb, c);
-          }
-         })";
-
+        // if(gl_FragColor.a < 0.9999){
+        //     // This is required if we want blending to work
+        //     gl_FragColor.a = gl_FragColor.a * (1.-c);
+        //     // gl_FragColor = vec4(1,0,0,1); return;
+        // }
+        gl_FragColor.rgb = mix(gl_FragColor.rgb, fogCol.rgb, c);
+    }
+}
+)";
 
 #endif

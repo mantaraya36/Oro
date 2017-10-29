@@ -172,7 +172,7 @@ inline bool OmniStereoGraphicsRenderer2::onFrame() {
     mOmni.onFrameFront(*this, lens(), pose, vp);
   }
 
-  afterEffect(graphics());
+  // afterEffect(graphics());
 
   return true;
 }

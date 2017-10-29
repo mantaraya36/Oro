@@ -266,9 +266,6 @@ void main() {
   textureColor.r *= 0.7 + 0.3 * n;
   textureColor.g *= 0.75 + 0.25 * n;
   textureColor.b *= 0.8 + 0.2 * n;
-  vec4 wb2 = texture2D(wb_tex, gl_TexCoord[0].st);
-  wb2.a = 1.0;
-  textureColor = vec4(n, n, n, 1.0) * wb2;
   gl_FragColor = textureColor;
 }
 )";
