@@ -70,7 +70,10 @@ public:
             for (auto components: mComponentMap) {
                 std::string filename = "Texturas base/Camas/" + baseNames + components + ".wav";
                 mCamaFiles.back().push_back(std::make_shared<SoundFileBuffered>(filename, true, 8192));
-                std::cout << filename << "  " << mCamaFiles.back().back()->channels() << std::endl;
+                if (!mCamaFiles.back().back()->opened()) {
+                    std::cout << "Can't find " << filename << std::endl;
+                    exit(-1);
+                }
             }
         }
 //        mBaseOn[3] = true;
@@ -85,6 +88,7 @@ public:
             mVoices.push_back(std::make_shared<SoundFileBuffered>("Texturas base/Atras/" + filename, true, 8192));
             if (!mVoices.back()->opened()) {
                 std::cout << "Can't find " << filename << std::endl;
+                exit(-1);
             }
         }
 
@@ -92,6 +96,7 @@ public:
         mSequencer1.registerEventCommand("ON", [](void *data, std::vector<float> &params)
         {
             AudioApp *app = static_cast<AudioApp *>(data);
+            app->addSynth.mFundamental.set(midi2cps(params[0]));
             app->addSynth.trigger(params[0]);
             std::cout << "Note On!! " << params[0]  << std::endl;
         }, this);
@@ -113,6 +118,7 @@ public:
         mSequencer2.registerEventCommand("ON", [](void *data, std::vector<float> &params)
         {
             AudioApp *app = static_cast<AudioApp *>(data);
+            app->addSynth2.mFundamental.set(midi2cps(params[0]));
             app->addSynth2.trigger(params[0]);
             std::cout << "Note On!! " << params[0]  << std::endl;
         }, this);
