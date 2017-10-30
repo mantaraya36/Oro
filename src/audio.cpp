@@ -58,7 +58,7 @@ private:
 class AudioApp: public BaseAudioApp, public osc::PacketHandler
 {
 public:
-    AudioApp(int midiChannel = 1) : AudioApp()
+    AudioApp(int midiChannel = 1) : BaseAudioApp()
     {
         addSynth.outputRouting = {
             {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12},
@@ -365,8 +365,9 @@ void AudioApp::onAudioCB(AudioIOData &io)
     msgQueue.advance(io.framesPerBuffer()/io.framesPerSecond());
 
     // Campanitas
-    if (mChaos < 0.3) {
-        float probCampanitas = 0.001 + (mChaos/0.3) * 0.006;
+	float max = 0.3;
+    if (mChaos < max) {
+        float probCampanitas = 0.01 + (mChaos/max) * 0.006;
         if (rnd::prob(probCampanitas)) {
             std::cout << "trigger" << std::endl;
             addSynth.mPresetHandler.recallPresetSynchronous("34");
@@ -382,8 +383,8 @@ void AudioApp::onAudioCB(AudioIOData &io)
 
     ////// Rangos de chaos para chaos synth
     float rangeStart, rangeEnd;
-    rangeStart = 0.1;
-    rangeEnd = 0.2;
+    rangeStart = 0.4;
+    rangeEnd = 0.5;
     if ((mPrevChaos < rangeStart &&  mChaos >= rangeStart)
             || (mPrevChaos > rangeEnd &&  mChaos <= rangeEnd)
             ) {
@@ -394,8 +395,8 @@ void AudioApp::onAudioCB(AudioIOData &io)
         chaosSynth[0].release(0);
     }
  ///////////////////////////
-    rangeStart = 0.2;
-    rangeEnd = 0.25;
+    rangeStart = 0.5;
+    rangeEnd = 0.6;
     if ((mPrevChaos < rangeStart &&  mChaos >= rangeStart)
             || (mPrevChaos > rangeEnd &&  mChaos <= rangeEnd)
             ) {
@@ -406,8 +407,8 @@ void AudioApp::onAudioCB(AudioIOData &io)
         chaosSynth[0].release(0);
     }
     ////////
-    rangeStart = 0.25;
-    rangeEnd = 0.3;
+    rangeStart = 0.6;
+    rangeEnd = 0.75;
     if ((mPrevChaos < rangeStart &&  mChaos >= rangeStart)
             || (mPrevChaos > rangeEnd &&  mChaos <= rangeEnd)
             ) {
@@ -427,17 +428,17 @@ void AudioApp::onAudioCB(AudioIOData &io)
         }
     }
     /////////////////////////
-    rangeStart = 0.3;
-    rangeEnd = 0.4;
+    rangeStart = 0.75;
+    rangeEnd = 0.99;
     if ((mPrevChaos < rangeStart &&  mChaos >= rangeStart)
             || (mPrevChaos > rangeEnd &&  mChaos <= rangeEnd)
             ) {
         chaosSynth[0].mPresetHandler.recallPreset(0);
         chaosSynth[0].setOutputIndeces(rnd::uniform(47, 16),rnd::uniform(47, 16));
         chaosSynth[0].trigger(0);
-    } else if (mPrevChaos > 0.3 &&  mChaos <= 0.3) {
-//        chaosSynth[0].release(0);
-    }
+	} else if (mPrevChaos > rangeStart &&  mChaos <= rangeStart) {
+		chaosSynth[0].release(0);
+	}
     if (mChaos > rangeStart && mChaos < rangeEnd) {
         if (rnd::prob(0.0032)) {
             chaosSynth[0].mPresetHandler.setMorphTime(3 + rnd::uniform(1.0, -1.0));
@@ -476,7 +477,7 @@ void AudioApp::onAudioCB(AudioIOData &io)
         mSequencer1.playSequence("Seq 1");
         std::cout << "Seq 1" << std::endl;
     }
-    rangeStart = 0.3;
+    rangeStart = 0.28;
     rangeEnd = 0.5;
     if ((mPrevChaos < rangeStart &&  mChaos >= rangeStart)
             || (mPrevChaos > rangeEnd &&  mChaos <= rangeEnd)
