@@ -300,9 +300,7 @@ public:
 
 	void allNotesOff() {
 		for (int i = 0; i < SYNTH_POLYPHONY; i++) {
-            if (!synth[i].done()) {
-                synth[i].release();
-            }
+            synth[i].release();
         }
 	}
 
