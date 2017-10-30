@@ -620,8 +620,9 @@ public:
 					g.rotate(i*30 + j *180, 0, 0.1, 1);
 
 					g.translate(0.35 + state().chaos * 2, 0, -2 - 0.01 * i);
-
-					g.translate(*dev++* 0.04, 0, *dev++* 0.1);
+					float dev1 = *dev++;
+					float dev2 = *dev++;
+					g.translate(dev1* 0.04, 0, dev2* 0.1);
 
 //					g.rotate(10, 0.3, 0.12, 0.0);
 
@@ -638,7 +639,9 @@ public:
 				}
 				for (int j = 0; j < 3; j++) {
 					g.pushMatrix();
-					g.translate(*dev++* 0.1, *dev++* 0.2, 0);
+					float dev1 = *dev++;
+					float dev2 = *dev++;
+					g.translate(dev1* 0.1, dev2* 0.2, 0);
 					g.rotate(i*20 + j *140, 0.05, 0.1, 1);
 					g.translate(-0.1 + state().chaos* 1.2, 0, -2 + 0.01 * i);
 
