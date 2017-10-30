@@ -22,12 +22,44 @@
 using namespace std;
 using namespace al;
 
-class AudioApp: public App, public osc::PacketHandler
+
+class BaseAudioApp : public AudioCallback{
+public:
+
+	BaseAudioApp(){
+		mAudioIO.append(*this);
+		initAudio(44100);
+	}
+
+	void initAudio(
+		double framesPerSec, unsigned framesPerBuffer=128,
+		unsigned outChans=2, unsigned inChans=0
+	){
+		mAudioIO.framesPerSecond(framesPerSec);
+		mAudioIO.framesPerBuffer(framesPerBuffer);
+		mAudioIO.channelsOut(outChans);
+		mAudioIO.channelsIn(inChans);
+		sampleRate(framesPerSec);
+	}
+
+	AudioIO& audioIO(){ return mAudioIO; }
+
+	void start(bool block=true){
+		mAudioIO.start();
+		if(block){
+			printf("Press 'enter' to quit...\n"); getchar();
+		}
+	}
+
+private:
+	AudioIO mAudioIO;
+};
+
+class AudioApp: public BaseAudioApp, public osc::PacketHandler
 {
 public:
-    AudioApp(int midiChannel = 1) : App()
+    AudioApp(int midiChannel = 1) : AudioApp()
     {
-        mOSCSend.close();mOSCRecv.close();
         addSynth.outputRouting = {
             {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12},
             {16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45},
@@ -112,7 +144,7 @@ public:
         mVocesEnv.release();
     }
 
-    virtual void onSound(AudioIOData &io) override;
+    virtual void onAudioCB(AudioIOData &io) override;
     virtual void onMessage(osc::Message &m) override {
         if (m.addressPattern() == "/chaos" && m.typeTags() == "f") {
             mPrevChaos = mChaos;
@@ -232,7 +264,7 @@ void readFile(std::vector<std::shared_ptr<SoundFileBuffered>> files,
     }
 }
 
-void AudioApp::onSound(AudioIOData &io)
+void AudioApp::onAudioCB(AudioIOData &io)
 {
     int bufferSize = io.framesPerBuffer();
     float *swBuffer = io.outBuffer(47);
