@@ -39,7 +39,7 @@ public:
 		mAudioIO.framesPerBuffer(framesPerBuffer);
 		mAudioIO.channelsOut(outChans);
 		mAudioIO.channelsIn(inChans);
-		sampleRate(framesPerSec);
+		gam::sampleRate(framesPerSec);
 	}
 
 	AudioIO& audioIO(){ return mAudioIO; }
