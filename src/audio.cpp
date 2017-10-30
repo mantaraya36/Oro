@@ -334,18 +334,18 @@ void AudioApp::onSound(AudioIOData &io)
 
     // Campanitas
     if (mChaos < 0.3) {
-//        float probCampanitas = 0.001 + (mChaos/0.3) * 0.006;
-//        if (rnd::prob(probCampanitas)) {
-//            std::cout << "trigger" << std::endl;
-//            addSynth.mPresetHandler.recallPresetSynchronous("34");
-//            addSynth.mLayer = rnd::uniform(3);
-//            addSynth.mArcSpan = rnd::uniform(0.5, 2.0);
-//            addSynth.mArcStart = rnd::uniform();
-//            addSynth.mCumulativeDelayRandomness = addSynth.mCumulativeDelayRandomness +rnd::uniform(0.2, -0.2);
-//            addSynth.mFundamental = addSynth.mFundamental + rnd::uniform(40, -40);
-//            addSynth.trigger(0);
-//            msgQueue.send(msgQueue.now() + 2.5, releaseAddSynth, &addSynth, 0);
-//        }
+        float probCampanitas = 0.001 + (mChaos/0.3) * 0.006;
+        if (rnd::prob(probCampanitas)) {
+            std::cout << "trigger" << std::endl;
+            addSynth.mPresetHandler.recallPresetSynchronous("34");
+            addSynth.mLayer = rnd::uniform(3);
+            addSynth.mArcSpan = rnd::uniform(0.5, 2.0);
+            addSynth.mArcStart = rnd::uniform();
+            addSynth.mCumulativeDelayRandomness = addSynth.mCumulativeDelayRandomness +rnd::uniform(0.2, -0.2);
+            addSynth.mFundamental = addSynth.mFundamental + rnd::uniform(40, -40);
+            addSynth.trigger(0);
+            msgQueue.send(msgQueue.now() + 2.5, releaseAddSynth, &addSynth, 0);
+        }
     }
 
     ////// Rangos de chaos para chaos synth
