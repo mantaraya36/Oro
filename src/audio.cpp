@@ -25,20 +25,14 @@ using namespace al;
 class AudioApp: public App, public osc::PacketHandler
 {
 public:
-    AudioApp(int midiChannel = 1) : App(),
-        mMidiChannel(midiChannel - 1),
-        granX("Bounced Files/Piezas oro 1.wav"),
-        granY("Bounced Files/Piezas oro 2.wav"),
-        granZ("Bounced Files/Piezas oro 2.wav"),
-        background1("Bounced Files/Agua base superficie.wav"),
-	    background2("Bounced Files/Bajo agua.wav")
+    AudioApp(int midiChannel = 1) : App()
     {
         addSynth.outputRouting = {
             {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12},
             {16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45},
             {48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59}
         };
-        for (auto baseNames : mBasesFilenames) {
+        for (auto baseNames : mCamasFilenames) {
             mCamaFiles.push_back(std::vector<std::shared_ptr<SoundFileBuffered>>());
             for (auto components: mComponentMap) {
                 std::string filename = "Texturas base/Camas/" + baseNames + components + ".wav";
@@ -60,6 +54,25 @@ public:
                 std::cout << "Can't find " << filename << std::endl;
             }
         }
+
+        mSequencer1.setDirectory("sequences");
+        mSequencer1.registerEventCommand("ON", [](void *data, std::vector<float> &params)
+        {
+            AudioApp *app = static_cast<AudioApp *>(data);
+            app->addSynth.trigger(params[0]);
+            std::cout << "Note On!! " << params[0]  << std::endl;}, this);
+        mSequencer1.registerEventCommand("OFF", [](void *data, std::vector<float> &params)
+        {
+            AudioApp *app = static_cast<AudioApp *>(data);
+            app->addSynth.release(params[0]);
+            std::cout << "Note Off!! " << params[0]  << std::endl;}, this);
+        mSequencer1.registerEventCommand("PROGRAM", [](void *data, std::vector<float> &params)
+        {
+
+            AudioApp *app = static_cast<AudioApp *>(data);
+            app->addSynth.mPresetHandler.recallPreset(params[0]);
+            std::cout << "Program!! " << params[0] << std::endl;}, this);
+        mSequencer1.playSequence("Seq 1");
     }
 
     static inline float midi2cps(int midiNote) {
@@ -67,9 +80,9 @@ public:
     }
 
     void init() {
-        mChaosRecv.handler(*this);
-        mChaosRecv.timeout(0.005);
-        mChaosRecv.start();
+        mFromSimulator.handler(*this);
+        mFromSimulator.timeout(0.005);
+        mFromSimulator.start();
         mVocesEnv.sustainPoint(1);
         mVocesEnv.lengths()[1] = 1.2;
         mVocesEnv.lengths()[2] = 1.2;
@@ -94,84 +107,12 @@ public:
     }
 
 private:
-
-    // Parameters
-    Parameter mLevel {"Level", "", 0.5, "", 0, 1.0};
-    Parameter mFundamental {"Fundamental", "", 55.0, "", 0.0, 9000.0};
-
-    Parameter keyboardOffset {"Key Offset", "", 0.0, "", -20, 40};
-
-//    // Presets
-//    PresetHandler mChaosPresetHandler {"chaosPresets"};
-//    PresetHandler mAddPresetHandler {"presets"};
-
-    // MIDI Control
-    PresetMIDI presetMIDI;
-    ParameterMIDI parameterMIDI;
-    int mMidiChannel;
-
-    MIDIIn midiIn {"USB Oxygen 49"};
-
-
-    static void midiCallback(double deltaTime, std::vector<unsigned char> *msg, void *userData){
-        AudioApp *app = static_cast<AudioApp *>(userData);
-        unsigned numBytes = msg->size();
-//        midiLightWaiter(app);
-
-        if(numBytes > 0){
-            unsigned char status = msg->at(0);
-            if(MIDIByte::isChannelMessage(status)){
-                unsigned char type = status & MIDIByte::MESSAGE_MASK;
-                unsigned char chan = status & MIDIByte::CHANNEL_MASK;
-                if ((int) chan == app->mMidiChannel) {
-                    switch(type){
-                    case MIDIByte::NOTE_ON:
-                        //                    printf("Note %u, Vel %u", msg->at(1), msg->at(2));
-                        if (msg->at(2) != 0) {
-                            app->addSynth.trigger(msg->at(1));
-                        } else {
-                            //                        app->release(msg->at(1));
-                        }
-                        break;
-
-                    case MIDIByte::NOTE_OFF:
-
-                        //                    app->release(msg->at(1));
-                        //                    printf("Note %u, Vel %u", msg->at(1), msg->at(2));
-                        break;
-
-                    case MIDIByte::PITCH_BEND:
-                        //                    printf("Value %u", MIDIByte::convertPitchBend(msg->at(1), msg->at(2)));
-                        break;
-                    case MIDIByte::CONTROL_CHANGE:
-                        //                    printf("%s ", MIDIByte::controlNumberString(msg->at(1)));
-                        //                    switch(msg->at(1)){
-                        //                    case MIDIByte::MODULATION:
-                        //                        printf("%u", msg->at(2));
-                        //                        break;
-                        //                    }
-                        break;
-                    case MIDIByte::PROGRAM_CHANGE:
-//                        app->mPresetHandler.recallPreset(msg->at(1));
-                        break;
-                    default:;
-                    }
-                }
-            }
-        }
-    }
-
     // Synthesis
     ChaosSynth chaosSynth[CHAOS_SYNTH_POLYPHONY];
     AddSynth addSynth;
-    Granulator granX, granY, granZ;
-    Granulator background1;
-    Granulator background2;
-//    Granulator background3;
 
-    gam::SineR<float> fluctuation1, fluctuation2;
-
-    std::vector<int> mBaseRouting = {49, 58, 52, 55,23,26, 30, 34 , 38, 42, 16 , 20 , 1, 10, 4, 7 };
+/// Camas
+    std::vector<int> mCamasRouting = {49, 58, 52, 55,23,26, 30, 34 , 38, 42, 16 , 20 , 1, 10, 4, 7 };
 
     std::vector<std::string> mComponentMap {
         "Lower Circle.L" ,
@@ -191,7 +132,7 @@ private:
         "Upper Circle.R",
         "Upper Circle.Rs"};
 
-    std::vector<std::string> mBasesFilenames {
+    std::vector<std::string> mCamasFilenames {
         "Cama01_16Ch_",
         "Cama02_Hydro_16Ch_2_",
         "Cama02_Hydro_16Ch_",
@@ -212,12 +153,15 @@ private:
     std::vector<std::shared_ptr<SoundFileBuffered>> mVoices;
     gam::ADSR<> mVocesEnv {0.3, 0.3, 0.9, 2.0};
 
+    // Sequence players
+    PresetSequencer mSequencer1;
+
     // Schedule Messages
     MsgQueue msgQueue;
 
     DownMixer mDownMixer;
 
-    osc::Recv mChaosRecv {AUDIO_IN_PORT, AUDIO_IP_ADDRESS};
+    osc::Recv mFromSimulator {AUDIO_IN_PORT, AUDIO_IP_ADDRESS};
 
     float mChaos {0};
     float mPrevChaos {0};
@@ -275,48 +219,48 @@ void AudioApp::onSound(AudioIOData &io)
     int fileIndex = 0;
     if (mChaos < 0.2) {
         fileIndex = 0;
-        readFile(mCamaFiles[fileIndex], readBuffer, io, mBaseRouting, mCamasGains[fileIndex]);
+        readFile(mCamaFiles[fileIndex], readBuffer, io, mCamasRouting, mCamasGains[fileIndex]);
     } else if (mChaos < 0.3) {
         float gainIndex = (mChaos - 0.2) * 10;
 
         fileIndex = 0;
-        readFile(mCamaFiles[fileIndex], readBuffer, io, mBaseRouting, mCamasGains[fileIndex] * (1.0 - gainIndex));
+        readFile(mCamaFiles[fileIndex], readBuffer, io, mCamasRouting, mCamasGains[fileIndex] * (1.0 - gainIndex));
 
         fileIndex = 1;
-        readFile(mCamaFiles[fileIndex], readBuffer, io, mBaseRouting, mCamasGains[fileIndex] *gainIndex);
+        readFile(mCamaFiles[fileIndex], readBuffer, io, mCamasRouting, mCamasGains[fileIndex] *gainIndex);
 
     }  else if (mChaos < 0.4) {
         fileIndex = 1;
-        readFile(mCamaFiles[fileIndex], readBuffer, io, mBaseRouting, mCamasGains[fileIndex]);
+        readFile(mCamaFiles[fileIndex], readBuffer, io, mCamasRouting, mCamasGains[fileIndex]);
 
     } else if (mChaos < 0.5) {
         float gainIndex = (mChaos - 0.4) * 10;
 
         fileIndex = 1;
-        readFile(mCamaFiles[fileIndex], readBuffer, io, mBaseRouting, mCamasGains[fileIndex] * (1.0 - gainIndex));
+        readFile(mCamaFiles[fileIndex], readBuffer, io, mCamasRouting, mCamasGains[fileIndex] * (1.0 - gainIndex));
 
         fileIndex = 2;
-        readFile(mCamaFiles[fileIndex], readBuffer, io, mBaseRouting, mCamasGains[fileIndex] *gainIndex);
+        readFile(mCamaFiles[fileIndex], readBuffer, io, mCamasRouting, mCamasGains[fileIndex] *gainIndex);
 
     } else if (mChaos < 0.6) {
 
         fileIndex = 2;
-        readFile(mCamaFiles[fileIndex], readBuffer, io, mBaseRouting, mCamasGains[fileIndex]);
+        readFile(mCamaFiles[fileIndex], readBuffer, io, mCamasRouting, mCamasGains[fileIndex]);
 
     } else if (mChaos < 0.7) {
 
         float gainIndex = (mChaos - 0.6) * 10;
 
         fileIndex = 2;
-        readFile(mCamaFiles[fileIndex], readBuffer, io, mBaseRouting, mCamasGains[fileIndex] * (1.0 - gainIndex));
+        readFile(mCamaFiles[fileIndex], readBuffer, io, mCamasRouting, mCamasGains[fileIndex] * (1.0 - gainIndex));
 
         fileIndex = 3;
-        readFile(mCamaFiles[fileIndex], readBuffer, io, mBaseRouting, mCamasGains[fileIndex] *gainIndex);
+        readFile(mCamaFiles[fileIndex], readBuffer, io, mCamasRouting, mCamasGains[fileIndex] *gainIndex);
 
     } else if (mChaos < 0.8) {
 
         fileIndex = 3;
-        readFile(mCamaFiles[fileIndex], readBuffer, io, mBaseRouting, mCamasGains[fileIndex]);
+        readFile(mCamaFiles[fileIndex], readBuffer, io, mCamasRouting, mCamasGains[fileIndex]);
 
 
     }  else if (mChaos < 0.9) {
@@ -324,14 +268,14 @@ void AudioApp::onSound(AudioIOData &io)
         float gainIndex = (mChaos - 0.8) * 10;
 
         fileIndex = 3;
-        readFile(mCamaFiles[fileIndex], readBuffer, io, mBaseRouting, mCamasGains[fileIndex] * (1.0 - gainIndex));
+        readFile(mCamaFiles[fileIndex], readBuffer, io, mCamasRouting, mCamasGains[fileIndex] * (1.0 - gainIndex));
 
         fileIndex = 4;
-        readFile(mCamaFiles[fileIndex], readBuffer, io, mBaseRouting, mCamasGains[fileIndex] *gainIndex);
+        readFile(mCamaFiles[fileIndex], readBuffer, io, mCamasRouting, mCamasGains[fileIndex] *gainIndex);
 
     } else {
         fileIndex = 4;
-        readFile(mCamaFiles[fileIndex], readBuffer, io, mBaseRouting, mCamasGains[fileIndex]);
+        readFile(mCamaFiles[fileIndex], readBuffer, io, mCamasRouting, mCamasGains[fileIndex]);
 
     }
 
@@ -363,41 +307,21 @@ void AudioApp::onSound(AudioIOData &io)
 
     msgQueue.advance(io.framesPerBuffer()/io.framesPerSecond());
 
+    // Campanitas
     if (mChaos < 0.3) {
-        float probCampanitas = 0.001 + (mChaos/0.3) * 0.006;
-        if (rnd::prob(probCampanitas)) {
-            std::cout << "trigger" << std::endl;
-            addSynth.mPresetHandler.recallPresetSynchronous("34");
-            addSynth.mLayer = rnd::uniform(3);
-            addSynth.mArcSpan = rnd::uniform(0.5, 2.0);
-            addSynth.mArcStart = rnd::uniform();
-            addSynth.mCumulativeDelayRandomness = addSynth.mCumulativeDelayRandomness +rnd::uniform(0.2, -0.2);
-            addSynth.mFundamental = addSynth.mFundamental + rnd::uniform(40, -40);
-            addSynth.trigger(0);
-            msgQueue.send(msgQueue.now() + 2.5, releaseAddSynth, &addSynth, 0);
-        }
-    }
-    if (rnd::prob(0.0079)) {
-//        std::cout << "trigger" << std::endl;
-//        addSynth.mPresetHandler.recallPreset("gliss");
-//        addSynth.mLayer = 1;
-//        addSynth.mArcSpan = rnd::uniform(0.5, 2.0);
-//        addSynth.mArcStart = rnd::uniform();
-//        addSynth.mCumulativeDelayRandomness = addSynth.mCumulativeDelayRandomness +rnd::uniform(0.2, -0.2);
-//        addSynth.mFundamental = addSynth.mFundamental + rnd::uniform(40, -40);
-//        addSynth.trigger(0);
-//        msgQueue.send(msgQueue.now() + 2.5, releaseAddSynth, &addSynth, 0);
-    }
-    // Chaos Synth triggers
-//    if (mChaos > 0.3 && mChaos < 0.7) {
-//        if (rnd::prob(0.0082)) {
-//            if (chaosSynth[0].done()) {
-//                chaosSynth[0].setOutputIndeces(rnd::uniform(47, 16),rnd::uniform(47, 16));
-//                chaosSynth[0].trigger(0);
-//                msgQueue.send(msgQueue.now() + 7, releaseChaosSynth, &chaosSynth[0], 0);
-//            }
+//        float probCampanitas = 0.001 + (mChaos/0.3) * 0.006;
+//        if (rnd::prob(probCampanitas)) {
+//            std::cout << "trigger" << std::endl;
+//            addSynth.mPresetHandler.recallPresetSynchronous("34");
+//            addSynth.mLayer = rnd::uniform(3);
+//            addSynth.mArcSpan = rnd::uniform(0.5, 2.0);
+//            addSynth.mArcStart = rnd::uniform();
+//            addSynth.mCumulativeDelayRandomness = addSynth.mCumulativeDelayRandomness +rnd::uniform(0.2, -0.2);
+//            addSynth.mFundamental = addSynth.mFundamental + rnd::uniform(40, -40);
+//            addSynth.trigger(0);
+//            msgQueue.send(msgQueue.now() + 2.5, releaseAddSynth, &addSynth, 0);
 //        }
-//    }
+    }
 
     ////// Rangos de chaos para chaos synth
     float rangeStart, rangeEnd;
@@ -482,28 +406,6 @@ void AudioApp::onSound(AudioIOData &io)
     }
     addSynth.generateAudio(io);
 
-//    // Sample playback
-//    float out1level = 0.01f;//* mSpeedX * mouseSpeedScale;
-//    float out2level = 0.01f;//* mSpeedX * mouseSpeedScale;
-
-//    float out1 = granX() * out1level;
-//    float out2 = granY() * out2level;
-
-//    float bg1level = 0.01f;
-//    float bg2level = 0.01f;
-//    float bg3level = 0.01f;
-//    float bg1 = background1() * bg1level;
-//    float bg2 = background2() * bg2level;
-////    float bg3 = background3() * bg3level;
-//    float fluct1 = fluctuation1();
-//    float fluct2 = fluctuation2();
-//    io.out(19) += out1 + (bg1 * (1 - fluct2)/2.0) + (bg2 * (1 - fluct2)/2.0);
-//    io.out(27) += out2 + (bg1 * (1 - fluct1)/2.0) + (bg2 * (1 - fluct1)/2.0);
-
-//    io.out(45) += (bg1 * (1 - fluct2)/2.0) + (bg2 * (1 - fluct2)/2.0);
-//    io.out(31) += (bg1 * (1 - fluct1)/2.0) + (bg2 * (1 - fluct2)/2.0);
-//    io.out(40) += out1 + (bg1 * (1 - fluct2)/2.0) + (bg2 * (1 - fluct2)/2.0);
-//    io.out(36) += out2 + (bg1 * (1 - fluct1)/2.0) + (bg2 * (1 - fluct1)/2.0);
 
     for (int i = 0; i < bufferSize; i++) {
         *swBuffer++ *= 0.07;
@@ -515,25 +417,14 @@ void AudioApp::onSound(AudioIOData &io)
 //    }
 //    std::cout << std::endl;
 
-//    mDownMixer.process(io);
+    mDownMixer.process(io);
 }
 
 int main(int argc, char *argv[] )
 {
-    int midiChannel = 1;
-    if (argc > 1) {
-        midiChannel = atoi(argv[1]);
-    }
+    AudioApp app;
 
-    AudioApp app(midiChannel);
-
-//    app.initWindow();
     int outChans = 60;
-//#ifdef SURROUND
-//    int outChans = 60;
-//#else
-//    int outChans = 2;
-//#endif
 #ifdef BUILDING_FOR_ALLOSPHERE
     app.audioIO().device(AudioDevice("ECHO X5"));
 #endif

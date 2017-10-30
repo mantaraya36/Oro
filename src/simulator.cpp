@@ -322,7 +322,7 @@ public:
         state().velocity = velocity.get();
         state().mouseDown = mMouseDown == 1.0;
 
-        state().casasPhase += 0.2 + state().chaos * 0.2;
+        state().casasPhase += 0.1 + state().chaos * 0.2;
 //		if (state().casasPhase > 360) { state().casasPhase -= 360;}
 
         mMaker.set(state());
@@ -405,10 +405,18 @@ public:
 
     SharedState& state() {return mState;}
 
+	ShaderProgram mShader;
+
 	// This constructor is where we initialize the application
 	MyApp(): mPainter(&mState, &mShader, GRAPHICS_IN_PORT, 12098),
         mSimulator(&mState)
 	{
+//		mSpeedX = mSpeedY = 0;
+//        omni().resolution(256);
+		// Configure the camera lens
+//		lens().near(0.1).far(25).fovy(45);
+
+		// Set navigation position and orientation
 
 		initWindow(Window::Dim(0,0, 600,400), "Simulator", 30);
 

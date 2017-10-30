@@ -611,16 +611,17 @@ public:
 		}
 		dev = state().dev;
 		g.pushMatrix();
-		g.rotate(180, 0, 1, 0);
+//		g.rotate(180, 0, 1, 0);
 		for (unsigned int i = 0; i < NUM_CASAS; i++) {
 			if (true) {
 				textureCasas[i].bind(0);
-				for (int j = 0; j < 3; j++) {
+				for (int j = 0; j < 2; j++) {
 					g.pushMatrix();
-					g.rotate(i*20 + j *120, 0, 0.1, 1);
+					g.rotate(i*30 + j *180, 0, 0.1, 1);
+
 					g.translate(0.35 + state().chaos * 2, 0, -2 - 0.01 * i);
 
-					g.translate(*dev* 0.01, 0, *dev* 0.1);
+					g.translate(*dev++* 0.04, 0, *dev++* 0.1);
 
 //					g.rotate(10, 0.3, 0.12, 0.0);
 
@@ -637,10 +638,12 @@ public:
 				}
 				for (int j = 0; j < 3; j++) {
 					g.pushMatrix();
+					g.translate(*dev++* 0.1, *dev++* 0.2, 0);
 					g.rotate(i*20 + j *140, 0.05, 0.1, 1);
 					g.translate(-0.1 + state().chaos* 1.2, 0, -2 + 0.01 * i);
 
-					g.translate(*dev* 0.01, *dev* 0.05, 0);
+					g.rotate(i*20 + j *140,-1);
+
 //					g.rotate((1-casasIndex)*2, 0.1, 0.6, 0.0);
 
 //					g.translate(*dev* 0.05, *dev* 0.15, 0);
@@ -655,7 +658,7 @@ public:
 					g.popMatrix();
 				}
 				textureCasas[i].unbind();
-				dev++;
+//				dev++;
             }
         }
 		g.popMatrix();
