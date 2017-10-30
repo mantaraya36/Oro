@@ -435,20 +435,26 @@ void AudioApp::onSound(AudioIOData &io)
     ///
     rangeStart = 0.1;
     rangeEnd = 0.3;
-    if (mChaos > rangeStart && mChaos < rangeEnd) {
+    if ((mPrevChaos < rangeStart &&  mChaos >= rangeStart)
+            || (mPrevChaos > rangeEnd &&  mChaos <= rangeEnd)
+            ) {
         addSynth.allNotesOff();
         mSequencer1.playSequence("Seq 1");
     }
     rangeStart = 0.3;
     rangeEnd = 0.5;
-    if (mChaos > rangeStart && mChaos < rangeEnd) {
+    if ((mPrevChaos < rangeStart &&  mChaos >= rangeStart)
+            || (mPrevChaos > rangeEnd &&  mChaos <= rangeEnd)
+            ) {
         addSynth.allNotesOff();
         mSequencer1.playSequence("Seq 2");
     }
 
     rangeStart = 0.2;
     rangeEnd = 0.6;
-    if (mChaos > rangeStart && mChaos < rangeEnd) {
+    if ((mPrevChaos < rangeStart &&  mChaos >= rangeStart)
+            || (mPrevChaos > rangeEnd &&  mChaos <= rangeEnd)
+            ) {
         addSynth2.allNotesOff();
         mSequencer2.playSequence("Seq 3");
     }
