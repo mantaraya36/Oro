@@ -136,8 +136,8 @@ public:
                             float adjustedY = (mPosY* 9/16.0) + (0.5 * 5/16.0);
                             float y = adjustedY*(Ny - 8) + 4;
                             float v = 0.35*exp(-(i* i/16.0+j*j/16.0)/(0.5*0.5));
-                            wave[indexAt(x+i, y+j, zcurr)] += v * fabs(mDist)* 20;
-                            wave[indexAt(x+i, y+j, zprev)] += v * fabs(mDist)* 20;
+                            wave[indexAt(x+i, y+j, zcurr)] += v /** fabs(mDist)* 50*/;
+                            wave[indexAt(x+i, y+j, zprev)] += v /** fabs(mDist)* 50*/;
 //                            std::cout << x << "  " << y << " "<< v << std::endl;
                         }
                     }

@@ -100,8 +100,8 @@ public:
     Parameter mLevel {"Level", "", 0.5, "", 0, 1.0};
 
     // basstone |
-    Parameter phsrFreq1 {"phsrFreq1", "", 440, "", 0.0, 9999.0};
-    Parameter phsrFreq2 {"phsrFreq2", "", 440, "", 0.0, 9999.0};
+    Parameter phsrFreq1 {"phsrFreq1", "", 440, "", 0.0001, 9999.0};
+    Parameter phsrFreq2 {"phsrFreq2", "", 440, "", 0.0001, 9999.0};
     Parameter bassFilterFreq {"bassFilterFreq", "", 0, "", 0.0, 9999.0};
 
     gam::Saw<> mOsc1, mOsc2;
@@ -170,14 +170,16 @@ public:
             mReverb(basstone, revOutL, revOutR);
 			outL = mDCBlockL(revOutL);
             outR = mDCBlockR(revOutR);
-			outL = outL * mLevel * 0.3;
-			outR = outR * mLevel * 0.3;
-            io.out(mOutputChannels[0]) = outL * 0.8;
-            io.out(mOutputChannels[1]) = outR * 0.8;
-			io.out(mOutputChannels[2]) = outL * 0.3;
-            io.out(mOutputChannels[3]) = outR * 0.3;
-			io.out(mBassChannel) =  basstone * 0.4;
-			io.out(47) +=  (basstone + outL + outR) * 0.1;
+			outL = outL * mLevel * 0.1;
+			outR = outR * mLevel * 0.1;
+			if (mOsc1.freq() > 0.001 && mOsc2.freq() > 0.001) {
+				io.out(mOutputChannels[0]) = outL * 0.8;
+				io.out(mOutputChannels[1]) = outR * 0.8;
+				io.out(mOutputChannels[2]) = outL * 0.3;
+				io.out(mOutputChannels[3]) = outR * 0.3;
+				io.out(mBassChannel) =  basstone * 0.4;
+				io.out(47) +=  (basstone + outL + outR) * 0.1;
+			}
 
             // noise |
             float noiseOut;
@@ -207,11 +209,9 @@ public:
 			io.out(mNoiseChannel) += noiseOut;
 			mReverbNoise(noiseOut, revOutL, revOutR);
 
-			io.out(20) += revOutL * 0.3;
-			io.out(26) += revOutR * 0.3;
+			io.out(20) += revOutL * 0.1;
+			io.out(26) += revOutR * 0.1;
 //			io.out(47) += (revOutR + revOutL + noiseOut) * 0.07;
-
-
 
         }
     }
@@ -261,12 +261,16 @@ private:
     void connectCallbacks() {
         phsrFreq1.registerChangeCallback([] (float value, void *sender,
                                          void *userData, void * blockSender){
-            static_cast<ChaosSynth *>(userData)->mOsc1.freq(value);
+			if (value != 0) {
+				static_cast<ChaosSynth *>(userData)->mOsc1.freq(value);
+			}
 //            std::cout << "new freq " << value << std::endl;
         }, this);
         phsrFreq2.registerChangeCallback([] (float value, void *sender,
                                          void *userData, void * blockSender){
-            static_cast<ChaosSynth *>(userData)->mOsc2.freq(value);
+			if (value != 0) {
+				static_cast<ChaosSynth *>(userData)->mOsc2.freq(value);
+			}
         }, this);
 
         envFreq1.registerChangeCallback([] (float value, void *sender,

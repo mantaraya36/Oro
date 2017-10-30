@@ -409,24 +409,27 @@ public:
 	void setTreeMaster() {
 		int port = GRAPHICS_SLAVE_PORT;
 #ifdef BUILDING_FOR_ALLOSPHERE
+//		std::vector<std::string> addresses = {
+//		    "gr02",
+//		    "gr03",
+//		    "gr04",
+//		    "gr05",
+//		    "gr06",
+//		    "gr07",
+//		    "gr08",
+//		    "gr09",
+//		    "gr10",
+//		    "gr11",
+//		    "gr12",
+//		    "gr13",
+//		    "gr14"
+//		};
 		std::vector<std::string> addresses = {
-		    "gr02",
-		    "gr03",
-		    "gr04",
-		    "gr05",
-		    "gr06",
-		    "gr07",
-		    "gr08",
-		    "gr09",
-		    "gr10",
-		    "gr11",
-		    "gr12",
-		    "gr13",
-		    "gr14"
+		    "192.168.0.255"
 		};
 #else
 		std::vector<std::string> addresses = {
-		    "localhost"
+		    "192.168.0.255"
 		};
 #endif
 		//		mRecvFromGraphicsMaster.stop();

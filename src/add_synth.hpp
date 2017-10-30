@@ -270,6 +270,13 @@ public:
 	        mReleaseTimes[i].set(2.0);
 	    }
 
+		for (int i = 0; i < SYNTH_POLYPHONY; i++) {
+	        if (synth[i].done()) {
+	            synth[i].release();
+	            break;
+	        }
+	    }
+
 #ifdef SURROUND
         outputRouting = { {4, 3, 7, 6, 2 },
                           {4, 3, 7, 6, 2 },
