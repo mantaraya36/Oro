@@ -430,6 +430,7 @@ void AudioApp::onSound(AudioIOData &io)
         }
     }
     addSynth.generateAudio(io);
+    addSynth2.generateAudio(io);
 
     /// Sequences
     ///
@@ -441,6 +442,7 @@ void AudioApp::onSound(AudioIOData &io)
             ) {
         addSynth.allNotesOff();
         mSequencer1.playSequence("Seq 1");
+        std::cout << "Seq 1" << std::endl;
     }
     rangeStart = 0.3;
     rangeEnd = 0.5;
@@ -449,6 +451,7 @@ void AudioApp::onSound(AudioIOData &io)
             ) {
         addSynth.allNotesOff();
         mSequencer1.playSequence("Seq 2");
+        std::cout << "Seq 2" << std::endl;
     }
 
     rangeStart = 0.2;
@@ -458,6 +461,7 @@ void AudioApp::onSound(AudioIOData &io)
             ) {
         addSynth2.allNotesOff();
         mSequencer2.playSequence("Seq 3");
+        std::cout << "Seq 3" << std::endl;
     }
 
     for (int i = 0; i < bufferSize; i++) {
