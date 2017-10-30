@@ -76,6 +76,11 @@ public:
         mIntroTextModule3->setPosition(Vec3d(-0.3, -0.1, 0.04999));
         mIntroTextFading = false;
 
+		mChaosDisplay = mRenderTree.createModule<TextRenderModule>();
+        mChaosDisplay->setScale(0.4);
+        mChaosDisplay->setPosition(Vec3d(-0.4, 0.5, 0.04999));
+
+		mChaosDisplay->setText("A");
     }
 
     void showBitcoinReport(std::string hash, bool isBitcoin) {
@@ -282,6 +287,7 @@ public:
             reset();
         } else if (m.addressPattern() == "/chaos" && m.typeTags() == "f") {
             m >> mChaos;
+			mChaosDisplay->setText(std::to_string(mChaos));
         } else if (m.addressPattern() == "/velocity" && m.typeTags() == "f") {
             float val;
             m >> val;
@@ -310,6 +316,7 @@ public:
     osc::Recv mOSCReceiver {CONTROL_IN_PORT};
     RenderTree mRenderTree;
     std::shared_ptr<TextRenderModule> mIntroTextModule, mIntroTextModule2, mIntroTextModule3;
+	std::shared_ptr<TextRenderModule> mChaosDisplay;
     bool mIntroTextFading {false};
 
     // Remote parameters
