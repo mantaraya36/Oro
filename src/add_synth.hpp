@@ -298,6 +298,14 @@ public:
         }
     }
 
+	void allNotesOff() {
+		for (int i = 0; i < SYNTH_POLYPHONY; i++) {
+            if (!synth[i].done()) {
+                synth[i].release();
+            }
+        }
+	}
+
 	void trigger(int id)
 	{
 	//    std::cout << "trigger id " << id << std::endl;
