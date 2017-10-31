@@ -65,6 +65,21 @@ public:
             {16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45},
             {48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59}
         };
+        addSynth2.outputRouting = {
+            {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12},
+            {16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45},
+            {48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59}
+        };
+        addSynth3.outputRouting = {
+            {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12},
+            {16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45},
+            {48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59}
+        };
+        addSynthCampanas.outputRouting = {
+            {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12},
+            {16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45},
+            {48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59}
+        };
         for (auto baseNames : mCamasFilenames) {
             mCamaFiles.push_back(std::vector<std::shared_ptr<SoundFileBuffered>>());
             for (auto components: mComponentMap) {
@@ -134,6 +149,28 @@ public:
             AudioApp *app = static_cast<AudioApp *>(data);
             std::cout << "Program!! " << app->addSynth2.mPresetHandler.recallPresetSynchronous(params[0]) << std::endl;
         }, this);
+
+
+        mSequencer3.setDirectory("sequences");
+        mSequencer3.registerEventCommand("ON", [](void *data, std::vector<float> &params)
+        {
+            AudioApp *app = static_cast<AudioApp *>(data);
+            app->addSynth3.mFundamental.set(midi2cps(params[0]));
+            app->addSynth3.trigger(params[0]);
+            std::cout << "Note On!! " << params[0]  << std::endl;
+        }, this);
+        mSequencer2.registerEventCommand("OFF", [](void *data, std::vector<float> &params)
+        {
+            AudioApp *app = static_cast<AudioApp *>(data);
+            app->addSynth3.release(params[0]);
+            std::cout << "Note Off!! " << params[0]  << std::endl;
+        }, this);
+        mSequencer2.registerEventCommand("PROGRAM",
+                                         [](void *data, std::vector<float> &params)
+        {
+            AudioApp *app = static_cast<AudioApp *>(data);
+            std::cout << "Program!! " << app->addSynth3.mPresetHandler.recallPresetSynchronous(params[0]) << std::endl;
+        }, this);
     }
 
     static inline float midi2cps(int midiNote) {
@@ -172,6 +209,8 @@ private:
     ChaosSynth chaosSynth[CHAOS_SYNTH_POLYPHONY];
     AddSynth addSynth;
     AddSynth addSynth2;
+    AddSynth addSynth3;
+    AddSynth addSynthCampanas;
 
 /// Camas
     std::vector<int> mCamasRouting = {49, 58, 52, 55,23,26, 30, 34 , 38, 42, 16 , 20 , 1, 10, 4, 7 };
@@ -218,6 +257,7 @@ private:
     // Sequence players
     PresetSequencer mSequencer1;
     PresetSequencer mSequencer2;
+    PresetSequencer mSequencer3;
 
     // Schedule Messages
     MsgQueue msgQueue;
@@ -376,14 +416,14 @@ void AudioApp::onAudioCB(AudioIOData &io)
         float probCampanitas = 0.01 + (mChaos/max) * 0.006;
         if (rnd::prob(probCampanitas)) {
             std::cout << "trigger" << std::endl;
-            addSynth.mPresetHandler.recallPresetSynchronous("34");
-            addSynth.mLayer = rnd::uniform(3);
-            addSynth.mArcSpan = rnd::uniform(0.5, 2.0);
-            addSynth.mArcStart = rnd::uniform();
-            addSynth.mCumulativeDelayRandomness = addSynth.mCumulativeDelayRandomness +rnd::uniform(0.2, -0.2);
-            addSynth.mFundamental = addSynth.mFundamental + rnd::uniform(40, -40);
-            addSynth.trigger(0);
-            msgQueue.send(msgQueue.now() + 2.5, releaseAddSynth, &addSynth, 0);
+            addSynthCampanas.mPresetHandler.recallPresetSynchronous("34");
+            addSynthCampanas.mLayer = rnd::uniform(3);
+            addSynthCampanas.mArcSpan = rnd::uniform(0.5, 2.0);
+            addSynthCampanas.mArcStart = rnd::uniform();
+            addSynthCampanas.mCumulativeDelayRandomness = addSynthCampanas.mCumulativeDelayRandomness +rnd::uniform(0.2, -0.2);
+            addSynthCampanas.mFundamental = addSynthCampanas.mFundamental + rnd::uniform(40, -40);
+            addSynthCampanas.trigger(0);
+            msgQueue.send(msgQueue.now() + 2.5, releaseAddSynth, &addSynthCampanas, 0);
         }
     }
 
@@ -479,7 +519,7 @@ void AudioApp::onAudioCB(AudioIOData &io)
     if ((mPrevChaos < rangeStart &&  mChaos >= rangeStart)
             || (mPrevChaos > rangeEnd &&  mChaos <= rangeEnd)
             ) {
-        addSynth.allNotesOff();
+//        addSynth.allNotesOff();
         mSequencer1.playSequence("Seq 1");
         std::cout << "Seq 1" << std::endl;
     }
@@ -488,8 +528,8 @@ void AudioApp::onAudioCB(AudioIOData &io)
     if ((mPrevChaos < rangeStart &&  mChaos >= rangeStart)
             || (mPrevChaos > rangeEnd &&  mChaos <= rangeEnd)
             ) {
-        addSynth.allNotesOff();
-        mSequencer1.playSequence("Seq 2");
+//        addSynth2.allNotesOff();
+        mSequencer2.playSequence("Seq 2");
         std::cout << "Seq 2" << std::endl;
     }
 
@@ -498,8 +538,8 @@ void AudioApp::onAudioCB(AudioIOData &io)
     if ((mPrevChaos < rangeStart &&  mChaos >= rangeStart)
             || (mPrevChaos > rangeEnd &&  mChaos <= rangeEnd)
             ) {
-        addSynth2.allNotesOff();
-        mSequencer2.playSequence("Seq 3");
+//        addSynth3.allNotesOff();
+        mSequencer3.playSequence("Seq 3");
         std::cout << "Seq 3" << std::endl;
     }
 
