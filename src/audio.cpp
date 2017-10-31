@@ -107,21 +107,63 @@ public:
             }
         }
 
-        mSequencer1.setDirectory("sequences");
-        mSequencer1.registerEventCommand("ON", [](void *data, std::vector<float> &params)
+        mSequencer1a.setDirectory("sequences");
+        mSequencer1a.registerEventCommand("ON", [](void *data, std::vector<float> &params)
         {
             AudioApp *app = static_cast<AudioApp *>(data);
             app->addSynth.mFundamental.set(midi2cps(params[0]));
             app->addSynth.trigger(params[0]);
             std::cout << "Note On!! " << params[0]  << std::endl;
         }, this);
-        mSequencer1.registerEventCommand("OFF", [](void *data, std::vector<float> &params)
+        mSequencer1a.registerEventCommand("OFF", [](void *data, std::vector<float> &params)
         {
             AudioApp *app = static_cast<AudioApp *>(data);
             app->addSynth.release(params[0]);
             std::cout << "Note Off!! " << params[0]  << std::endl;
         }, this);
-        mSequencer1.registerEventCommand("PROGRAM",
+        mSequencer1a.registerEventCommand("PROGRAM",
+                                         [](void *data, std::vector<float> &params)
+        {
+            AudioApp *app = static_cast<AudioApp *>(data);
+            std::cout << "Program!! " << app->addSynth.mPresetHandler.recallPresetSynchronous(params[0]) << std::endl;
+        }, this);
+
+        mSequencer1b.setDirectory("sequences");
+        mSequencer1b.registerEventCommand("ON", [](void *data, std::vector<float> &params)
+        {
+            AudioApp *app = static_cast<AudioApp *>(data);
+            app->addSynth.mFundamental.set(midi2cps(params[0]));
+            app->addSynth.trigger(params[0]);
+            std::cout << "Note On!! " << params[0]  << std::endl;
+        }, this);
+        mSequencer1b.registerEventCommand("OFF", [](void *data, std::vector<float> &params)
+        {
+            AudioApp *app = static_cast<AudioApp *>(data);
+            app->addSynth.release(params[0]);
+            std::cout << "Note Off!! " << params[0]  << std::endl;
+        }, this);
+        mSequencer1b.registerEventCommand("PROGRAM",
+                                         [](void *data, std::vector<float> &params)
+        {
+            AudioApp *app = static_cast<AudioApp *>(data);
+            std::cout << "Program!! " << app->addSynth.mPresetHandler.recallPresetSynchronous(params[0]) << std::endl;
+        }, this);
+
+        mSequencer1c.setDirectory("sequences");
+        mSequencer1c.registerEventCommand("ON", [](void *data, std::vector<float> &params)
+        {
+            AudioApp *app = static_cast<AudioApp *>(data);
+            app->addSynth.mFundamental.set(midi2cps(params[0]));
+            app->addSynth.trigger(params[0]);
+            std::cout << "Note On!! " << params[0]  << std::endl;
+        }, this);
+        mSequencer1c.registerEventCommand("OFF", [](void *data, std::vector<float> &params)
+        {
+            AudioApp *app = static_cast<AudioApp *>(data);
+            app->addSynth.release(params[0]);
+            std::cout << "Note Off!! " << params[0]  << std::endl;
+        }, this);
+        mSequencer1c.registerEventCommand("PROGRAM",
                                          [](void *data, std::vector<float> &params)
         {
             AudioApp *app = static_cast<AudioApp *>(data);
@@ -151,21 +193,63 @@ public:
         }, this);
 
 
-        mSequencer3.setDirectory("sequences");
-        mSequencer3.registerEventCommand("ON", [](void *data, std::vector<float> &params)
+        mSequencer3a.setDirectory("sequences");
+        mSequencer3a.registerEventCommand("ON", [](void *data, std::vector<float> &params)
         {
             AudioApp *app = static_cast<AudioApp *>(data);
             app->addSynth3.mFundamental.set(midi2cps(params[0]));
             app->addSynth3.trigger(params[0]);
             std::cout << "Note On!! " << params[0]  << std::endl;
         }, this);
-        mSequencer2.registerEventCommand("OFF", [](void *data, std::vector<float> &params)
+        mSequencer3a.registerEventCommand("OFF", [](void *data, std::vector<float> &params)
         {
             AudioApp *app = static_cast<AudioApp *>(data);
             app->addSynth3.release(params[0]);
             std::cout << "Note Off!! " << params[0]  << std::endl;
         }, this);
-        mSequencer2.registerEventCommand("PROGRAM",
+        mSequencer3a.registerEventCommand("PROGRAM",
+                                         [](void *data, std::vector<float> &params)
+        {
+            AudioApp *app = static_cast<AudioApp *>(data);
+            std::cout << "Program!! " << app->addSynth3.mPresetHandler.recallPresetSynchronous(params[0]) << std::endl;
+        }, this);
+
+        mSequencer3b.setDirectory("sequences");
+        mSequencer3b.registerEventCommand("ON", [](void *data, std::vector<float> &params)
+        {
+            AudioApp *app = static_cast<AudioApp *>(data);
+            app->addSynth3.mFundamental.set(midi2cps(params[0]));
+            app->addSynth3.trigger(params[0]);
+            std::cout << "Note On!! " << params[0]  << std::endl;
+        }, this);
+        mSequencer3b.registerEventCommand("OFF", [](void *data, std::vector<float> &params)
+        {
+            AudioApp *app = static_cast<AudioApp *>(data);
+            app->addSynth3.release(params[0]);
+            std::cout << "Note Off!! " << params[0]  << std::endl;
+        }, this);
+        mSequencer3b.registerEventCommand("PROGRAM",
+                                         [](void *data, std::vector<float> &params)
+        {
+            AudioApp *app = static_cast<AudioApp *>(data);
+            std::cout << "Program!! " << app->addSynth3.mPresetHandler.recallPresetSynchronous(params[0]) << std::endl;
+        }, this);
+
+        mSequencer3c.setDirectory("sequences");
+        mSequencer3c.registerEventCommand("ON", [](void *data, std::vector<float> &params)
+        {
+            AudioApp *app = static_cast<AudioApp *>(data);
+            app->addSynth3.mFundamental.set(midi2cps(params[0]));
+            app->addSynth3.trigger(params[0]);
+            std::cout << "Note On!! " << params[0]  << std::endl;
+        }, this);
+        mSequencer3c.registerEventCommand("OFF", [](void *data, std::vector<float> &params)
+        {
+            AudioApp *app = static_cast<AudioApp *>(data);
+            app->addSynth3.release(params[0]);
+            std::cout << "Note Off!! " << params[0]  << std::endl;
+        }, this);
+        mSequencer3c.registerEventCommand("PROGRAM",
                                          [](void *data, std::vector<float> &params)
         {
             AudioApp *app = static_cast<AudioApp *>(data);
@@ -255,9 +339,16 @@ private:
     gam::ADSR<> mVocesEnv {0.3, 0.3, 0.9, 2.0};
 
     // Sequence players
-    PresetSequencer mSequencer1;
+    PresetSequencer mSequencer1a;
+    PresetSequencer mSequencer1b;
+    PresetSequencer mSequencer1c;
     PresetSequencer mSequencer2;
-    PresetSequencer mSequencer3;
+    PresetSequencer mSequencer3a;
+    PresetSequencer mSequencer3b;
+    PresetSequencer mSequencer3c;
+    PresetSequencer mSequencer4a;
+    PresetSequencer mSequencer4b;
+    PresetSequencer mSequencer4c;
 
     // Schedule Messages
     MsgQueue msgQueue;
@@ -520,7 +611,9 @@ void AudioApp::onAudioCB(AudioIOData &io)
             || (mPrevChaos > rangeEnd &&  mChaos <= rangeEnd)
             ) {
 //        addSynth.allNotesOff();
-        mSequencer1.playSequence("Seq 1");
+        mSequencer1a.playSequence("Seq 1-1");
+        mSequencer1b.playSequence("Seq 1-2");
+        mSequencer1c.playSequence("Seq 1-3");
         std::cout << "Seq 1" << std::endl;
     }
     rangeStart = 0.28;
@@ -539,7 +632,21 @@ void AudioApp::onAudioCB(AudioIOData &io)
             || (mPrevChaos > rangeEnd &&  mChaos <= rangeEnd)
             ) {
 //        addSynth3.allNotesOff();
-        mSequencer3.playSequence("Seq 3");
+        mSequencer3a.playSequence("Seq 3-1");
+        mSequencer3b.playSequence("Seq 3-2");
+        mSequencer3c.playSequence("Seq 3-2");
+        std::cout << "Seq 3" << std::endl;
+    }
+
+    rangeStart = 0.6;
+    rangeEnd = 0.8;
+    if ((mPrevChaos < rangeStart &&  mChaos >= rangeStart)
+            || (mPrevChaos > rangeEnd &&  mChaos <= rangeEnd)
+            ) {
+//        addSynth3.allNotesOff();
+        mSequencer4a.playSequence("Seq 4-1");
+        mSequencer4b.playSequence("Seq 4-2");
+        mSequencer4c.playSequence("Seq 4-2");
         std::cout << "Seq 3" << std::endl;
     }
 
