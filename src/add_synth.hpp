@@ -96,10 +96,12 @@ public:
     }
 
     void release() {
+		std::cout << "Note release " << mId << std::endl;
         for (int i = 0; i < NUM_VOICES; i++) {
             mEnvelopes[i].release();
             mAmpModEnvelopes[i].release();
         }
+		mId = -1;
     }
 
     int id() { return mId;}
@@ -112,17 +114,32 @@ public:
     }
 
     void generateAudio(AudioIOData &io) {
-        while (io()) {
-            for (int i = 0; i < NUM_VOICES; i++) {
-                if (mFreqMod) {
-                    mOscillators[i].freq( mFundamental * mFrequencyFactors[i] + (mAmpModulators[i]() * mAmpModEnvelopes[i]()));
-                    io.out(mOutMap[i]) +=  mAttenuation * mOscillators[i]() * mEnvelopes[i]() *  mAmplitudes[i] * mLevel;
-                } else {
-                    io.out(mOutMap[i]) +=  mAttenuation * mOscillators[i]() * mEnvelopes[i]() *  mAmplitudes[i] * mLevel
-                            * (1 + mAmpModulators[i]() * mAmpModEnvelopes[i]());
-                }
+		float fundamental = mFundamental;
+		float level = mLevel;
+		float attenuation = mAttenuation;
+		for (int i = 0; i < NUM_VOICES; i++) {
+			float *outbuf = io.outBuffer(mOutMap[i]);
+			float *swbuf = io.outBuffer(47);
+			gam::Sine<> &oscs = mOscillators[i];
+			gam::Env<5> &envs = mEnvelopes[i];
+			float amp = mAmplitudes[i];
+			gam::SineR<> &ampmods = mAmpModulators[i];
+			gam::Env<3> &modenv = mAmpModEnvelopes[i];
+			float freqfact = mFrequencyFactors[i];
+			for (int samp = 0; samp < io.framesPerBuffer(); samp++) {
+				if (mFreqMod) {
+					oscs.freq(fundamental  * freqfact + (ampmods() * modenv()));
+					float out = attenuation * oscs() * envs() * amp  * level;
+					*outbuf++ +=  out;
+					*swbuf++ +=  out * 0.3f;
+				} else {
+					float out = attenuation * oscs() * envs() *  amp * level
+					        * (1 + ampmods() * modenv());;
+					*outbuf++ +=  out;
+					*swbuf++ +=  out * 0.3;
+				}
             }
-        }
+		}
     }
 
     void setInitialCumulativeDelay(float initialDelay, float randomDev)
@@ -210,7 +227,7 @@ public:
     void updateOutMap(float arcStart, float arcSpan, vector<int> outputRouting) {
         int numSpeakers = outputRouting.size();
         for (int i = 0; i < NUM_VOICES; i++) {
-            mOutMap[i] = outputRouting[fmod(((arcStart + (arcSpan * i/(float) (NUM_VOICES))) * numSpeakers ), numSpeakers)];
+            mOutMap[i] = outputRouting[fmod(((arcStart + (arcSpan * i/(float) (NUM_VOICES - 1))) * numSpeakers ), outputRouting.size())];
 //            std::cout << mOutMap[i] << std::endl;
         }
     }
@@ -227,7 +244,7 @@ private:
 
     bool mFreqMod;
 
-    int mId = 0;
+    int mId = -1;
     float mLevel = 0;
     float mFundamental;
     float mFrequencyFactors[NUM_VOICES];
@@ -270,6 +287,13 @@ public:
 	        mReleaseTimes[i].set(2.0);
 	    }
 
+		for (int i = 0; i < SYNTH_POLYPHONY; i++) {
+	        if (synth[i].done()) {
+	            synth[i].release();
+	            break;
+	        }
+	    }
+
 #ifdef SURROUND
         outputRouting = { {4, 3, 7, 6, 2 },
                           {4, 3, 7, 6, 2 },
@@ -291,9 +315,15 @@ public:
         }
     }
 
+	void allNotesOff() {
+		for (int i = 0; i < SYNTH_POLYPHONY; i++) {
+            synth[i].release();
+        }
+	}
+
 	void trigger(int id)
 	{
-	//    std::cout << "trigger id " << id << std::endl;
+	    std::cout << "trigger id " << id << std::endl;
 	    AddSynthNoteParameters params;
 	    params.id = id;
 	    params.mLevel = mLevel.get();
@@ -324,6 +354,7 @@ public:
 	    for (int i = 0; i < SYNTH_POLYPHONY; i++) {
 	        if (synth[i].done()) {
 	            synth[i].trigger(params);
+				std::cout << "Triggered voice " << i << std::endl;
 	            break;
 	        }
 	    }
@@ -331,7 +362,7 @@ public:
 
 	void release(int id)
 	{
-	//    std::cout << "release id " << id << std::endl;
+	    std::cout << "release id " << id << std::endl;
 	    for (int i = 0; i < SYNTH_POLYPHONY; i++) {
 	        if (synth[i].id() == id) {
 	            synth[i].release();

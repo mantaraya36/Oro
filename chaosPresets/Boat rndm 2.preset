@@ -1,0 +1,10 @@
+::Boat rndm 2
+/Level f 1.000000
+/changeDev f 0.800000
+/changeProb f 1.000000
+/envFreq1 f 0.815000
+/envFreq2 f 0.630450
+/noiseRnd f 9050.000000
+/phsrFreq1 f 56.647858
+/phsrFreq2 f 118.803200
+::

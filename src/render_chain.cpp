@@ -24,7 +24,7 @@ public:
         std::shared_ptr<LineStripModule> lineStrip = mRenderTree.createModule<LineStripModule>();
         lineStrip->setDelta(0.01);
         for (int i = 0; i < 100; i++) {
-            lineStrip->addValue(sin(i/10.));
+            lineStrip->addVertex(i/ 100.0, sin(i/10.), -i);
         }
         lineStrip->setPosition(Vec3d(0, 0, -4));
         mModules.push_back(lineStrip);

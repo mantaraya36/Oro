@@ -8,6 +8,7 @@
 #include "Gamma/SoundFile.h"
 #include "Gamma/Oscillator.h"
 #include "Gamma/Envelope.h"
+#include "Gamma/Analysis.h"
 
 #include "allocore/ui/al_Parameter.hpp"
 #include "allocore/ui/al_Preset.hpp"
@@ -39,18 +40,57 @@ public:
 //        mEnv.sustainPoint(1);
 
         resetClean();
+		mEnv.release();
     }
 
     static inline float midi2cps(int midiNote) {
         return 440.0 * pow(2, (midiNote - 69.0)/ 12.0);
     }
 
-    void trigger(ChaosSynthParameters &params) {
+	void setOutputIndeces(int index1, int index2) {
+		mOutputChannels[0] = index1;
+		mOutputChannels[1] = index2;
+	}
+
+	bool done() {
+		return mEnv.done();
+	}
+
+    void trigger(int id) {
+		mId = id;
 //        mLevel = params.mLevel;
         mEnv.reset();
+
+		int bassChannel = mBassChannel + rnd::uniform(-10, 10);
+		bassChannel %= 60;
+		if (bassChannel < 0) {
+			bassChannel += 60;
+		}
+		while (bassChannel == 47) {
+			bassChannel += rnd::uniform(-10, 10);
+			bassChannel %= 60;
+			if (bassChannel < 0) {
+				bassChannel += 60;
+			}
+		}
+		mBassChannel = bassChannel;
+
+		int noiseChannel = mNoiseChannel + rnd::uniform(-10, 10);
+		noiseChannel %= 60;
+		if (noiseChannel < 0) {
+			noiseChannel += 60;
+		}
+		while (noiseChannel == 47) {
+			noiseChannel += rnd::uniform(-10, 10);
+			noiseChannel %= 60;
+			if (noiseChannel < 0) {
+				noiseChannel += 60;
+			}
+		}
+		mNoiseChannel = noiseChannel;
     }
 
-    void release() {
+    void release(int id) {
         mEnv.release();
     }
 
@@ -60,13 +100,15 @@ public:
     Parameter mLevel {"Level", "", 0.5, "", 0, 1.0};
 
     // basstone |
-    Parameter phsrFreq1 {"phsrFreq1", "", 440, "", 0.0, 9999.0};
-    Parameter phsrFreq2 {"phsrFreq2", "", 440, "", 0.0, 9999.0};
+    Parameter phsrFreq1 {"phsrFreq1", "", 440, "", 0.0001, 9999.0};
+    Parameter phsrFreq2 {"phsrFreq2", "", 440, "", 0.0001, 9999.0};
     Parameter bassFilterFreq {"bassFilterFreq", "", 0, "", 0.0, 9999.0};
 
     gam::Saw<> mOsc1, mOsc2;
     gam::Biquad<> mOscBandPass { 1000, 5, gam::BAND_PASS};
     gam::Biquad<> mOscLowPass {100, 5, gam::LOW_PASS};
+	gam::SilenceDetect mSilenceDetect;
+	int mBassChannel {0};
 
     // envelope
     Parameter envFreq1 {"envFreq1", "", 0.2, "", -9.0, 9.0};
@@ -79,6 +121,7 @@ public:
     float noiseHold {0};
     gam::Accum<> mTrigger;
     gam::AD<> mNoiseEnv{0.003, 0.025};
+	int mNoiseChannel {0};
 
     // Randomness
     Parameter changeProb {"changeProb", "", 0.02, "", 0, 1};
@@ -87,9 +130,11 @@ public:
 
     //
     al::Reverb<> mReverb;
+	al::Reverb<> mReverbNoise;
 
     gam::BlockDC<> mDCBlockL, mDCBlockR;
-    gam::ADSR<> mEnv{0.5, 0.0, 1.0, 3.0};
+	gam::BlockDC<> mDCBlockNoise;
+    gam::ADSR<> mEnv{3.0, 0.0, 1.0, 3.0};
 
     void generateAudio(AudioIOData &io) {
         float noise;
@@ -104,8 +149,37 @@ public:
             }
             float env = al::clip((mEnvOsc1() + mEnvOsc2()), 0.0, 1.0);
             // basstone |
-            float basstone = (env * 0.5) * (mOsc1() + mOsc2());
+			float outerenv = mEnv();
+            float basstone = (env * 0.5) * (mOsc1() + mOsc2()) * outerenv;
 
+			float revOutL, revOutR;
+			if(mSilenceDetect(basstone)) {
+				mBassChannel += rnd::uniform(-10, 10);
+				mBassChannel %= 60;
+				if (mBassChannel < 0) {
+					mBassChannel += 60;
+				}
+				while (mBassChannel == 47) {
+					mBassChannel += rnd::uniform(-10, 10);
+					mBassChannel %= 60;
+					if (mBassChannel < 0) {
+						mBassChannel += 60;
+					}
+				}
+			}
+            mReverb(basstone, revOutL, revOutR);
+			outL = mDCBlockL(revOutL);
+            outR = mDCBlockR(revOutR);
+			outL = outL * mLevel * 0.1;
+			outR = outR * mLevel * 0.1;
+			if (mOsc1.freq() > 0.001 && mOsc2.freq() > 0.001) {
+				io.out(mOutputChannels[0]) = outL * 0.8;
+				io.out(mOutputChannels[1]) = outR * 0.8;
+				io.out(mOutputChannels[2]) = outL * 0.3;
+				io.out(mOutputChannels[3]) = outR * 0.3;
+				io.out(mBassChannel) =  basstone * 0.4;
+				io.out(47) +=  (basstone + outL + outR) * 0.1;
+			}
 
             // noise |
             float noiseOut;
@@ -115,26 +189,31 @@ public:
 
             if (rnd::prob(0.0001)) {
                 mNoiseEnv.reset();
+				mNoiseChannel += rnd::uniform(-10, 10);
+				mNoiseChannel %= 60;
+				if (mNoiseChannel < 0) {
+					mNoiseChannel += 60;
+				}
+				while (mNoiseChannel == 47) {
+					mNoiseChannel += rnd::uniform(-10, 10);
+					mNoiseChannel %= 60;
+					if (mNoiseChannel < 0) {
+						mNoiseChannel += 60;
+					}
+				}
             }
-            noiseOut = noiseHold * mNoiseEnv() * 0.2;
+            noiseOut = mDCBlockNoise(noiseHold* outerenv) * mNoiseEnv() * 0.2;
 
             // output
 
-            float revOutL, revOutR;
-            mReverb(basstone + noiseOut, revOutL, revOutR);
+			io.out(mNoiseChannel) += noiseOut;
+			mReverbNoise(noiseOut, revOutL, revOutR);
 
-            outL = mDCBlockL(revOutL + noiseOut);
-            outR = mDCBlockR(revOutR + noiseOut);
-            float outerenv = mEnv();
-            io.out(mOutputChannels[0]) = outL * mLevel * 0.3 * outerenv;
-            io.out(mOutputChannels[1]) = outR * mLevel * 0.3 * outerenv;
+			io.out(20) += revOutL * 0.1;
+			io.out(26) += revOutR * 0.1;
+//			io.out(47) += (revOutR + revOutL + noiseOut) * 0.07;
 
         }
-    }
-
-
-    bool done() {
-        return mDone;
     }
 
     void resetNoisy()  {
@@ -182,12 +261,16 @@ private:
     void connectCallbacks() {
         phsrFreq1.registerChangeCallback([] (float value, void *sender,
                                          void *userData, void * blockSender){
-            static_cast<ChaosSynth *>(userData)->mOsc1.freq(value);
-            std::cout << "new freq " << value << std::endl;
+			if (value != 0) {
+				static_cast<ChaosSynth *>(userData)->mOsc1.freq(value);
+			}
+//            std::cout << "new freq " << value << std::endl;
         }, this);
         phsrFreq2.registerChangeCallback([] (float value, void *sender,
                                          void *userData, void * blockSender){
-            static_cast<ChaosSynth *>(userData)->mOsc2.freq(value);
+			if (value != 0) {
+				static_cast<ChaosSynth *>(userData)->mOsc2.freq(value);
+			}
         }, this);
 
         envFreq1.registerChangeCallback([] (float value, void *sender,
@@ -206,10 +289,9 @@ private:
 
     }
 
-    vector<int> mOutputChannels {0, 1};
+    vector<int> mOutputChannels {18, 28, 21, 26};
 
     int mId = 0;
-    bool mDone {false};
 };
 
 

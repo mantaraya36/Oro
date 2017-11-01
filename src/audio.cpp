@@ -7,12 +7,14 @@
 #include "allocore/ui/al_PresetMIDI.hpp"
 #include "allocore/ui/al_ParameterMIDI.hpp"
 #include "allocore/io/al_MIDI.hpp"
+#include "alloaudio/al_SoundfileBuffered.hpp"
 
-#define SURROUND
+#include "common.hpp"
 
 #include "chaos_synth.hpp"
 #include "add_synth.hpp"
 #include "granulator.hpp"
+#include "downmixer.hpp"
 
 #define CHAOS_SYNTH_POLYPHONY 1
 #define ADD_SYNTH_POLYPHONY 1
@@ -20,153 +22,343 @@
 using namespace std;
 using namespace al;
 
-class DownMixer {
-public:
-    DownMixer() {
-        mDownMixMap[0] = vector<int>();
-        mDownMixMap[1] = vector<int>();
-        for (int i = 0; i < 60; i++) {
-            mDownMixMap[0].push_back(i);
-            mDownMixMap[1].push_back(i);
-        }
-        mGain = 1/30.0;
-    }
 
-    void process(AudioIOData &io) {
-        int counter;
-        for (auto &entry: mDownMixMap) {
-            for (int sourceIndex: entry.second) {
-                float *destBuffer = io.outBuffer(entry.first);
-                float *srcBuffer = io.outBuffer(sourceIndex);
-                counter = io.framesPerBuffer();
-                while (counter--) {
-                    *destBuffer++ += *srcBuffer++;
+class BaseAudioApp : public AudioCallback{
+public:
+
+	BaseAudioApp(){
+		mAudioIO.append(*this);
+		initAudio(44100);
+	}
+
+	void initAudio(
+		double framesPerSec, unsigned framesPerBuffer=128,
+		unsigned outChans=2, unsigned inChans=0
+	){
+		mAudioIO.framesPerSecond(framesPerSec);
+		mAudioIO.framesPerBuffer(framesPerBuffer);
+		mAudioIO.channelsOut(outChans);
+		mAudioIO.channelsIn(inChans);
+		gam::sampleRate(framesPerSec);
+	}
+
+	AudioIO& audioIO(){ return mAudioIO; }
+
+	void start(bool block=true){
+		mAudioIO.start();
+        int c;
+		if(block){
+            do {
+                c=getchar();
+                putchar (c);
+                if (c == 'q') {
+                    std::cout << "ip" << std::endl;
                 }
-            }
-            float *destBuffer = io.outBuffer(entry.first);
-            counter = io.framesPerBuffer();
-            while (counter--) {
-                *destBuffer++ *= mGain;
-            }
-        }
-    }
+                if (c == 'w') {
+                    std::cout << "ip" << std::endl;
+                }
+              } while (c != '.');
+		}
+	}
 
 private:
-    map<int, vector<int>> mDownMixMap;
-    float mGain;
+	AudioIO mAudioIO;
 };
 
-class AudioApp: public App, public osc::PacketHandler
+class AudioApp: public BaseAudioApp, public osc::PacketHandler
 {
 public:
-    AudioApp(int midiChannel = 1) : App(),
-        mMidiChannel(midiChannel - 1),
-        granX("Bounced Files/Piezas oro 1.wav"),
-        granY("Bounced Files/Piezas oro 2.wav"),
-        granZ("Bounced Files/Piezas oro 2.wav"),
-        background1("Bounced Files/Agua base superficie.wav"),
-	    background2("Bounced Files/Bajo agua.wav")
+    AudioApp(int midiChannel = 1) : BaseAudioApp()
     {
-        addSynth.outputRouting = {
+        for (int i = 0; i < 3; i++) {
+            addSynth[i].outputRouting = {
+                {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12},
+                {16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45},
+                {48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59}
+            };
+            addSynth3[i].outputRouting = {
+                {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12},
+                {16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45},
+                {48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59}
+            };
+            addSynth4[i].outputRouting = {
+                {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12},
+                {16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45},
+                {48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59}
+            };
+        }
+        addSynth2.outputRouting = {
             {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12},
             {16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45},
             {48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59}
         };
-        mOSCRecv.handler(*this);
-        mOSCRecv.timeout(0.005);
-        mOSCRecv.start();
+        addSynthCampanas.outputRouting = {
+            {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12},
+            {16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45},
+            {48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59}
+        };
 
+
+        mSequencer1a.setDirectory("sequences");
+        mSequencer1a.registerEventCommand("ON", [](void *data, std::vector<float> &params)
+        {
+            AudioApp *app = static_cast<AudioApp *>(data);
+            app->addSynth[0].mFundamental.set(midi2cps(params[0]));
+            app->addSynth[0].trigger(params[0]);
+            std::cout << "Note On 1!! " << params[0]  << std::endl;
+        }, this);
+        mSequencer1a.registerEventCommand("OFF", [](void *data, std::vector<float> &params)
+        {
+            AudioApp *app = static_cast<AudioApp *>(data);
+            app->addSynth[0].release(params[0]);
+            std::cout << "Note Off 1!! " << params[0]  << std::endl;
+        }, this);
+        mSequencer1a.registerEventCommand("PROGRAM",
+                                         [](void *data, std::vector<float> &params)
+        {
+            AudioApp *app = static_cast<AudioApp *>(data);
+            std::cout << "Program 1!! " << app->addSynth[0].mPresetHandler.recallPresetSynchronous(params[0]) << std::endl;
+        }, this);
+
+        mSequencer1b.setDirectory("sequences");
+        mSequencer1b.registerEventCommand("ON", [](void *data, std::vector<float> &params)
+        {
+            AudioApp *app = static_cast<AudioApp *>(data);
+            app->addSynth[1].mFundamental.set(midi2cps(params[0]));
+            app->addSynth[1].trigger(params[0]);
+            std::cout << "Note On 2!! " << params[0]  << std::endl;
+        }, this);
+        mSequencer1b.registerEventCommand("OFF", [](void *data, std::vector<float> &params)
+        {
+            AudioApp *app = static_cast<AudioApp *>(data);
+            app->addSynth[1].release(params[0]);
+            std::cout << "Note Off 2!! " << params[0]  << std::endl;
+        }, this);
+        mSequencer1b.registerEventCommand("PROGRAM",
+                                         [](void *data, std::vector<float> &params)
+        {
+            AudioApp *app = static_cast<AudioApp *>(data);
+            std::cout << "Program 2!! " << app->addSynth[1].mPresetHandler.recallPresetSynchronous(params[0]) << std::endl;
+        }, this);
+
+        mSequencer1c.setDirectory("sequences");
+        mSequencer1c.registerEventCommand("ON", [](void *data, std::vector<float> &params)
+        {
+            AudioApp *app = static_cast<AudioApp *>(data);
+            app->addSynth[2].mFundamental.set(midi2cps(params[0]));
+            app->addSynth[2].trigger(params[0]);
+            std::cout << "Note On 3!! " << params[0]  << std::endl;
+        }, this);
+        mSequencer1c.registerEventCommand("OFF", [](void *data, std::vector<float> &params)
+        {
+            AudioApp *app = static_cast<AudioApp *>(data);
+            app->addSynth[2].release(params[0]);
+            std::cout << "Note Off 3!! " << params[0]  << std::endl;
+        }, this);
+        mSequencer1c.registerEventCommand("PROGRAM",
+                                         [](void *data, std::vector<float> &params)
+        {
+            AudioApp *app = static_cast<AudioApp *>(data);
+            std::cout << "Program 3!! " << app->addSynth[2].mPresetHandler.recallPresetSynchronous(params[0]) << std::endl;
+        }, this);
+
+        mSequencer2.setDirectory("sequences");
+        mSequencer2.registerEventCommand("ON", [](void *data, std::vector<float> &params)
+        {
+            AudioApp *app = static_cast<AudioApp *>(data);
+            app->addSynth2.mFundamental.set(midi2cps(params[0]));
+            app->addSynth2.trigger(params[0]);
+            std::cout << "Note On!! " << params[0]  << std::endl;
+        }, this);
+        mSequencer2.registerEventCommand("OFF", [](void *data, std::vector<float> &params)
+        {
+            AudioApp *app = static_cast<AudioApp *>(data);
+            app->addSynth2.release(params[0]);
+            std::cout << "Note Off!! " << params[0]  << std::endl;
+        }, this);
+        mSequencer2.registerEventCommand("PROGRAM",
+                                         [](void *data, std::vector<float> &params)
+        {
+            AudioApp *app = static_cast<AudioApp *>(data);
+            std::cout << "Program!! " << app->addSynth2.mPresetHandler.recallPresetSynchronous(params[0]) << std::endl;
+        }, this);
+
+
+        mSequencer3a.setDirectory("sequences");
+        mSequencer3a.registerEventCommand("ON", [](void *data, std::vector<float> &params)
+        {
+            AudioApp *app = static_cast<AudioApp *>(data);
+            app->addSynth3[0].mFundamental.set(midi2cps(params[0]));
+            app->addSynth3[0].trigger(params[0]);
+            std::cout << "Note On!! " << params[0]  << std::endl;
+        }, this);
+        mSequencer3a.registerEventCommand("OFF", [](void *data, std::vector<float> &params)
+        {
+            AudioApp *app = static_cast<AudioApp *>(data);
+            app->addSynth3[0].release(params[0]);
+            std::cout << "Note Off!! " << params[0]  << std::endl;
+        }, this);
+        mSequencer3a.registerEventCommand("PROGRAM",
+                                         [](void *data, std::vector<float> &params)
+        {
+            AudioApp *app = static_cast<AudioApp *>(data);
+            std::cout << "Program!! " << app->addSynth3[0].mPresetHandler.recallPresetSynchronous(params[0]) << std::endl;
+        }, this);
+
+        mSequencer3b.setDirectory("sequences");
+        mSequencer3b.registerEventCommand("ON", [](void *data, std::vector<float> &params)
+        {
+            AudioApp *app = static_cast<AudioApp *>(data);
+            app->addSynth3[1].mFundamental.set(midi2cps(params[0]));
+            app->addSynth3[1].trigger(params[0]);
+            std::cout << "Note On!! " << params[0]  << std::endl;
+        }, this);
+        mSequencer3b.registerEventCommand("OFF", [](void *data, std::vector<float> &params)
+        {
+            AudioApp *app = static_cast<AudioApp *>(data);
+            app->addSynth3[1].release(params[0]);
+            std::cout << "Note Off!! " << params[0]  << std::endl;
+        }, this);
+        mSequencer3b.registerEventCommand("PROGRAM",
+                                         [](void *data, std::vector<float> &params)
+        {
+            AudioApp *app = static_cast<AudioApp *>(data);
+            std::cout << "Program!! " << app->addSynth3[1].mPresetHandler.recallPresetSynchronous(params[0]) << std::endl;
+        }, this);
+
+        mSequencer3c.setDirectory("sequences");
+        mSequencer3c.registerEventCommand("ON", [](void *data, std::vector<float> &params)
+        {
+            AudioApp *app = static_cast<AudioApp *>(data);
+            app->addSynth3[2].mFundamental.set(midi2cps(params[0]));
+            app->addSynth3[2].trigger(params[0]);
+            std::cout << "Note On!! " << params[0]  << std::endl;
+        }, this);
+        mSequencer3c.registerEventCommand("OFF", [](void *data, std::vector<float> &params)
+        {
+            AudioApp *app = static_cast<AudioApp *>(data);
+            app->addSynth3[2].release(params[0]);
+            std::cout << "Note Off!! " << params[0]  << std::endl;
+        }, this);
+        mSequencer3c.registerEventCommand("PROGRAM",
+                                         [](void *data, std::vector<float> &params)
+        {
+            AudioApp *app = static_cast<AudioApp *>(data);
+            std::cout << "Program!! " << app->addSynth3[2].mPresetHandler.recallPresetSynchronous(params[0]) << std::endl;
+        }, this);
+
+
+        mSequencer4a.setDirectory("sequences");
+        mSequencer4a.registerEventCommand("ON", [](void *data, std::vector<float> &params)
+        {
+            AudioApp *app = static_cast<AudioApp *>(data);
+            app->addSynth4[0].mFundamental.set(midi2cps(params[0]));
+            app->addSynth4[0].trigger(params[0]);
+            std::cout << "Note On!! " << params[0]  << std::endl;
+        }, this);
+        mSequencer4a.registerEventCommand("OFF", [](void *data, std::vector<float> &params)
+        {
+            AudioApp *app = static_cast<AudioApp *>(data);
+            app->addSynth4[0].release(params[0]);
+            std::cout << "Note Off!! " << params[0]  << std::endl;
+        }, this);
+        mSequencer4a.registerEventCommand("PROGRAM",
+                                         [](void *data, std::vector<float> &params)
+        {
+            AudioApp *app = static_cast<AudioApp *>(data);
+            std::cout << "Program!! " << app->addSynth4[0].mPresetHandler.recallPresetSynchronous(params[0]) << std::endl;
+        }, this);
+
+        mSequencer4b.setDirectory("sequences");
+        mSequencer4b.registerEventCommand("ON", [](void *data, std::vector<float> &params)
+        {
+            AudioApp *app = static_cast<AudioApp *>(data);
+            app->addSynth4[1].mFundamental.set(midi2cps(params[0]));
+            app->addSynth4[1].trigger(params[0]);
+            std::cout << "Note On!! " << params[0]  << std::endl;
+        }, this);
+        mSequencer4b.registerEventCommand("OFF", [](void *data, std::vector<float> &params)
+        {
+            AudioApp *app = static_cast<AudioApp *>(data);
+            app->addSynth4[1].release(params[0]);
+            std::cout << "Note Off!! " << params[0]  << std::endl;
+        }, this);
+        mSequencer4b.registerEventCommand("PROGRAM",
+                                         [](void *data, std::vector<float> &params)
+        {
+            AudioApp *app = static_cast<AudioApp *>(data);
+            std::cout << "Program!! " << app->addSynth4[1].mPresetHandler.recallPresetSynchronous(params[0]) << std::endl;
+        }, this);
+
+        mSequencer4c.setDirectory("sequences");
+        mSequencer4c.registerEventCommand("ON", [](void *data, std::vector<float> &params)
+        {
+            AudioApp *app = static_cast<AudioApp *>(data);
+            app->addSynth4[2].mFundamental.set(midi2cps(params[0]));
+            app->addSynth4[2].trigger(params[0]);
+            std::cout << "Note On!! " << params[0]  << std::endl;
+        }, this);
+        mSequencer4c.registerEventCommand("OFF", [](void *data, std::vector<float> &params)
+        {
+            AudioApp *app = static_cast<AudioApp *>(data);
+            app->addSynth4[2].release(params[0]);
+            std::cout << "Note Off!! " << params[0]  << std::endl;
+        }, this);
+        mSequencer4c.registerEventCommand("PROGRAM",
+                                         [](void *data, std::vector<float> &params)
+        {
+            AudioApp *app = static_cast<AudioApp *>(data);
+            std::cout << "Program!! " << app->addSynth4[2].mPresetHandler.recallPresetSynchronous(params[0]) << std::endl;
+        }, this);
     }
 
     static inline float midi2cps(int midiNote) {
         return 440.0 * pow(2, (midiNote - 69.0)/ 12.0);
     }
 
-    virtual void onSound(AudioIOData &io) override;
-    virtual void onMessage(osc::Message &m) override { m.print();}
+    void init() {
+        mFromSimulator.handler(*this);
+        mFromSimulator.timeout(0.005);
+        mFromSimulator.start();
+    }
 
-private:
-
-    // Parameters
-    Parameter mLevel {"Level", "", 0.5, "", 0, 1.0};
-    Parameter mFundamental {"Fundamental", "", 55.0, "", 0.0, 9000.0};
-
-    Parameter keyboardOffset {"Key Offset", "", 0.0, "", -20, 40};
-
-//    // Presets
-//    PresetHandler mChaosPresetHandler {"chaosPresets"};
-//    PresetHandler mAddPresetHandler {"presets"};
-
-    // MIDI Control
-    PresetMIDI presetMIDI;
-    ParameterMIDI parameterMIDI;
-    int mMidiChannel;
-
-    MIDIIn midiIn {"USB Oxygen 49"};
-
-
-    static void midiCallback(double deltaTime, std::vector<unsigned char> *msg, void *userData){
-        AudioApp *app = static_cast<AudioApp *>(userData);
-        unsigned numBytes = msg->size();
-//        midiLightWaiter(app);
-
-        if(numBytes > 0){
-            unsigned char status = msg->at(0);
-            if(MIDIByte::isChannelMessage(status)){
-                unsigned char type = status & MIDIByte::MESSAGE_MASK;
-                unsigned char chan = status & MIDIByte::CHANNEL_MASK;
-                if ((int) chan == app->mMidiChannel) {
-                    switch(type){
-                    case MIDIByte::NOTE_ON:
-                        //                    printf("Note %u, Vel %u", msg->at(1), msg->at(2));
-                        if (msg->at(2) != 0) {
-                            app->addSynth.trigger(msg->at(1));
-                        } else {
-                            //                        app->release(msg->at(1));
-                        }
-                        break;
-
-                    case MIDIByte::NOTE_OFF:
-
-                        //                    app->release(msg->at(1));
-                        //                    printf("Note %u, Vel %u", msg->at(1), msg->at(2));
-                        break;
-
-                    case MIDIByte::PITCH_BEND:
-                        //                    printf("Value %u", MIDIByte::convertPitchBend(msg->at(1), msg->at(2)));
-                        break;
-                    case MIDIByte::CONTROL_CHANGE:
-                        //                    printf("%s ", MIDIByte::controlNumberString(msg->at(1)));
-                        //                    switch(msg->at(1)){
-                        //                    case MIDIByte::MODULATION:
-                        //                        printf("%u", msg->at(2));
-                        //                        break;
-                        //                    }
-                        break;
-                    case MIDIByte::PROGRAM_CHANGE:
-//                        app->mPresetHandler.recallPreset(msg->at(1));
-                        break;
-                    default:;
-                    }
-                }
-            }
+    virtual void onAudioCB(AudioIOData &io) override;
+    virtual void onMessage(osc::Message &m) override {
+        if (m.addressPattern() == "/chaos" && m.typeTags() == "f") {
+            mPrevChaos = mChaos;
+            m >> mChaos;
         }
     }
 
+private:
     // Synthesis
-    ChaosSynth chaosSynth[CHAOS_SYNTH_POLYPHONY];
-    AddSynth addSynth;
-    Granulator granX, granY, granZ;
-    Granulator background1;
-    Granulator background2;
-//    Granulator background3;
+    AddSynth addSynth[3];
+    AddSynth addSynth2;
+    AddSynth addSynth3[3];
+    AddSynth addSynth4[3];
+    AddSynth addSynthCampanas;
 
-    gam::SineR<float> fluctuation1, fluctuation2;
+    // Sequence players
+    PresetSequencer mSequencer1a;
+    PresetSequencer mSequencer1b;
+    PresetSequencer mSequencer1c;
+    PresetSequencer mSequencer2;
+    PresetSequencer mSequencer3a;
+    PresetSequencer mSequencer3b;
+    PresetSequencer mSequencer3c;
+    PresetSequencer mSequencer4a;
+    PresetSequencer mSequencer4b;
+    PresetSequencer mSequencer4c;
 
     // Schedule Messages
     MsgQueue msgQueue;
 
     DownMixer mDownMixer;
+
+    osc::Recv mFromSimulator {AUDIO_IN_PORT, AUDIO_IP_ADDRESS};
+
+    float mChaos {0};
+    float mPrevChaos {0};
 };
 
 static void releaseAddSynth(al_sec timestamp, AddSynth *addSynth, int id)
@@ -175,88 +367,144 @@ static void releaseAddSynth(al_sec timestamp, AddSynth *addSynth, int id)
     std::cout << "release" << std::endl;
 }
 
-void AudioApp::onSound(AudioIOData &io)
+void AudioApp::onAudioCB(AudioIOData &io)
 {
-    msgQueue.advance(io.framesPerBuffer()/io.framesPerSecond());
-    if (rnd::prob(0.0085)) {
-        std::cout << "trigger" << std::endl;
-        addSynth.mPresetHandler.recallPreset("34");
-        addSynth.mLayer = 0;
-        addSynth.mArcSpan = rnd::uniform(0.5, 2.0);
-        addSynth.mArcStart = rnd::uniform();
-        addSynth.mCumulativeDelayRandomness = addSynth.mCumulativeDelayRandomness +rnd::uniform(0.1, -0.1);
-        addSynth.mFundamental = addSynth.mFundamental + rnd::uniform(30, -30);
-        addSynth.trigger(0);
-        msgQueue.send(msgQueue.now() + 2.5, releaseAddSynth, &addSynth, 0);
-    }
-    if (rnd::prob(0.0082)) {
-        std::cout << "trigger" << std::endl;
-        addSynth.mPresetHandler.recallPreset("gliss");
-        addSynth.mLayer = 0;
-        addSynth.mArcSpan = rnd::uniform(0.5, 2.0);
-        addSynth.mArcStart = rnd::uniform();
-        addSynth.mCumulativeDelayRandomness = addSynth.mCumulativeDelayRandomness +rnd::uniform(0.1, -0.1);
-        addSynth.mFundamental = addSynth.mFundamental + rnd::uniform(30, -30);
-        addSynth.trigger(0);
-        msgQueue.send(msgQueue.now() + 2.5, releaseAddSynth, &addSynth, 0);
-    }
-    for (int i = 0; i < CHAOS_SYNTH_POLYPHONY; i++) {
-        if (!chaosSynth[i].done()) {
-            chaosSynth[i].generateAudio(io);
-            io.frame(0);
+    int bufferSize = io.framesPerBuffer();
+    float *swBuffer = io.outBuffer(47);
+
+    // Campanitas
+	float max = 0.3;
+    if (mChaos < max) {
+        float probCampanitas = 0.01 + (mChaos/max) * 0.006;
+        if (rnd::prob(probCampanitas)) {
+            std::cout << "trigger" << std::endl;
+            addSynthCampanas.mPresetHandler.recallPresetSynchronous("34");
+            addSynthCampanas.mLayer = rnd::uniform(3);
+            addSynthCampanas.mArcSpan = rnd::uniform(0.5, 2.0);
+            addSynthCampanas.mArcStart = rnd::uniform();
+            addSynthCampanas.mCumulativeDelayRandomness = addSynthCampanas.mCumulativeDelayRandomness +rnd::uniform(0.2, -0.2);
+            addSynthCampanas.mFundamental = addSynthCampanas.mFundamental + rnd::uniform(40, -40);
+            addSynthCampanas.trigger(0);
+            msgQueue.send(msgQueue.now() + 2.5, releaseAddSynth, &addSynthCampanas, 0);
         }
     }
-    addSynth.generateAudio(io);
 
-    // Sample playback
-    float out1level = 0.01f;//* mSpeedX * mouseSpeedScale;
-    float out2level = 0.01f;//* mSpeedX * mouseSpeedScale;
+    for (int i = 0; i < 3; i++) {
+        addSynth[i].generateAudio(io);
+        addSynth3[i].generateAudio(io);
+    }
+    addSynth2.generateAudio(io);
+    addSynthCampanas.generateAudio(io);
 
-    float out1 = granX() * out1level;
-    float out2 = granY() * out2level;
+    /// Sequences
+    ///
+    ///
+    float rangeStart = 0.1;
+    float rangeEnd = 0.3;
+    if ((mPrevChaos < rangeStart &&  mChaos >= rangeStart)
+            || (mPrevChaos > rangeStart &&  mChaos <= rangeStart)
+            ) {
+        if (!mSequencer1a.running()) {
+            mSequencer2.stopSequence();
+            addSynth2.allNotesOff();
+            mSequencer1a.playSequence("Seq 1-1");
+            mSequencer1b.playSequence("Seq 1-2");
+            mSequencer1c.playSequence("Seq 1-3");
+            std::cout << "Seq 1" << std::endl;
+        }
+    }
+    rangeStart = 0.28;
+    rangeEnd = 0.5;
+    if ((mPrevChaos < rangeStart &&  mChaos >= rangeStart)
+            || (mPrevChaos > rangeStart &&  mChaos <= rangeStart)
+            ) {
+        if (!mSequencer2.running()) {
+            mSequencer1a.stopSequence();
+            mSequencer1b.stopSequence();
+            mSequencer1c.stopSequence();
+            addSynth[0].allNotesOff();
+            addSynth[1].allNotesOff();
+            addSynth[2].allNotesOff();
+            mSequencer3a.stopSequence();
+            mSequencer3b.stopSequence();
+            mSequencer3c.stopSequence();
+            addSynth3[0].allNotesOff();
+            addSynth3[1].allNotesOff();
+            addSynth3[2].allNotesOff();
+            mSequencer2.playSequence("Seq 2-1");
+            std::cout << "Seq 2" << std::endl;
+        }
+    }
 
-    float bg1level = 0.01f;
-    float bg2level = 0.01f;
-    float bg3level = 0.01f;
-    float bg1 = background1() * bg1level;
-    float bg2 = background2() * bg2level;
-//    float bg3 = background3() * bg3level;
-    float fluct1 = fluctuation1();
-    float fluct2 = fluctuation2();
-    io.out(19) += out1 + (bg1 * (1 - fluct2)/2.0) + (bg2 * (1 - fluct2)/2.0);
-    io.out(27) += out2 + (bg1 * (1 - fluct1)/2.0) + (bg2 * (1 - fluct1)/2.0);
+    rangeStart = 0.2;
+    rangeEnd = 0.6;
+    if ((mPrevChaos < rangeStart &&  mChaos >= rangeStart)
+            || (mPrevChaos > rangeStart &&  mChaos <= rangeStart)
+            ) {
+        if (!mSequencer3a.running()) {
+            mSequencer2.stopSequence();
+            addSynth2.allNotesOff();
+            mSequencer4a.stopSequence();
+            mSequencer4b.stopSequence();
+            mSequencer4c.stopSequence();
+            addSynth3[0].allNotesOff();
+            addSynth3[1].allNotesOff();
+            addSynth3[3].allNotesOff();
+            mSequencer3a.playSequence("Seq 3-1");
+            mSequencer3b.playSequence("Seq 3-2");
+//            mSequencer3c.playSequence("Seq 3-3");
+            std::cout << "Seq 3" << std::endl;
+        }
+    }
 
-    io.out(45) += (bg1 * (1 - fluct2)/2.0) + (bg2 * (1 - fluct2)/2.0);
-    io.out(31) += (bg1 * (1 - fluct1)/2.0) + (bg2 * (1 - fluct2)/2.0);
-    io.out(40) += out1 + (bg1 * (1 - fluct2)/2.0) + (bg2 * (1 - fluct2)/2.0);
-    io.out(36) += out2 + (bg1 * (1 - fluct1)/2.0) + (bg2 * (1 - fluct1)/2.0);
+    rangeStart = 0.6;
+    rangeEnd = 0.8;
+    if ((mPrevChaos < rangeStart &&  mChaos >= rangeStart)
+            || (mPrevChaos > rangeEnd &&  mChaos <= rangeEnd)
+            ) {
+        if (!mSequencer4a.running()) {
+            mSequencer3a.stopSequence();
+            mSequencer3b.stopSequence();
+            mSequencer3c.stopSequence();
+            addSynth3[0].allNotesOff();
+            addSynth3[1].allNotesOff();
+            addSynth3[2].allNotesOff();
+            mSequencer4a.playSequence("Seq 4a-0");
+            mSequencer4b.playSequence("Seq 4b-0");
+            mSequencer4c.playSequence("Seq 4c-0");
+            std::cout << "Seq 4" << std::endl;
+        }
+    }
 
-    mDownMixer.process(io);
+    for (int i = 0; i < bufferSize; i++) {
+        *swBuffer++ *= 0.07;
+    }
 
+    msgQueue.advance(io.framesPerBuffer()/io.framesPerSecond());
+
+//    std::cout << "-------------" << std::endl;
+//    for (int i= 0; i < 60; i++) {
+//        std::cout << io.out(i, 0) << " ";
+//    }
+//    std::cout << std::endl;
+
+//    mDownMixer.process(io);
 }
 
 int main(int argc, char *argv[] )
 {
-    int midiChannel = 1;
-    if (argc > 1) {
-        midiChannel = atoi(argv[1]);
-    }
+    AudioApp app;
 
-    AudioApp app(midiChannel);
-
-//    app.initWindow();
     int outChans = 60;
-//#ifdef SURROUND
-//    int outChans = 60;
-//#else
-//    int outChans = 2;
-//#endif
-    app.initAudio(44100, 2048, outChans, 0);
+#ifdef BUILDING_FOR_ALLOSPHERE
+    app.audioIO().device(AudioDevice("ECHO X5"));
+#endif
+    app.initAudio(44100, 512, outChans, 0);
     gam::sampleRate(app.audioIO().fps());
 
 //    AudioDevice::printAll();
     app.audioIO().print();
-
+    app.init();
     app.start();
     return 0;
 }

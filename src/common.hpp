@@ -25,17 +25,17 @@
 #include "Cuttlebone/Cuttlebone.hpp"
 
 //#define SURROUND
-//#define BUILDING_FOR_ALLOSPHERE
+#define BUILDING_FOR_ALLOSPHERE
 
 using namespace al;
 using namespace std;
 
-#define GRID_SIZEX 8
+#define GRID_SIZEX 7
 #define GRID_SIZEY 5
-#define GRID_SIZEZ 10
+#define GRID_SIZEZ 9
 #define INTERACTION_POINTS 32
 
-#define NUM_OFRENDAS 8
+#define NUM_OFRENDAS 16
 #define NUM_CASAS 6
 
 #ifdef BUILDING_FOR_ALLOSPHERE
@@ -46,6 +46,12 @@ using namespace std;
 
 #define SIMULATOR_IP_ADDRESS "audio.mat.ucsb.edu"
 #define SIMULATOR_IN_PORT 10200
+
+#define AUDIO_IP_ADDRESS "audio.mat.ucsb.edu"
+#define AUDIO_IN_PORT 10201
+
+#define AUDIO2_IP_ADDRESS "audio.mat.ucsb.edu"
+#define AUDIO2_IN_PORT 10202
 
 // Graphics master server
 #define GRAPHICS_IP_ADDRESS "audio.mat.ucsb.edu"
@@ -63,6 +69,12 @@ using namespace std;
 #define SIMULATOR_IP_ADDRESS "localhost"
 #define SIMULATOR_IN_PORT 10200
 
+#define AUDIO_IP_ADDRESS "localhost"
+#define AUDIO_IN_PORT 10201
+
+#define AUDIO2_IP_ADDRESS "localhost"
+#define AUDIO2_IN_PORT 10202
+
 // Graphics master server
 #define GRAPHICS_IP_ADDRESS "localhost"
 #define GRAPHICS_IN_PORT 10100
@@ -75,7 +87,7 @@ using namespace std;
 #define LAGOON_Y 3.0
 
 // Wave function grid size
-static const int Nx = 200, Ny = Nx;
+static const int Nx = 180, Ny = Nx;
 
 struct Ofrenda {
     gam::Decay<float> envelope;
@@ -208,6 +220,7 @@ public:
 
     Image imagesOfrendas[NUM_OFRENDAS];
     Texture textureOfrendas[NUM_OFRENDAS];
+	std::vector<float> ofrendaAspects;
 
 	Image imagesCasas[NUM_CASAS];
     Texture textureCasas[NUM_CASAS];
@@ -219,6 +232,14 @@ public:
 
 	osc::Recv mRecvFromSimulator;
 	osc::Recv mRecvFromGraphicsMaster;
+
+	std::vector<std::shared_ptr<TextRenderModule>> mBitcoinHexes;
+
+	SharedState &state() {return *mState;}
+    SharedState *mState;
+
+    ShaderProgram &shader() {return *mShader;}
+    ShaderProgram *mShader;
 
     SharedPainter(SharedState *state, ShaderProgram *shader,
 	              uint16_t port = GRAPHICS_IN_PORT,
@@ -299,13 +320,58 @@ public:
         mRecvFromGraphicsMaster.timeout(0.005);
         mRecvFromGraphicsMaster.start();
     }
+	~SharedPainter() {
+		mRecvFromSimulator.stop();
+		mRecvFromGraphicsMaster.stop();
+	}
+
+	void reset() {
+		mRenderTree.clear();
+	}
 
     void onInit() {
 
+		ofrendaAspects = {
+		    741.0	/683.0,
+		    921.0	/716.0,
+		    654.0	/598.0,
+		    556.0	/596.0,
+		    557.0	/608.0,
+//			473.0	/512.0,
+		    559.0	/661.0,
+		    454.0	/496.0,
+		    1050.0/395.0,
+		    386	/673,
+		    530	/481,
+		    330.0/571.0,
+		    454.0	/689.0,
+		    299.0	/510.0,
+		    625.0	/659.0,
+		    736.0	/454.0,
+		    945.0	/485.0
+		};
+
         vector<string> ofrendaImageFiles =
-        {"Fotos/MO_01alpha.png",  "Fotos/MO_04alpha.png", "Fotos/MO_07alpha.png",
-         "Fotos/MO_02alpha.png",  "Fotos/MO_05alpha.png",  "Fotos/MO_03alpha.png",
-         "Fotos/MO_06.png" };
+        {"Fotos/MO_01alpha.png",
+		 "Fotos/MO_02alpha.png",
+		 "Fotos/MO_03alpha.png",
+		 "Fotos/MO_04alpha.png",
+          "Fotos/MO_05alpha.png",
+//         "Fotos/MO_06.png "
+		 "Fotos/MO_07alpha.png",
+		 "Fotos/MO_08alpha.png",
+		 "Fotos/MO_09alpha.png",
+		 "Fotos/MO_10alpha.png",
+		 "Fotos/MO_11alpha.png",
+		 "Fotos/MO_12_poporo_alpha.png",
+		 "Fotos/MO_13alpha.png",
+		 "Fotos/MO_14alpha.png",
+		 "Fotos/MO_15alpha.png",
+		 "Fotos/MO_16alpha.png",
+		 "Fotos/MO_17alpha.png"
+ };
+
+
         int counter = 0;
         for (string filename: ofrendaImageFiles) {
             if (imagesOfrendas[counter].load(filename)) {
@@ -361,20 +427,23 @@ public:
 	void setTreeMaster() {
 		int port = GRAPHICS_SLAVE_PORT;
 #ifdef BUILDING_FOR_ALLOSPHERE
+//		std::vector<std::string> addresses = {
+//		    "gr02",
+//		    "gr03",
+//		    "gr04",
+//		    "gr05",
+//		    "gr06",
+//		    "gr07",
+//		    "gr08",
+//		    "gr09",
+//		    "gr10",
+//		    "gr11",
+//		    "gr12",
+//		    "gr13",
+//		    "gr14"
+//		};
 		std::vector<std::string> addresses = {
-		    "gr02",
-		    "gr03",
-		    "gr04",
-		    "gr05",
-		    "gr06",
-		    "gr07",
-		    "gr08",
-		    "gr09",
-		    "gr10",
-		    "gr11",
-		    "gr12",
-		    "gr13",
-		    "gr14"
+		    "192.168.0.255"
 		};
 #else
 		std::vector<std::string> addresses = {
@@ -467,7 +536,7 @@ public:
 
 		g.pushMatrix();
 		g.scale(2);
-		g.translate(- GRID_SIZEX/2,- GRID_SIZEY/2, -4.0);
+		g.translate(- GRID_SIZEX/2,- GRID_SIZEY/1.6, -4.0);
 		unsigned int count = 0;
 		float *dev = state().dev;
 		for (int x = 0; x < GRID_SIZEX; x++) {
@@ -516,7 +585,7 @@ public:
         g.rotate(90, 1, 0, 0);
         float waterScale = 4.5;
         if (state().chaos > 0.6) {
-            waterScale += 2.0 * (state().chaos - 0.6) * 0.4;
+			waterScale += 2.0 * (state().chaos - 0.6) * 0.4;
         }
         g.scale(1.4 * waterScale, 1.4 * waterScale, 0.4 * waterScale);
         shader().uniform("tint", Color{1, 1- state().chaos, 0}); // put in color here
@@ -524,6 +593,7 @@ public:
         g.popMatrix();
         shader().uniform("tint", Color{1, 1, 1});
 
+		// Ofrendas de oro
 		g.lighting(false);
         shader().uniform("lighting", 0.0);
         shader().uniform("texture", 1.0);
@@ -533,9 +603,10 @@ public:
                 g.pushMatrix();
 
                 Vec4f posOfrenda = state().posOfrendas[i];
-                g.translate(posOfrenda[0], posOfrenda[1], posOfrenda[2] - 4 + i/(float)NUM_OFRENDAS );
+                g.translate(posOfrenda[0], posOfrenda[1], posOfrenda[2] );
                 g.rotate(posOfrenda[3], 0, 0, 1);
 
+				g.scale(ofrendaAspects[i], 1.0, 1.0);
                 g.scale(0.3);
                 textureOfrendas[i].bind(0);
                 g.draw(mQuad);
@@ -557,19 +628,20 @@ public:
 			shader().uniform("texture", casasIndex/3);
 		}
 		dev = state().dev;
-
 		g.pushMatrix();
-		g.rotate(180, 0, 1, 0);
+//		g.rotate(180, 0, 1, 0);
 
 		for (unsigned int i = 0; i < NUM_CASAS; i++) {
 			if (true) {
 				textureCasas[i].bind(0);
-				for (int j = 0; j < 3; j++) {
+				for (int j = 0; j < 2; j++) {
 					g.pushMatrix();
-					g.rotate(i*20 + j *120, 0, 0.1, 1);
-					g.translate(0.1 + state().chaos, 0, -2 - 0.01 * i);
+					g.rotate(i*30 + j *180, 0, 0.1, 1);
 
-					g.translate(*dev* 0.01, 0, *dev* 0.1);
+					g.translate(0.35 + state().chaos * 2, 0, -2 - 0.01 * i);
+					float dev1 = *dev++;
+					float dev2 = *dev++;
+					g.translate(dev1* 0.04, 0, dev2* 0.1);
 
 //					g.rotate(10, 0.3, 0.12, 0.0);
 
@@ -580,35 +652,39 @@ public:
 					//                g.rotate(posOfrenda[3], 0, 0, 1);
 
 					//				g.rotate(i*20, 0, 0, 1);
-					g.scale(0.4 + casasIndex* 0.9);
+					g.scale(0.2 + casasIndex* 0.6);
 					g.draw(mQuad);
 					g.popMatrix();
 				}
 
 				for (int j = 0; j < 3; j++) {
 					g.pushMatrix();
-					g.rotate(i*20 + j *140, 0, 0.1, 1);
-					g.translate(0.3 + state().chaos* 2.0, 0, -2 + 0.01 * i);
+					float dev1 = *dev++;
+					float dev2 = *dev++;
+					g.translate(dev1* 0.1, dev2* 0.2, 0);
+					g.rotate(i*20 + j *140, 0.05, 0.1, 1);
+					g.translate(-0.1 + state().chaos* 1.2, 0, -2 + 0.01 * i);
 
-					g.translate(*dev* 0.01, *dev* 0.05, 0);
-					g.rotate((1-casasIndex)*10, 0.3, 0.12, 0.0);
+					g.rotate(i*20 + j *140,-1);
 
-					g.translate(*dev* 0.05, *dev* 0.15, 0);
+//					g.rotate((1-casasIndex)*2, 0.1, 0.6, 0.0);
+
+//					g.translate(*dev* 0.05, *dev* 0.15, 0);
 					g.rotate(state().casasPhase* 1.2124, 0.1, 0.22, 0.6);
 					//                Vec4f posOfrenda = state().posOfrendas[i];
 					//				Vec4f posOfrenda = state().posOfrendas[i];
 					//                g.rotate(posOfrenda[3], 0, 0, 1);
 
 					//				g.rotate(i*20, 0, 0, 1);
-					g.scale(casasIndex* 2  + 0.3);
+					g.scale(casasIndex* 0.7  + 0.05);
 					g.draw(mQuad);
 					g.popMatrix();
 				}
 				textureCasas[i].unbind();
-				dev++;
+//				dev++;
             }
         }
-
+		g.popMatrix();
         g.popMatrix();
 
 		shader().uniform("texture", 1.0);
@@ -618,6 +694,7 @@ public:
 	}
 
 	virtual void onMessage(osc::Message &m) {
+		m.print();
 		if (m.addressPattern() == "/addBitcoinMarker" && m.typeTags() == "sff") {
 			string chars;
 			float x,y;
@@ -653,7 +730,7 @@ public:
         } else {
             module2->setText("Not a Bitcoin");
         }
-        module2->setPosition(Vec3d(randPosX, -0.42, -1));
+        module2->setPosition(Vec3d(randPosX, -0.41, -1));
 //                    module2->addBehavior(std::make_shared<FadeIn>(2* fps));
         module2->addBehavior(std::make_shared<Sink2>(4* fps, 0.08));
         module2->addBehavior(std::make_shared<FadeOut>(4* fps,5* fps));
@@ -663,24 +740,33 @@ public:
 //            lineStrip->addVertex(mPairHash.mHashX[i] * window(0).width()/2, mPairHash.mHashY[i] * window(0).height()/2, 0.1);
 //        }
 //        lineStrip->addBehavior(std::make_shared<FadeOut>(7* fps,3* fps));
+
+		std::shared_ptr<LineStripModule> lineStrip = mRenderTree.createModule<LineStripModule>();
+		lineStrip->setColor(Color(0.2, 0.6, 0.6, 0.5));
+		for (auto bcHex: mBitcoinHexes) {
+			Vec3f pos = bcHex->getPosition();
+			lineStrip->addVertex(pos.x, pos.y, pos.z-0.3);
+//			bcHex->addBehavior(std::make_shared<Timeout>(10 * fps));
+//			std::cout << pos.x << " _ " << pos.z << std::endl;
+			bcHex->clearBehaviors();
+			bcHex->addBehavior(std::make_shared<FadeOut>(4* fps,6* fps));
+		}
+//		lineStrip->addBehavior(std::make_shared<Timeout>(10 * fps));
+		lineStrip->addBehavior(std::make_shared<FadeOut>(4* fps,6* fps));
+		mBitcoinHexes.clear();
     }
 
     void addBitcoinMarker(std::string text, float x, float y) {
+
         auto module = mRenderTree.createModule<TextRenderModule>();
         module->setFontSize(24);
         module->setScale(1.0);
         module->setText(text);
-		module->setPosition(Vec3d(2 * (x - 0.5), LAGOON_Y - 2, (y * -2) - 3));
-        module->addBehavior(std::make_shared<Timeout>(10 * fps));
+		module->setPosition(Vec3d(2 * (x - 0.5), LAGOON_Y - 1, (y * -3.5) - 1.5));
         module->addBehavior(std::make_shared<Sink2>(10* fps, 3.0 + rnd::gaussian()*0.5));
         module->addBehavior(std::make_shared<FadeOut>(6* fps,15* fps));
+		mBitcoinHexes.push_back(module);
     }
-
-    SharedState &state() {return *mState;}
-    SharedState *mState;
-
-    ShaderProgram &shader() {return *mShader;}
-    ShaderProgram *mShader;
 };
 
 static const char* vertexShader = R"(

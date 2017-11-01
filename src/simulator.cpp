@@ -121,6 +121,16 @@ public:
         mMouseY = y;
     }
 
+    void reset() {
+        state().chaos = 0.0;
+        for (int i = 0; i < NUM_OFRENDAS; i++) {
+            state().ofrendas[i] = false;
+            state().posOfrendas[i].y = LAGOON_Y - 0.2;
+        }
+        mSenderToControl.send("/reset");
+        mSenderToGraphics.send("/clear");
+    }
+
     void onAnimate(double dt) {
         al_sec curTime = al_steady_time();
 //        if (mMouseSpeed > 2) {
@@ -210,15 +220,17 @@ public:
             if (mDist > 0.1) {
                 dist /=20.0;
             }
-            mDist = 0;
-            if(state().chaos > 0.05 && state().chaos <= 0.4 && rnd::prob(0.02)) {
+            if(state().chaos > 0.03 && state().chaos <= 0.4 && rnd::prob(0.012)) {
+                int randOffset = rnd::uniform(NUM_OFRENDAS);
                 for (unsigned int i = 0; i < NUM_OFRENDAS; i++) {
-                    if (!state().ofrendas[i]) {
-                        mOfrendas.ofrendas[i].envelope.reset();
-                        state().posOfrendas[i].x = rnd::gaussian()* 0.3;
-                        state().posOfrendas[i].y = -9.8 + LAGOON_Y;
-                        state().ofrendas[i] = true;
-                        sideSpeed[i] = 0;
+                    int index = (randOffset + i)%NUM_OFRENDAS;
+                    if (!state().ofrendas[index]) {
+                        mOfrendas.ofrendas[index].envelope.reset();
+                        state().posOfrendas[index].x = rnd::gaussian()* 0.3;
+                        state().posOfrendas[index].y = -9.8 + LAGOON_Y;
+                        state().posOfrendas[index].z =  - 4 + i/(float)NUM_OFRENDAS;
+                        state().ofrendas[index] = true;
+                        sideSpeed[index] = 0;
                         break;
                     }
                 }
@@ -263,8 +275,8 @@ public:
                     float adjustedY = (mPosY* 9/16.0) + (0.5 * 5/16.0);
                     float y = adjustedY*(Ny - 8) + 4;
                     float v = 0.35*exp(-(i* i/16.0+j*j/16.0)/(0.5*0.5));
-                    state().wave[indexAt(x+i, y+j, zcurr)] += v;
-                    state().wave[indexAt(x+i, y+j, zprev)] += v;
+                    state().wave[indexAt(x+i, y+j, zcurr)] += v * fabs(mDist)* 20;
+                    state().wave[indexAt(x+i, y+j, zprev)] += v * fabs(mDist)* 20;
                     //                            std::cout << x << "  " << y << " "<< v << std::endl;
                 }
             }
@@ -310,7 +322,7 @@ public:
         state().velocity = velocity.get();
         state().mouseDown = mMouseDown == 1.0;
 
-        state().casasPhase += 0.2 + state().chaos * 0.2;
+        state().casasPhase += 0.1 + state().chaos * 0.2;
 //		if (state().casasPhase > 360) { state().casasPhase -= 360;}
 
         mMaker.set(state());
@@ -321,6 +333,11 @@ public:
         mSenderToControl.send("/decay", decay.get());
         mSenderToControl.send("/velocity", velocity.get());
 
+        // Send to Audio
+        mSenderToAudio.send("/chaos", state().chaos);
+        mSenderToAudio2.send("/chaos", state().chaos);
+
+        mDist = 0;
     }
 
     virtual void onMessage(osc::Message &m) override {
@@ -331,7 +348,9 @@ public:
             m >> mPosX >> mPosY;
         } else if (m.addressPattern() == "/mouseDown" && m.typeTags() == "f") {
             m >> mMouseDown;
-            std::cout << mMouseDown << std::endl;
+            mSenderToAudio.send("/mouseDown", mMouseDown);
+            mSenderToAudio2.send("/mouseDown", mMouseDown);
+//            std::cout << mMouseDown << std::endl;
         }
     }
 
@@ -372,6 +391,8 @@ public:
 
     SharedState &state() {return *mState;}
 
+    osc::Send mSenderToAudio {AUDIO_IN_PORT, AUDIO_IP_ADDRESS};
+    osc::Send mSenderToAudio2 {AUDIO2_IN_PORT, AUDIO2_IP_ADDRESS};
     osc::Send mSenderToControl {CONTROL_IN_PORT, CONTROL_IP_ADDRESS};
     osc::Send mSenderToGraphics {GRAPHICS_IN_PORT, GRAPHICS_IP_ADDRESS};
     osc::Recv mRecvFromControl {SIMULATOR_IN_PORT};
@@ -387,42 +408,12 @@ public:
 
     SharedState& state() {return mState;}
 
-//    float mMouseX, mMouseY;
-//    float mSpeedX, mSpeedY;
-    // From control interface
-    float mPosX {0};
-    float mPosY {0};
-    float mDeltaX {0};
-    float mDeltaY {0};
-
 	ShaderProgram mShader;
-
-    // Audio
-//	Granulator granX, granY, granZ;
-//	Granulator background1;
-//	Granulator background2;
-//	Granulator background3;
-//    gam::SineR<float> fluctuation1, fluctuation2;
-
-    // Parameters
-	Parameter gainBackground1 {"background1", "", 0.2f, "", 0.0f, 1.0f};
-	Parameter gainBackground2 {"background2", "", 0.2f, "", 0.0f, 1.0f};
-	Parameter gainBackground3 {"background3", "", 0.2f, "", 0.0f, 1.0f};
-
-	ParameterGUI mParameterGUI;
 
 	// This constructor is where we initialize the application
 	MyApp(): mPainter(&mState, &mShader, GRAPHICS_IN_PORT, 12098),
-        mSimulator(&mState)/*,
-	    granX("Bounced Files/Piezas oro 1.wav"),
-	    granY("Bounced Files/Piezas oro 2.wav"),
-	    granZ("Bounced Files/Piezas oro 2.wav"),
-	    background1("Bounced Files/Modal.csd-000.wav"),
-	    background2("Bounced Files/Modal.csd-000.wav"),
-	    background3("Bounced Files/Bajo agua.wav")*/
-
+        mSimulator(&mState)
 	{
-		AudioDevice::printAll();
 //		mSpeedX = mSpeedY = 0;
 //        omni().resolution(256);
 		// Configure the camera lens
@@ -430,58 +421,14 @@ public:
 
 		// Set navigation position and orientation
 
-		initWindow(Window::Dim(0,0, 600,400), "Untitled", 30);
-
-        // Audio
-
-//        fluctuation1.freq(0.2f);
-//		fluctuation2.freq(0.3f);
-#ifdef BUILDING_FOR_ALLOSPHERE
-
-//		audioIO().device(AudioDevice("ECHO X5"));
-//		initAudio(48000, 256, 60, 0);
-#else
-#ifdef SURROUND
-//		audioIO().device(5);
-//		initAudio(48000, 256, 8, 0);
-#else
-//		audioIO().device(0);
-//		initAudio(48000, 64, 60, 0);
-#endif
-#endif
-
-//		mParameterGUI.setParentApp(this);
-//		mParameterGUI << new glv::Label("Parameter GUI example");
-//		mParameterGUI << gainBackground1 << gainBackground2 << gainBackground3;
+		initWindow(Window::Dim(0,0, 600,400), "Simulator", 30);
 
         mPainter.setTreeMaster();
 		std::cout << "Constructor done" << std::endl;
 	}
 
-	virtual void onCreate(const ViewpointWindow& win) override {
-//		mShader.compile(fogVert, fogFrag);
-//        OmniApp::onCreate();
-
-//        nav().pos().set(0,3,10);
-//		nav().quat().fromAxisAngle(0.*M_2PI, 0,1,0);
-//        omni().clearColor() = Color(0.02, 0.02, 0.04, 0.0);
-
-//        return true;
-	}
-
     void setup() {
-
         mPainter.onInit();
-
-//        auto& s = mShader;
-//        s.begin();
-//        // the shader will look for texture0 uniform's data
-//        // at binding point '0' >> we will bind the texture at '0'
-//        s.uniform("texture0", 0);
-//        // how much we mix the texture
-//        s.uniform("texture", 1.0);
-//        s.uniform("lighting", 0.9);
-//        s.end();
     }
 
 	virtual void onAnimate(double dt) override {
@@ -507,56 +454,9 @@ public:
 	}
 
 	virtual void onDraw(Graphics& g) override {
-
         mPainter.onDraw(g);
 	}
 
-
-    virtual void onSound(AudioIOData& io) override {
-
-		// Things here occur at block rate...
-
-		float mouseSpeedScale = 50.0f;
-		while(io()){
-			//float in = io.in(0);
-//			float fluct1 = fluctuation1();
-//			float fluct2 = fluctuation2();
-
-			float out1;
-			float out2;
-
-//            float out1 = granX() * mSpeedX * mouseSpeedScale;
-//			float out2 = granY() * mSpeedY * mouseSpeedScale;
-
-//			float bg1 = background1() * gainBackground1.get();
-//			float bg2 = background2() * gainBackground2.get();
-//			float bg3 = background3() * gainBackground3.get();
-//#ifdef BUILDING_FOR_ALLOSPHERE
-//			io.out(19) = out1 + (bg1 * (1 - fluct2)/2.0) + (bg2 * (1 - fluct2)/2.0) + (bg3 * (1 - fluct2)/2.0);
-//			io.out(27) = out2 + (bg1 * (1 - fluct1)/2.0) + (bg2 * (1 - fluct1)/2.0) + (bg3 * (1 - fluct1)/2.0);
-
-//			io.out(45) = (bg1 * (1 - fluct2)/2.0) + (bg2 * (1 - fluct2)/2.0) + (bg3 * (1 - fluct2)/2.0);
-//			io.out(31) = (bg1 * (1 - fluct1)/2.0) + (bg2 * (1 - fluct2)/2.0) + (bg3 * (1 - fluct2)/2.0);
-//			io.out(40) = out1 + (bg1 * (1 - fluct2)/2.0) + (bg2 * (1 - fluct2)/2.0) + (bg3 * (1 - fluct2)/2.0);
-//			io.out(36) = out2 + (bg1 * (1 - fluct1)/2.0) + (bg2 * (1 - fluct1)/2.0) + (bg3 * (1 - fluct1)/2.0);
-
-//			float sw = io.out(45) + io.out(31);
-//			io.out(47) = sw * 0.07;
-
-//#else
-//#ifdef SURROUND
-//			io.out(2) = out1 + (bg1 * (1 - fluct2)/2.0) + (bg2 * (1 - fluct2)/2.0) + (bg3 * (1 - fluct2)/2.0);
-//			io.out(3) = out2 + (bg1 * (1 - fluct1)/2.0) + (bg2 * (1 - fluct1)/2.0) + (bg3 * (1 - fluct1)/2.0);
-
-//			io.out(6) = (bg1 * (1 - fluct2)/2.0) + (bg2 * (1 - fluct2)/2.0) + (bg3 * (1 - fluct2)/2.0);
-//			io.out(7) = (bg1 * (1 - fluct1)/2.0) + (bg2 * (1 - fluct2)/2.0) + (bg3 * (1 - fluct2)/2.0);
-//#else
-//			io.out(0) = out1 + (bg1 * (1 - fluct2)/2.0) + (bg2 * (1 - fluct2)/2.0) + (bg3 * (1 - fluct2)/2.0);
-//			io.out(1) = out2 + (bg1 * (1 - fluct1)/2.0) + (bg2 * (1 - fluct1)/2.0) + (bg3 * (1 - fluct1)/2.0);
-//#endif
-//#endif
-		}
-	}
 
 	// This is called whenever a key is pressed.
 	virtual void onKeyDown(const Keyboard& k) override {
@@ -569,6 +469,7 @@ public:
 		case 'y': printf("Pressed y.\n"); break;
 		case 'n': printf("Pressed n.\n"); break;
 		case '.': printf("Pressed period.\n"); break;
+        case 'r': mSimulator.reset();
 
 		// For non-printable keys, we have to use the enums described in the
 		// Keyboard class:
@@ -578,55 +479,7 @@ public:
 		}
         return;
 	}
-
-//	// This is called whenever a mouse button is pressed.
-//	virtual bool onMouseDown(const Mouse& m) override {
-//		switch(m.button()){
-//		case Mouse::LEFT: printf("Pressed left mouse button.\n"); break;
-//		case Mouse::RIGHT: printf("Pressed right mouse button.\n"); break;
-//		case Mouse::MIDDLE: printf("Pressed middle mouse button.\n"); break;
-//		}
-//        return true;
-//	}
-
-//	// This is called whenever the mouse is dragged.
-//	virtual bool onMouseDrag(const Mouse& m) override {
-//		// Get mouse coordinates, in pixels, relative to top-left corner of window
-//		int x = m.x();
-//		int y = m.y();
-//		printf("Mouse dragged: %3d, %3d\n", x,y);
-//        return true;
-//	}
-
-//    virtual bool onMouseMove(const Mouse &m) override {
-//        std::cout << "mousr" << m.x() << "-" << width() << std::endl;
-//        mMouseX = (m.x() - (float)width()/2)/(float)width();
-//        mMouseY = -(m.y() - (float)height()/2)/(float)height();
-
-//        mSpeedX = m.dx()/(float)width();
-//        mSpeedY = m.dy()/(float)height();
-
-//        mSimulator.setMousePosition(mMouseX, mMouseY);
-//        return true;
-//    }
-
-//    virtual std::string vertexCode() override;
-//    virtual std::string fragmentCode() override;
-
-
-	// *****************************************************
-	// NOTE: check the App class for more callback functions
-
 };
-
-
-//inline std::string MyApp::vertexCode() {
-//  return vertexShader;
-//}
-
-//inline std::string MyApp::fragmentCode() {
-//  return fragmentShader;
-//}
 
 
 int main(){
