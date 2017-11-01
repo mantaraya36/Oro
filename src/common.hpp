@@ -25,7 +25,7 @@
 #include "Cuttlebone/Cuttlebone.hpp"
 
 //#define SURROUND
-//#define BUILDING_FOR_ALLOSPHERE
+#define BUILDING_FOR_ALLOSPHERE
 
 using namespace al;
 using namespace std;
@@ -50,6 +50,9 @@ using namespace std;
 #define AUDIO_IP_ADDRESS "audio.mat.ucsb.edu"
 #define AUDIO_IN_PORT 10201
 
+#define AUDIO2_IP_ADDRESS "audio.mat.ucsb.edu"
+#define AUDIO2_IN_PORT 10202
+
 // Graphics master server
 #define GRAPHICS_IP_ADDRESS "audio.mat.ucsb.edu"
 #define GRAPHICS_IN_PORT 10100
@@ -68,6 +71,9 @@ using namespace std;
 
 #define AUDIO_IP_ADDRESS "localhost"
 #define AUDIO_IN_PORT 10201
+
+#define AUDIO2_IP_ADDRESS "localhost"
+#define AUDIO2_IN_PORT 10202
 
 // Graphics master server
 #define GRAPHICS_IP_ADDRESS "localhost"

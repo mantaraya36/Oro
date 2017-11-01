@@ -335,6 +335,7 @@ public:
 
         // Send to Audio
         mSenderToAudio.send("/chaos", state().chaos);
+        mSenderToAudio2.send("/chaos", state().chaos);
 
         mDist = 0;
     }
@@ -348,6 +349,7 @@ public:
         } else if (m.addressPattern() == "/mouseDown" && m.typeTags() == "f") {
             m >> mMouseDown;
             mSenderToAudio.send("/mouseDown", mMouseDown);
+            mSenderToAudio2.send("/mouseDown", mMouseDown);
 //            std::cout << mMouseDown << std::endl;
         }
     }
@@ -390,6 +392,7 @@ public:
     SharedState &state() {return *mState;}
 
     osc::Send mSenderToAudio {AUDIO_IN_PORT, AUDIO_IP_ADDRESS};
+    osc::Send mSenderToAudio2 {AUDIO2_IN_PORT, AUDIO2_IP_ADDRESS};
     osc::Send mSenderToControl {CONTROL_IN_PORT, CONTROL_IP_ADDRESS};
     osc::Send mSenderToGraphics {GRAPHICS_IN_PORT, GRAPHICS_IP_ADDRESS};
     osc::Recv mRecvFromControl {SIMULATOR_IN_PORT};
