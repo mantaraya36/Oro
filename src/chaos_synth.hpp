@@ -59,7 +59,7 @@ public:
     void trigger(int id) {
 		mId = id;
 //        mLevel = params.mLevel;
-        mEnv.reset();
+        mEnv.resetSoft();
 
 		int bassChannel = mBassChannel + rnd::uniform(-10, 10);
 		bassChannel %= 60;
@@ -173,10 +173,10 @@ public:
 			outL = outL * mLevel * 0.1;
 			outR = outR * mLevel * 0.1;
 			if (mOsc1.freq() > 0.001 && mOsc2.freq() > 0.001) {
-				io.out(mOutputChannels[0]) = outL * 0.8;
-				io.out(mOutputChannels[1]) = outR * 0.8;
-				io.out(mOutputChannels[2]) = outL * 0.3;
-				io.out(mOutputChannels[3]) = outR * 0.3;
+//				io.out(mOutputChannels[0]) = outL * 0.8;
+//				io.out(mOutputChannels[1]) = outR * 0.8;
+//				io.out(mOutputChannels[2]) = outL * 0.3;
+//				io.out(mOutputChannels[3]) = outR * 0.3;
 				io.out(mBassChannel) =  basstone * 0.4;
 				io.out(47) +=  (basstone + outL + outR) * 0.1;
 			}
@@ -209,8 +209,8 @@ public:
 			io.out(mNoiseChannel) += noiseOut;
 			mReverbNoise(noiseOut, revOutL, revOutR);
 
-			io.out(20) += revOutL * 0.1;
-			io.out(26) += revOutR * 0.1;
+//			io.out(20) += revOutL * 0.1;
+//			io.out(26) += revOutR * 0.1;
 //			io.out(47) += (revOutR + revOutL + noiseOut) * 0.07;
 
         }

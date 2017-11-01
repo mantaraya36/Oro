@@ -136,6 +136,8 @@ public:
 private:
     // Synthesis
     ChaosSynth chaosSynth[CHAOS_SYNTH_POLYPHONY];
+    int chaosCounter {0};
+    int chaosState {0};
 
 /// Camas
     std::vector<int> mCamasRouting = {49, 58, 52, 55,23,26, 30, 34 , 38, 42, 16 , 20 , 1, 10, 4, 7 };
@@ -178,18 +180,6 @@ private:
     std::vector<int> mVoicesRouting = {38, 40, 36, 10, 7, 42, 34 };
     std::vector<std::shared_ptr<SoundFileBuffered>> mVoices;
     gam::ADSR<> mVocesEnv {0.3, 0.3, 0.9, 2.0};
-
-    // Sequence players
-    PresetSequencer mSequencer1a;
-    PresetSequencer mSequencer1b;
-    PresetSequencer mSequencer1c;
-    PresetSequencer mSequencer2;
-    PresetSequencer mSequencer3a;
-    PresetSequencer mSequencer3b;
-    PresetSequencer mSequencer3c;
-    PresetSequencer mSequencer4a;
-    PresetSequencer mSequencer4b;
-    PresetSequencer mSequencer4c;
 
     // Schedule Messages
     MsgQueue msgQueue;
@@ -372,6 +362,8 @@ void AudioApp::chaosSynthAudio(AudioIOData &io)
     if ((mPrevChaos < rangeStart &&  mChaos >= rangeStart)
             || (mPrevChaos > rangeEnd &&  mChaos <= rangeEnd)
             ) {
+        chaosCounter = 0;
+        chaosState = 0;
         chaosSynth[0].mPresetHandler.recallPreset(0);
         chaosSynth[0].setOutputIndeces(rnd::uniform(47, 16),rnd::uniform(47, 16));
         chaosSynth[0].trigger(0);
@@ -379,12 +371,29 @@ void AudioApp::chaosSynthAudio(AudioIOData &io)
         chaosSynth[0].release(0);
     }
     if (mChaos > rangeStart && mChaos < rangeEnd) {
-        if (rnd::prob(0.0036)) {
-            chaosSynth[0].mPresetHandler.setMorphTime(3 + rnd::uniform(1.0, -1.0));
-            chaosSynth[0].mPresetHandler.recallPreset(0);
-        } else if (rnd::prob(0.0035)) {
-            chaosSynth[0].mPresetHandler.setMorphTime(3 + rnd::uniform(1.0, -1.0));
-            chaosSynth[0].mPresetHandler.recallPreset(1);
+        chaosCounter++;
+        if (chaosCounter > 6.0 * io.framesPerSecond()/ io.framesPerBuffer()) {
+            if (chaosState == 0) {
+                if (rnd::prob(0.5)) {
+                    chaosSynth[0].mPresetHandler.setMorphTime(3 /*+ rnd::uniform(1.0, -1.0)*/);
+                    chaosSynth[0].mPresetHandler.recallPreset(1);
+                    chaosState = 1;
+                    chaosCounter = 0;
+                } else {
+                    chaosCounter = 3 * io.framesPerSecond()/ io.framesPerBuffer(); // Offset if
+                }
+            } else if (chaosState == 1) {
+                if (rnd::prob(0.5)) {
+                    chaosSynth[0].mPresetHandler.setMorphTime(3 /*+ rnd::uniform(1.0, -1.0)*/);
+                    chaosSynth[0].mPresetHandler.recallPreset(0);
+                    chaosState = 0;
+                    chaosCounter = 0;
+                } else {
+                    chaosCounter = 3 * io.framesPerSecond()/ io.framesPerBuffer(); // Offset if
+                }
+            } else {
+                chaosCounter = 3 * io.framesPerSecond()/ io.framesPerBuffer(); // Offset if
+            }
         }
     }
     /////////////////////////
@@ -393,6 +402,8 @@ void AudioApp::chaosSynthAudio(AudioIOData &io)
     if ((mPrevChaos < rangeStart &&  mChaos >= rangeStart)
             || (mPrevChaos > rangeEnd &&  mChaos <= rangeEnd)
             ) {
+        chaosCounter = 0;
+        chaosState = 0;
         chaosSynth[0].mPresetHandler.recallPreset(0);
         chaosSynth[0].setOutputIndeces(rnd::uniform(47, 16),rnd::uniform(47, 16));
         chaosSynth[0].trigger(0);
@@ -400,18 +411,29 @@ void AudioApp::chaosSynthAudio(AudioIOData &io)
 		chaosSynth[0].release(0);
 	}
     if (mChaos > rangeStart && mChaos < rangeEnd) {
-        if (rnd::prob(0.0032)) {
-            chaosSynth[0].mPresetHandler.setMorphTime(3 + rnd::uniform(1.0, -1.0));
-            chaosSynth[0].mPresetHandler.recallPreset(0);
-        } else if (rnd::prob(0.003)) {
-            chaosSynth[0].mPresetHandler.setMorphTime(3 + rnd::uniform(1.0, -1.0));
-            chaosSynth[0].mPresetHandler.recallPreset(1);
-        } else if (rnd::prob(0.0027)) {
-            chaosSynth[0].mPresetHandler.setMorphTime(3 + rnd::uniform(1.0, -1.0));
-            chaosSynth[0].mPresetHandler.recallPreset(2);
-        } else if (rnd::prob(0.003)) {
-            chaosSynth[0].mPresetHandler.setMorphTime(3 + rnd::uniform(1.0, -1.0));
-            chaosSynth[0].mPresetHandler.recallPreset(5);
+        chaosCounter++;
+        if (chaosCounter > 6.0 * io.framesPerSecond()/ io.framesPerBuffer()) {
+            if (chaosState == 0) {
+                if (rnd::prob(0.5)) {
+                    chaosSynth[0].mPresetHandler.setMorphTime(3 /*+ rnd::uniform(1.0, -1.0)*/);
+                    chaosSynth[0].mPresetHandler.recallPreset(1);
+                    chaosState = 1;
+                    chaosCounter = 0;
+                } else {
+                    chaosCounter = 3 * io.framesPerSecond()/ io.framesPerBuffer(); // Offset if
+                }
+            } else if (chaosState == 1) {
+                if (rnd::prob(0.5)) {
+                    chaosSynth[0].mPresetHandler.setMorphTime(3 /*+ rnd::uniform(1.0, -1.0)*/);
+                    chaosSynth[0].mPresetHandler.recallPreset(0);
+                    chaosState = 0;
+                    chaosCounter = 0;
+                } else {
+                    chaosCounter = 3 * io.framesPerSecond()/ io.framesPerBuffer(); // Offset if
+                }
+            } else {
+                chaosCounter = 3 * io.framesPerSecond()/ io.framesPerBuffer(); // Offset if
+            }
         }
     }
 
