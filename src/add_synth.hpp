@@ -112,17 +112,26 @@ public:
     }
 
     void generateAudio(AudioIOData &io) {
-        while (io()) {
-            for (int i = 0; i < NUM_VOICES; i++) {
-                if (mFreqMod) {
-                    mOscillators[i].freq( mFundamental * mFrequencyFactors[i] + (mAmpModulators[i]() * mAmpModEnvelopes[i]()));
-                    io.out(mOutMap[i]) +=  mAttenuation * mOscillators[i]() * mEnvelopes[i]() *  mAmplitudes[i] * mLevel;
-                } else {
-                    io.out(mOutMap[i]) +=  mAttenuation * mOscillators[i]() * mEnvelopes[i]() *  mAmplitudes[i] * mLevel
-                            * (1 + mAmpModulators[i]() * mAmpModEnvelopes[i]());
-                }
+		float fundamental = mFundamental;
+		float level = mLevel;
+		float attenuation = mAttenuation;
+		for (int i = 0; i < NUM_VOICES; i++) {
+			float *outbuf = io.outBuffer(mOutMap[i]);
+			float *swbuf = io.outBuffer(47);
+			for (int samp = 0; samp < io.framesPerBuffer(); samp++) {
+				if (mFreqMod) {
+					mOscillators[i].freq(fundamental  * mFrequencyFactors[i] + (mAmpModulators[i]() * mAmpModEnvelopes[i]()));
+					float out = attenuation * mOscillators[i]() * mEnvelopes[i]() *  mAmplitudes[i] * level;
+					*outbuf++ +=  out;
+					*swbuf++ +=  out * 0.1;
+				} else {
+					float out = attenuation * mOscillators[i]() * mEnvelopes[i]() *  mAmplitudes[i] * level
+					        * (1 + mAmpModulators[i]() * mAmpModEnvelopes[i]());;
+					*outbuf++ +=  out;
+					*swbuf++ +=  out * 0.1;
+				}
             }
-        }
+		}
     }
 
     void setInitialCumulativeDelay(float initialDelay, float randomDev)
