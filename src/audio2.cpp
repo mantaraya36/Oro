@@ -314,10 +314,10 @@ void AudioApp::vocesCura(AudioIOData &io)
     float *swBuffer = io.outBuffer(47);
     // Voces atras
     float vocesGain = 0.0;
-    const float vocesGainTarget = 0.6;
+    const float vocesGainTarget = 1.0;
 
     if (mChaos > 0.4) {
-        vocesGain = vocesGainTarget * ((mChaos - 0.4)/ 0.45);
+        vocesGain = vocesGainTarget * ((mChaos - 0.4)/ 0.25);
     } else if (mChaos > 0.65) {
         vocesGain = vocesGainTarget;
     }

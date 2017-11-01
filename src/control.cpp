@@ -44,6 +44,7 @@ public:
 		nav().pullBack(2.1);
 
 		initWindow();
+		window(0).fullScreenToggle();
 //        navControl().useMouse(false);
         window().remove(navControl());
         reset();
@@ -119,7 +120,7 @@ public:
         module->setFontSize(24);
         module->setScale(0.3);
         module->setText(text);
-        module->setPosition(Vec3d(x- 0.5, y- 0.5, 0.2999));
+        module->setPosition(Vec3d(x- 0.5, y- 0.5, 0.3999));
         module->addBehavior(std::make_shared<Timeout>(10 * window().fps()));
         module->addBehavior(std::make_shared<Sink>(3* window().fps(), -0.3));
         module->addBehavior(std::make_shared<FadeOut>(7* window().fps(),3* window().fps()));

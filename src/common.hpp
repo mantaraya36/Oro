@@ -228,7 +228,8 @@ public:
 	RenderTree mRenderTree;
 	RenderTreeHandler mRenderTreeHandler {mRenderTree};
 
-	float fps = 60;
+	float fps = 20;
+	float mPreviousChaos = 0.0;
 
 	osc::Recv mRecvFromSimulator;
 	osc::Recv mRecvFromGraphicsMaster;
@@ -427,24 +428,24 @@ public:
 	void setTreeMaster() {
 		int port = GRAPHICS_SLAVE_PORT;
 #ifdef BUILDING_FOR_ALLOSPHERE
-//		std::vector<std::string> addresses = {
-//		    "gr02",
-//		    "gr03",
-//		    "gr04",
-//		    "gr05",
-//		    "gr06",
-//		    "gr07",
-//		    "gr08",
-//		    "gr09",
-//		    "gr10",
-//		    "gr11",
-//		    "gr12",
-//		    "gr13",
-//		    "gr14"
-//		};
 		std::vector<std::string> addresses = {
-		    "192.168.0.255"
+		    "gr02",
+		    "gr03",
+		    "gr04",
+		    "gr05",
+		    "gr06",
+		    "gr07",
+		    "gr08",
+		    "gr09",
+		    "gr10",
+		    "gr11",
+		    "gr12",
+		    "gr13",
+		    "gr14"
 		};
+//		std::vector<std::string> addresses = {
+//		    "255.255.255.255"
+//		};
 #else
 		std::vector<std::string> addresses = {
 		    "localhost"
@@ -629,7 +630,7 @@ public:
 		}
 		dev = state().dev;
 		g.pushMatrix();
-//		g.rotate(180, 0, 1, 0);
+		g.rotate(180, 0, 1, 0);
 
 		for (unsigned int i = 0; i < NUM_CASAS; i++) {
 			if (true) {
@@ -646,7 +647,7 @@ public:
 //					g.rotate(10, 0.3, 0.12, 0.0);
 
 //					g.translate(0, *dev* 0.15, 0);
-					g.rotate(state().casasPhase, 0.64, 0.12, 1);
+					g.rotate(state().casasPhase, 0.64, 0.12, 0.1);
 					//                Vec4f posOfrenda = state().posOfrendas[i];
 					//				Vec4f posOfrenda = state().posOfrendas[i];
 					//                g.rotate(posOfrenda[3], 0, 0, 1);
@@ -670,7 +671,7 @@ public:
 //					g.rotate((1-casasIndex)*2, 0.1, 0.6, 0.0);
 
 //					g.translate(*dev* 0.05, *dev* 0.15, 0);
-					g.rotate(state().casasPhase* 1.2124, 0.1, 0.22, 0.6);
+					g.rotate(state().casasPhase* 1.2124, 0.1, 0.22, 0.2);
 					//                Vec4f posOfrenda = state().posOfrendas[i];
 					//				Vec4f posOfrenda = state().posOfrendas[i];
 					//                g.rotate(posOfrenda[3], 0, 0, 1);
@@ -687,9 +688,15 @@ public:
 		g.popMatrix();
         g.popMatrix();
 
+
+
+		if (mPreviousChaos > 0.3 && state().chaos <= 0.3) {
+            mRenderTree.clear();
+        }
 		shader().uniform("texture", 1.0);
 		mRenderTree.render(g);
 		g.blendOff();
+		mPreviousChaos = state().chaos;
 
 	}
 

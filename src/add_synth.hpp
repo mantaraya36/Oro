@@ -17,7 +17,7 @@
 
 #define NUM_VOICES 24
 
-#define SYNTH_POLYPHONY 16
+#define SYNTH_POLYPHONY 12
 
 using namespace al;
 using namespace std;

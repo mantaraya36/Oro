@@ -273,7 +273,7 @@ public:
                 for(int i=-4; i<=4; ++i){
                     float x = mPosX*(Nx - 8) + 4;
                     float adjustedY = (mPosY* 9/16.0) + (0.5 * 5/16.0);
-                    float y = adjustedY*(Ny - 8) + 4;
+                    float y = Ny - adjustedY*(Ny - 8) + 4;
                     float v = 0.35*exp(-(i* i/16.0+j*j/16.0)/(0.5*0.5));
                     state().wave[indexAt(x+i, y+j, zcurr)] += v * fabs(mDist)* 20;
                     state().wave[indexAt(x+i, y+j, zprev)] += v * fabs(mDist)* 20;
@@ -421,7 +421,7 @@ public:
 
 		// Set navigation position and orientation
 
-		initWindow(Window::Dim(0,0, 600,400), "Simulator", 30);
+		initWindow(Window::Dim(0,0, 600,400), "Simulator", 20);
 
         mPainter.setTreeMaster();
 		std::cout << "Constructor done" << std::endl;

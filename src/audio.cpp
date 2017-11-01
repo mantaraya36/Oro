@@ -375,7 +375,7 @@ void AudioApp::onAudioCB(AudioIOData &io)
     // Campanitas
 	float max = 0.3;
     if (mChaos < max) {
-        float probCampanitas = 0.01 + (mChaos/max) * 0.006;
+        float probCampanitas = 0.004 + (mChaos/max) * 0.01;
         if (rnd::prob(probCampanitas)) {
             std::cout << "trigger" << std::endl;
             addSynthCampanas.mPresetHandler.recallPresetSynchronous("34");

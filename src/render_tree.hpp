@@ -545,6 +545,8 @@ public:
         mMesh.reset();
         mMesh.primitive(Graphics::TRIANGLE_STRIP);
         mMesh.vertices().resize(mMaxLen * 2);
+
+		mMesh.color(Color(1.0, 1.0, 1.0, 0.5));
     }
 
     static std::shared_ptr<LineStripModule> create() { return std::make_shared<LineStripModule>();}
