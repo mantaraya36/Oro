@@ -359,6 +359,8 @@ private:
 
     float mChaos {0};
     float mPrevChaos {0};
+    std::vector<int> mCampanitasStates;
+    int mCampanitasCounter[45] {0};
 };
 
 static void releaseAddSynth(al_sec timestamp, AddSynth *addSynth, int id)
@@ -374,6 +376,83 @@ void AudioApp::onAudioCB(AudioIOData &io)
 
     // Campanitas
 	float max = 0.3;
+
+    if (mPrevChaos < 0.15 && mChaos >= 0.15) {
+        mCampanitasStates.push_back(1);
+        if (rnd::prob(0.1)) {
+            addSynthCampanas.mPresetHandler.recallPresetSynchronous(1);
+            int midinote = rnd::uniform(midi2cps(80),midi2cps(50));
+            addSynthCampanas.mFundamental = rnd::uniform(midi2cps(80),midi2cps(50));
+            addSynthCampanas.trigger(midinote);
+            msgQueue.send(msgQueue.now() + rnd::uniform(1.0, 0.3), releaseAddSynth, &addSynthCampanas, midinote);
+
+            midinote = rnd::uniform(midi2cps(80),midi2cps(50));
+            addSynthCampanas.mFundamental = rnd::uniform(midi2cps(80),midi2cps(50));
+            addSynthCampanas.trigger(midinote);
+            msgQueue.send(msgQueue.now() + rnd::uniform(1.0, 0.3), releaseAddSynth, &addSynthCampanas, midinote);
+
+            midinote = rnd::uniform(midi2cps(80),midi2cps(50));
+            addSynthCampanas.mFundamental = rnd::uniform(midi2cps(80),midi2cps(50));
+            addSynthCampanas.trigger(midinote);
+            msgQueue.send(msgQueue.now() + rnd::uniform(1.0, 0.3), releaseAddSynth, &addSynthCampanas, midinote);
+
+            midinote = rnd::uniform(midi2cps(80),midi2cps(50));
+            addSynthCampanas.mFundamental = rnd::uniform(midi2cps(80),midi2cps(50));
+            addSynthCampanas.trigger(midinote);
+            msgQueue.send(msgQueue.now() + rnd::uniform(1.0, 0.3), releaseAddSynth, &addSynthCampanas, midinote);
+
+            midinote = rnd::uniform(midi2cps(80),midi2cps(50));
+            addSynthCampanas.mFundamental = rnd::uniform(midi2cps(80),midi2cps(50));
+            addSynthCampanas.trigger(midinote);
+            msgQueue.send(msgQueue.now() + rnd::uniform(1.0, 0.3), releaseAddSynth, &addSynthCampanas, midinote);
+            mCampanitasCounter[1] = 0;
+            std::cout << "campanitas 1" << std::endl;
+        } else {
+            mCampanitasCounter[1] = 12 * io.framesPerSecond()/ io.framesPerBuffer();
+        }
+    } else if (mPrevChaos < 0.3 && mChaos >= 0.3) {
+        std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), 1);
+    }  else if (mPrevChaos > 0.15 && mChaos <= 0.15) {
+        std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), 1);
+    }
+
+    if (std::find(mCampanitasStates.begin(), mCampanitasStates.end(), 1) != mCampanitasStates.end()) {
+        if (rnd::prob(0.7)) {
+            mCampanitasCounter[1]++;
+            if (mCampanitasCounter[1] > 15 * io.framesPerSecond()/ io.framesPerBuffer()) {
+                addSynthCampanas.mPresetHandler.recallPresetSynchronous(1);
+                int midinote = rnd::uniform(midi2cps(80),midi2cps(50));
+                addSynthCampanas.mFundamental = rnd::uniform(midi2cps(80),midi2cps(50));
+                addSynthCampanas.trigger(midinote);
+                msgQueue.send(msgQueue.now() + rnd::uniform(1.0, 0.3), releaseAddSynth, &addSynthCampanas, midinote);
+
+                midinote = rnd::uniform(midi2cps(80),midi2cps(50));
+                addSynthCampanas.mFundamental = rnd::uniform(midi2cps(80),midi2cps(50));
+                addSynthCampanas.trigger(midinote);
+                msgQueue.send(msgQueue.now() + rnd::uniform(1.0, 0.3), releaseAddSynth, &addSynthCampanas, midinote);
+
+                midinote = rnd::uniform(midi2cps(80),midi2cps(50));
+                addSynthCampanas.mFundamental = rnd::uniform(midi2cps(80),midi2cps(50));
+                addSynthCampanas.trigger(midinote);
+                msgQueue.send(msgQueue.now() + rnd::uniform(1.0, 0.3), releaseAddSynth, &addSynthCampanas, midinote);
+
+                midinote = rnd::uniform(midi2cps(80),midi2cps(50));
+                addSynthCampanas.mFundamental = rnd::uniform(midi2cps(80),midi2cps(50));
+                addSynthCampanas.trigger(midinote);
+                msgQueue.send(msgQueue.now() + rnd::uniform(1.0, 0.3), releaseAddSynth, &addSynthCampanas, midinote);
+
+                midinote = rnd::uniform(midi2cps(80),midi2cps(50));
+                addSynthCampanas.mFundamental = rnd::uniform(midi2cps(80),midi2cps(50));
+                addSynthCampanas.trigger(midinote);
+                msgQueue.send(msgQueue.now() + rnd::uniform(1.0, 0.3), releaseAddSynth, &addSynthCampanas, midinote);
+                mCampanitasCounter[1] = 0;
+                std::cout << "campanitas 1" << std::endl;
+            } else {
+                mCampanitasCounter[1] = 12 * io.framesPerSecond()/ io.framesPerBuffer();
+            }
+        }
+    }
+
     if (mChaos < max) {
         float probCampanitas = 0.004 + (mChaos/max) * 0.01;
         if (rnd::prob(probCampanitas)) {
@@ -388,6 +467,9 @@ void AudioApp::onAudioCB(AudioIOData &io)
             msgQueue.send(msgQueue.now() + 2.5, releaseAddSynth, &addSynthCampanas, 0);
         }
     }
+
+
+
 
     for (int i = 0; i < 3; i++) {
         addSynth[i].generateAudio(io);
@@ -452,7 +534,7 @@ void AudioApp::onAudioCB(AudioIOData &io)
             addSynth3[3].allNotesOff();
             mSequencer3a.playSequence("Seq 3-1");
             mSequencer3b.playSequence("Seq 3-2");
-//            mSequencer3c.playSequence("Seq 3-3");
+            mSequencer3c.playSequence("Seq 3-3");
             std::cout << "Seq 3" << std::endl;
         }
     }
@@ -480,6 +562,7 @@ void AudioApp::onAudioCB(AudioIOData &io)
         *swBuffer++ *= 0.07;
     }
 
+    mPrevChaos = mChaos;
     msgQueue.advance(io.framesPerBuffer()/io.framesPerSecond());
 
 //    std::cout << "-------------" << std::endl;
