@@ -160,7 +160,7 @@ private:
     // Synthesis
     ChaosSynth synth[SYNTH_POLYPHONY];
 
-    DownMixer mDownmixer;
+    DownMixer mDownMixer;
 };
 
 void ChaosSynthApp::initializeValues()
