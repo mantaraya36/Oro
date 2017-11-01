@@ -16,6 +16,7 @@
 #include "alloGLV/al_SequencerGUI.hpp"
 
 #include "chaos_synth.hpp"
+#include "downmixer.hpp"
 
 using namespace std;
 using namespace al;
@@ -158,6 +159,8 @@ private:
 
     // Synthesis
     ChaosSynth synth[SYNTH_POLYPHONY];
+
+    DownMixer mDownmixer;
 };
 
 void ChaosSynthApp::initializeValues()
@@ -255,6 +258,9 @@ void ChaosSynthApp::onSound(AudioIOData &io)
             io.frame(0);
         }
     }
+#ifndef BUILDING_FOR_ALLOSPHERE
+    mDownMixer.process(io);
+#endif
 }
 
 void ChaosSynthApp::onKeyDown(const Keyboard &k)
