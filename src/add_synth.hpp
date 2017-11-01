@@ -96,6 +96,7 @@ public:
     }
 
     void release() {
+		std::cout << "Note release " << mId << std::endl;
         for (int i = 0; i < NUM_VOICES; i++) {
             mEnvelopes[i].release();
             mAmpModEnvelopes[i].release();
@@ -306,7 +307,7 @@ public:
 
 	void trigger(int id)
 	{
-	//    std::cout << "trigger id " << id << std::endl;
+	    std::cout << "trigger id " << id << std::endl;
 	    AddSynthNoteParameters params;
 	    params.id = id;
 	    params.mLevel = mLevel.get();
@@ -337,6 +338,7 @@ public:
 	    for (int i = 0; i < SYNTH_POLYPHONY; i++) {
 	        if (synth[i].done()) {
 	            synth[i].trigger(params);
+				std::cout << "Triggered voice " << i << std::endl;
 	            break;
 	        }
 	    }
@@ -344,7 +346,7 @@ public:
 
 	void release(int id)
 	{
-	//    std::cout << "release id " << id << std::endl;
+	    std::cout << "release id " << id << std::endl;
 	    for (int i = 0; i < SYNTH_POLYPHONY; i++) {
 	        if (synth[i].id() == id) {
 	            synth[i].release();

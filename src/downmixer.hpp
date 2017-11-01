@@ -15,7 +15,7 @@ public:
             mDownMixMap[0].push_back(i);
             mDownMixMap[1].push_back(i);
         }
-        mGain = 1/10.0;
+        mGain = 1/1.0;
     }
 
     void process(AudioIOData &io) {

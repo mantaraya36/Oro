@@ -429,7 +429,7 @@ public:
 		};
 #else
 		std::vector<std::string> addresses = {
-		    "192.168.0.255"
+		    "localhost"
 		};
 #endif
 		//		mRecvFromGraphicsMaster.stop();

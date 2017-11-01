@@ -170,6 +170,7 @@ public:
             std::cout << "Program!! " << app->addSynth.mPresetHandler.recallPresetSynchronous(params[0]) << std::endl;
         }, this);
 
+		mSequencer1.playSequence("Seq 3");
 
         mSequencer2.setDirectory("sequences");
         mSequencer2.registerEventCommand("ON", [](void *data, std::vector<float> &params)
@@ -528,7 +529,8 @@ void AudioApp::onAudioCB(AudioIOData &io)
         chaosSynth[0].mPresetHandler.recallPreset("12");
         chaosSynth[0].setOutputIndeces(rnd::uniform(47, 16),rnd::uniform(47, 16));
         chaosSynth[0].trigger(0);
-    } else if (mPrevChaos > rangeEnd &&  mChaos <= rangeEnd) {
+		std::cout << "chaos nivel 1" << std::endl;
+    } else if (mPrevChaos > rangeStart &&  mChaos <= rangeStart) {
         chaosSynth[0].release(0);
     }
  ///////////////////////////
@@ -540,8 +542,11 @@ void AudioApp::onAudioCB(AudioIOData &io)
         chaosSynth[0].mPresetHandler.recallPreset(0);
         chaosSynth[0].setOutputIndeces(rnd::uniform(47, 16),rnd::uniform(47, 16));
         chaosSynth[0].trigger(0);
+		std::cout << "chaos nivel 2" << std::endl;
     } else if (mPrevChaos > rangeStart &&  mChaos <= rangeStart) {
-        chaosSynth[0].release(0);
+		chaosSynth[0].mPresetHandler.recallPreset("12");
+		chaosSynth[0].setOutputIndeces(rnd::uniform(47, 16),rnd::uniform(47, 16));
+//        chaosSynth[0].release(0);
     }
     ////////
     rangeStart = 0.6;
@@ -552,11 +557,14 @@ void AudioApp::onAudioCB(AudioIOData &io)
         chaosSynth[0].mPresetHandler.recallPreset(0);
         chaosSynth[0].setOutputIndeces(rnd::uniform(47, 16),rnd::uniform(47, 16));
         chaosSynth[0].trigger(0);
+		std::cout << "chaos nivel 3" << std::endl;
     } else if (mPrevChaos > rangeStart &&  mChaos <= rangeStart) {
-        chaosSynth[0].release(0);
+		chaosSynth[0].mPresetHandler.recallPreset(0);
+		chaosSynth[0].setOutputIndeces(rnd::uniform(47, 16),rnd::uniform(47, 16));
+//        chaosSynth[0].release(0);
     }
     if (mChaos > rangeStart && mChaos < rangeEnd) {
-        if (rnd::prob(0.0036)) {
+        if (rnd::prob(0.05)) {
             chaosSynth[0].mPresetHandler.setMorphTime(3 + rnd::uniform(1.0, -1.0));
             chaosSynth[0].mPresetHandler.recallPreset(0);
         } else if (rnd::prob(0.0035)) {
@@ -572,9 +580,12 @@ void AudioApp::onAudioCB(AudioIOData &io)
             ) {
         chaosSynth[0].mPresetHandler.recallPreset(0);
         chaosSynth[0].setOutputIndeces(rnd::uniform(47, 16),rnd::uniform(47, 16));
-        chaosSynth[0].trigger(0);
+		chaosSynth[0].trigger(0);
+		std::cout << "chaos nivel 4" << std::endl;
 	} else if (mPrevChaos > rangeStart &&  mChaos <= rangeStart) {
-		chaosSynth[0].release(0);
+//		chaosSynth[0].release(0);
+		chaosSynth[0].mPresetHandler.recallPreset(0);
+		chaosSynth[0].setOutputIndeces(rnd::uniform(47, 16),rnd::uniform(47, 16));
 	}
     if (mChaos > rangeStart && mChaos < rangeEnd) {
         if (rnd::prob(0.0032)) {

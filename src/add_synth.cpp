@@ -159,13 +159,13 @@ private:
                             app->synth.mFundamental.set(midi2cps(msg->at(1)));
                             app->trigger(msg->at(1));
                         } else {
-                            app->release(msg->at(1));
+//                            app->release(msg->at(1));
                         }
                         break;
 
                     case MIDIByte::NOTE_OFF:
 
-                        app->release(msg->at(1));
+//                        app->release(msg->at(1));
                         //                    printf("Note %u, Vel %u", msg->at(1), msg->at(2));
                         break;
 
