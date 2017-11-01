@@ -752,6 +752,7 @@ bool RenderTree::addModule(std::shared_ptr<RenderModule> module)
 	module->setRelayer(this);
     mModules.push_back(module);
     mModulesPendingInit.push_back(module);
+	return true;
 }
 
 void RenderTree::render(Graphics &g, float dt)

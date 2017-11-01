@@ -101,6 +101,7 @@ public:
             mEnvelopes[i].release();
             mAmpModEnvelopes[i].release();
         }
+		mId = -1;
     }
 
     int id() { return mId;}
@@ -119,17 +120,23 @@ public:
 		for (int i = 0; i < NUM_VOICES; i++) {
 			float *outbuf = io.outBuffer(mOutMap[i]);
 			float *swbuf = io.outBuffer(47);
+			gam::Sine<> &oscs = mOscillators[i];
+			gam::Env<5> &envs = mEnvelopes[i];
+			float amp = mAmplitudes[i];
+			gam::SineR<> &ampmods = mAmpModulators[i];
+			gam::Env<3> &modenv = mAmpModEnvelopes[i];
+			float freqfact = mFrequencyFactors[i];
 			for (int samp = 0; samp < io.framesPerBuffer(); samp++) {
 				if (mFreqMod) {
-					mOscillators[i].freq(fundamental  * mFrequencyFactors[i] + (mAmpModulators[i]() * mAmpModEnvelopes[i]()));
-					float out = attenuation * mOscillators[i]() * mEnvelopes[i]() *  mAmplitudes[i] * level;
+					oscs.freq(fundamental  * freqfact + (ampmods() * modenv()));
+					float out = attenuation * oscs() * envs() * amp  * level;
 					*outbuf++ +=  out;
-					*swbuf++ +=  out * 0.1;
+					*swbuf++ +=  out * 0.3f;
 				} else {
-					float out = attenuation * mOscillators[i]() * mEnvelopes[i]() *  mAmplitudes[i] * level
-					        * (1 + mAmpModulators[i]() * mAmpModEnvelopes[i]());;
+					float out = attenuation * oscs() * envs() *  amp * level
+					        * (1 + ampmods() * modenv());;
 					*outbuf++ +=  out;
-					*swbuf++ +=  out * 0.1;
+					*swbuf++ +=  out * 0.3;
 				}
             }
 		}
@@ -237,7 +244,7 @@ private:
 
     bool mFreqMod;
 
-    int mId = 0;
+    int mId = -1;
     float mLevel = 0;
     float mFundamental;
     float mFrequencyFactors[NUM_VOICES];

@@ -113,6 +113,7 @@ public:
     }
 
     void basesAudio(AudioIOData &io);
+    void vocesCura(AudioIOData &io);
     void chaosSynthAudio(AudioIOData &io);
 
     virtual void onAudioCB(AudioIOData &io) override;
@@ -307,6 +308,37 @@ void AudioApp::basesAudio(AudioIOData &io)
     }
 }
 
+void AudioApp::vocesCura(AudioIOData &io)
+{
+    int bufferSize = io.framesPerBuffer();
+    float *swBuffer = io.outBuffer(47);
+    // Voces atras
+    float vocesGain = 0.0;
+    const float vocesGainTarget = 0.6;
+
+    if (mChaos > 0.4) {
+        vocesGain = vocesGainTarget * ((mChaos - 0.4)/ 0.45);
+    } else if (mChaos > 0.65) {
+        vocesGain = vocesGainTarget;
+    }
+    for (int i = 0; i < mVoices.size(); i++) {
+        assert(bufferSize < 8192);
+        if (mVoices[i]->read(readBuffer, bufferSize) == bufferSize) {
+            float *buf = readBuffer;
+            float *bufsw = swBuffer;
+            float *outbuf = io.outBuffer(mVoicesRouting[i]);
+            while (io()) {
+                float out = *buf++ * vocesGain * mVocesEnv();
+                *outbuf++ += out;
+                *bufsw++ += out;
+            }
+            io.frame(0);
+        } else {
+            //                    std::cout << "Error" << std::endl;
+        }
+    }
+}
+
 void AudioApp::chaosSynthAudio(AudioIOData &io)
 {
     ////// Rangos de chaos para chaos synth
@@ -399,31 +431,7 @@ void AudioApp::onAudioCB(AudioIOData &io)
 
     basesAudio(io);
 
-    // Voces atras
-    float vocesGain = 0.0;
-    const float vocesGainTarget = 0.4;
-
-    if (mChaos > 0.4) {
-        vocesGain = vocesGainTarget * ((mChaos - 0.4)/ 0.45);
-    } else if (mChaos > 0.85) {
-        vocesGain = vocesGainTarget;
-    }
-    for (int i = 0; i < mVoices.size(); i++) {
-        assert(bufferSize < 8192);
-        if (mVoices[i]->read(readBuffer, bufferSize) == bufferSize) {
-            float *buf = readBuffer;
-            float *bufsw = swBuffer;
-            float *outbuf = io.outBuffer(mVoicesRouting[i]);
-            while (io()) {
-                float out = *buf++ * vocesGain * mVocesEnv();
-                *outbuf++ += out;
-                *bufsw++ += out;
-            }
-            io.frame(0);
-        } else {
-            //                    std::cout << "Error" << std::endl;
-        }
-    }
+    vocesCura(io);
 
     chaosSynthAudio(io);
 
