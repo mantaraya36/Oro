@@ -61,12 +61,15 @@ public:
 //        mLevel = params.mLevel;
         mEnv.resetSoft();
 
-		int bassChannel = mBassChannel + rnd::uniform(-10, 10);
+		int bassChannel = mBassChannel + rnd::uniform(-8, 8);
 		bassChannel %= 60;
 		if (bassChannel < 0) {
 			bassChannel += 60;
 		}
-		while (bassChannel == 47) {
+		while (mNoiseChannel == 47
+		       || mNoiseChannel == 12 || mNoiseChannel == 13 || mNoiseChannel == 14 || mNoiseChannel == 15
+		       || mNoiseChannel == 46
+		       ) {
 			bassChannel += rnd::uniform(-10, 10);
 			bassChannel %= 60;
 			if (bassChannel < 0) {
@@ -75,13 +78,16 @@ public:
 		}
 		mBassChannel = bassChannel;
 
-		int noiseChannel = mNoiseChannel + rnd::uniform(-10, 10);
+		int noiseChannel = mNoiseChannel + rnd::uniform(-8, 8);
 		noiseChannel %= 60;
 		if (noiseChannel < 0) {
 			noiseChannel += 60;
 		}
-		while (noiseChannel == 47) {
-			noiseChannel += rnd::uniform(-10, 10);
+		while (mNoiseChannel == 47
+		       || mNoiseChannel == 12 || mNoiseChannel == 13 || mNoiseChannel == 14 || mNoiseChannel == 15
+		       || mNoiseChannel == 46
+		       ) {
+			noiseChannel += rnd::uniform(-8, 8);
 			noiseChannel %= 60;
 			if (noiseChannel < 0) {
 				noiseChannel += 60;
@@ -93,6 +99,8 @@ public:
     void release(int id) {
         mEnv.release();
     }
+
+	float mTrim = 1.0;
 
     // Presets
     PresetHandler mPresetHandler {"chaosPresets"};
@@ -154,13 +162,16 @@ public:
 
 			float revOutL, revOutR;
 			if(mSilenceDetect(basstone)) {
-				mBassChannel += rnd::uniform(-10, 10);
+				mBassChannel += rnd::uniform(-8, 8);
 				mBassChannel %= 60;
 				if (mBassChannel < 0) {
 					mBassChannel += 60;
 				}
-				while (mBassChannel == 47) {
-					mBassChannel += rnd::uniform(-10, 10);
+				while (mNoiseChannel == 47
+				       || mNoiseChannel == 12 || mNoiseChannel == 13 || mNoiseChannel == 14 || mNoiseChannel == 15
+				       || mNoiseChannel == 46
+				       ) {
+					mBassChannel += rnd::uniform(-8, 8);
 					mBassChannel %= 60;
 					if (mBassChannel < 0) {
 						mBassChannel += 60;
@@ -170,15 +181,15 @@ public:
             mReverb(basstone, revOutL, revOutR);
 			outL = mDCBlockL(revOutL);
             outR = mDCBlockR(revOutR);
-			outL = outL * mLevel * 0.1;
-			outR = outR * mLevel * 0.1;
+			outL = outL * mLevel * 0.05;
+			outR = outR * mLevel * 0.05;
 			if (mOsc1.freq() > 0.001 && mOsc2.freq() > 0.001) {
 //				io.out(mOutputChannels[0]) = outL * 0.8;
 //				io.out(mOutputChannels[1]) = outR * 0.8;
 //				io.out(mOutputChannels[2]) = outL * 0.3;
 //				io.out(mOutputChannels[3]) = outR * 0.3;
-				io.out(mBassChannel) =  basstone * 0.4;
-				io.out(47) +=  (basstone + outL + outR) * 0.1;
+				io.out(mBassChannel) =  basstone * 0.2* mTrim;
+				io.out(47) +=  (basstone /*+ outL + outR*/) * 0.5* mTrim;
 			}
 
             // noise |
@@ -189,20 +200,23 @@ public:
 
             if (rnd::prob(0.0001)) {
                 mNoiseEnv.reset();
-				mNoiseChannel += rnd::uniform(-10, 10);
+				mNoiseChannel += rnd::uniform(-8, 8);
 				mNoiseChannel %= 60;
 				if (mNoiseChannel < 0) {
 					mNoiseChannel += 60;
 				}
-				while (mNoiseChannel == 47) {
-					mNoiseChannel += rnd::uniform(-10, 10);
+				while (mNoiseChannel == 47
+				       || mNoiseChannel == 12 || mNoiseChannel == 13 || mNoiseChannel == 14 || mNoiseChannel == 15
+				       || mNoiseChannel == 46
+				       ) {
+					mNoiseChannel += rnd::uniform(-8, 8);
 					mNoiseChannel %= 60;
 					if (mNoiseChannel < 0) {
 						mNoiseChannel += 60;
 					}
 				}
             }
-            noiseOut = mDCBlockNoise(noiseHold* outerenv) * mNoiseEnv() * 0.2;
+            noiseOut = mDCBlockNoise(noiseHold* outerenv) * mNoiseEnv() * 0.05 * mTrim;
 
             // output
 
@@ -211,7 +225,7 @@ public:
 
 //			io.out(20) += revOutL * 0.1;
 //			io.out(26) += revOutR * 0.1;
-//			io.out(47) += (revOutR + revOutL + noiseOut) * 0.07;
+			io.out(47) += (/*revOutR + revOutL +*/ noiseOut) * 0.07 * mTrim;
 
         }
     }

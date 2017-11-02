@@ -322,6 +322,10 @@ public:
         mFromSimulator.start();
     }
 
+    void trigger1();
+    void trigger2();
+    void trigger22();
+
     virtual void onAudioCB(AudioIOData &io) override;
     virtual void onMessage(osc::Message &m) override {
         if (m.addressPattern() == "/chaos" && m.typeTags() == "f") {
@@ -369,92 +373,71 @@ static void releaseAddSynth(al_sec timestamp, AddSynth *addSynth, int id)
     std::cout << "release" << std::endl;
 }
 
+void AudioApp::trigger1() {
+    std::cout << "CAMPANITAS 1 Trigger" << std::endl;
+    addSynthCampanas.mPresetHandler.recallPresetSynchronous(1);
+
+    int midinote = rnd::uniform(80,50);
+    addSynthCampanas.mFundamental = midi2cps(midinote);
+    addSynthCampanas.mLevel = 0.2;
+    addSynthCampanas.trigger(midinote);
+    msgQueue.send(msgQueue.now() + rnd::uniform(1.0, 0.3), releaseAddSynth, &addSynthCampanas, midinote);
+
+    midinote = rnd::uniform(80,50);
+    addSynthCampanas.mFundamental = midi2cps(midinote);
+    addSynthCampanas.trigger(midinote);
+    msgQueue.send(msgQueue.now() + rnd::uniform(1.0, 0.3), releaseAddSynth, &addSynthCampanas, midinote);
+
+    midinote = rnd::uniform(80,50);
+    addSynthCampanas.mFundamental = midi2cps(midinote);
+    addSynthCampanas.trigger(midinote);
+    msgQueue.send(msgQueue.now() + rnd::uniform(1.0, 0.3), releaseAddSynth, &addSynthCampanas, midinote);
+
+    midinote = rnd::uniform(80,50);
+    addSynthCampanas.mFundamental = midi2cps(midinote);
+    addSynthCampanas.trigger(midinote);
+    msgQueue.send(msgQueue.now() + rnd::uniform(1.0, 0.3), releaseAddSynth, &addSynthCampanas, midinote);
+
+    midinote = rnd::uniform(80,50);
+    addSynthCampanas.mFundamental = midi2cps(midinote);
+    addSynthCampanas.trigger(midinote);
+    msgQueue.send(msgQueue.now() + rnd::uniform(1.0, 0.3), releaseAddSynth, &addSynthCampanas, midinote);
+}
+
+void AudioApp::trigger2()
+{
+    std::cout << "CAMPANITAS 2 Trigger" << std::endl;
+    addSynthCampanas.mPresetHandler.recallPresetSynchronous(2);
+
+    int midinote = rnd::uniform(48,28);
+    addSynthCampanas.mFundamental = midi2cps(midinote);
+    addSynthCampanas.mLevel = 80;
+    addSynthCampanas.trigger(midinote);
+    msgQueue.send(msgQueue.now() + 4, releaseAddSynth, &addSynthCampanas, midinote);
+};
+
+void AudioApp::trigger22()
+{
+    std::cout << "CAMPANITAS 22 Trigger" << std::endl;
+    addSynthCampanas.mPresetHandler.recallPresetSynchronous(22);
+
+    int midinote = 36;
+    addSynthCampanas.mFundamental = midi2cps(midinote);
+    addSynthCampanas.mLevel = 300;
+    addSynthCampanas.trigger(midinote);
+    msgQueue.send(msgQueue.now() + 25, releaseAddSynth, &addSynthCampanas, midinote);
+};
+
 void AudioApp::onAudioCB(AudioIOData &io)
 {
     int bufferSize = io.framesPerBuffer();
     float *swBuffer = io.outBuffer(47);
 
     // Campanitas
-	float max = 0.3;
 
-    if (mPrevChaos < 0.15 && mChaos >= 0.15) {
-        mCampanitasStates.push_back(1);
-        if (rnd::prob(0.1)) {
-            addSynthCampanas.mPresetHandler.recallPresetSynchronous(1);
-            int midinote = rnd::uniform(midi2cps(80),midi2cps(50));
-            addSynthCampanas.mFundamental = rnd::uniform(midi2cps(80),midi2cps(50));
-            addSynthCampanas.trigger(midinote);
-            msgQueue.send(msgQueue.now() + rnd::uniform(1.0, 0.3), releaseAddSynth, &addSynthCampanas, midinote);
-
-            midinote = rnd::uniform(midi2cps(80),midi2cps(50));
-            addSynthCampanas.mFundamental = rnd::uniform(midi2cps(80),midi2cps(50));
-            addSynthCampanas.trigger(midinote);
-            msgQueue.send(msgQueue.now() + rnd::uniform(1.0, 0.3), releaseAddSynth, &addSynthCampanas, midinote);
-
-            midinote = rnd::uniform(midi2cps(80),midi2cps(50));
-            addSynthCampanas.mFundamental = rnd::uniform(midi2cps(80),midi2cps(50));
-            addSynthCampanas.trigger(midinote);
-            msgQueue.send(msgQueue.now() + rnd::uniform(1.0, 0.3), releaseAddSynth, &addSynthCampanas, midinote);
-
-            midinote = rnd::uniform(midi2cps(80),midi2cps(50));
-            addSynthCampanas.mFundamental = rnd::uniform(midi2cps(80),midi2cps(50));
-            addSynthCampanas.trigger(midinote);
-            msgQueue.send(msgQueue.now() + rnd::uniform(1.0, 0.3), releaseAddSynth, &addSynthCampanas, midinote);
-
-            midinote = rnd::uniform(midi2cps(80),midi2cps(50));
-            addSynthCampanas.mFundamental = rnd::uniform(midi2cps(80),midi2cps(50));
-            addSynthCampanas.trigger(midinote);
-            msgQueue.send(msgQueue.now() + rnd::uniform(1.0, 0.3), releaseAddSynth, &addSynthCampanas, midinote);
-            mCampanitasCounter[1] = 0;
-            std::cout << "campanitas 1" << std::endl;
-        } else {
-            mCampanitasCounter[1] = 12 * io.framesPerSecond()/ io.framesPerBuffer();
-        }
-    } else if (mPrevChaos < 0.3 && mChaos >= 0.3) {
-        std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), 1);
-    }  else if (mPrevChaos > 0.15 && mChaos <= 0.15) {
-        std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), 1);
-    }
-
-    if (std::find(mCampanitasStates.begin(), mCampanitasStates.end(), 1) != mCampanitasStates.end()) {
-        if (rnd::prob(0.7)) {
-            mCampanitasCounter[1]++;
-            if (mCampanitasCounter[1] > 15 * io.framesPerSecond()/ io.framesPerBuffer()) {
-                addSynthCampanas.mPresetHandler.recallPresetSynchronous(1);
-                int midinote = rnd::uniform(midi2cps(80),midi2cps(50));
-                addSynthCampanas.mFundamental = rnd::uniform(midi2cps(80),midi2cps(50));
-                addSynthCampanas.trigger(midinote);
-                msgQueue.send(msgQueue.now() + rnd::uniform(1.0, 0.3), releaseAddSynth, &addSynthCampanas, midinote);
-
-                midinote = rnd::uniform(midi2cps(80),midi2cps(50));
-                addSynthCampanas.mFundamental = rnd::uniform(midi2cps(80),midi2cps(50));
-                addSynthCampanas.trigger(midinote);
-                msgQueue.send(msgQueue.now() + rnd::uniform(1.0, 0.3), releaseAddSynth, &addSynthCampanas, midinote);
-
-                midinote = rnd::uniform(midi2cps(80),midi2cps(50));
-                addSynthCampanas.mFundamental = rnd::uniform(midi2cps(80),midi2cps(50));
-                addSynthCampanas.trigger(midinote);
-                msgQueue.send(msgQueue.now() + rnd::uniform(1.0, 0.3), releaseAddSynth, &addSynthCampanas, midinote);
-
-                midinote = rnd::uniform(midi2cps(80),midi2cps(50));
-                addSynthCampanas.mFundamental = rnd::uniform(midi2cps(80),midi2cps(50));
-                addSynthCampanas.trigger(midinote);
-                msgQueue.send(msgQueue.now() + rnd::uniform(1.0, 0.3), releaseAddSynth, &addSynthCampanas, midinote);
-
-                midinote = rnd::uniform(midi2cps(80),midi2cps(50));
-                addSynthCampanas.mFundamental = rnd::uniform(midi2cps(80),midi2cps(50));
-                addSynthCampanas.trigger(midinote);
-                msgQueue.send(msgQueue.now() + rnd::uniform(1.0, 0.3), releaseAddSynth, &addSynthCampanas, midinote);
-                mCampanitasCounter[1] = 0;
-                std::cout << "campanitas 1" << std::endl;
-            } else {
-                mCampanitasCounter[1] = 12 * io.framesPerSecond()/ io.framesPerBuffer();
-            }
-        }
-    }
-
+    float max = 0.3;
     if (mChaos < max) {
-        float probCampanitas = 0.004 + (mChaos/max) * 0.01;
+        float probCampanitas = 0.0005 + (mChaos/max) * 0.002;
         if (rnd::prob(probCampanitas)) {
             std::cout << "trigger" << std::endl;
             addSynthCampanas.mPresetHandler.recallPresetSynchronous("34");
@@ -468,12 +451,119 @@ void AudioApp::onAudioCB(AudioIOData &io)
         }
     }
 
+    if (!mSequencer1a.running() && !mSequencer2.running() && !mSequencer3a.running() && !mSequencer4a.running()) {
+        // 1 --------------------
+        float TimeDelta = 8;
+        float ifNotTime = 2;
+        int stateCamp = 1;
+        if (mPrevChaos < 0.15 && mChaos >= 0.15) {
+            mCampanitasStates.push_back(stateCamp);
+            std::cout << "ENTER campanitas stateCamp" << std::endl;
+            if (rnd::prob(0.1)) {
+                trigger1();
+                mCampanitasCounter[stateCamp] = 0;
+                std::cout << "CAMPANITAS 1 Launch" << std::endl;
+            } else {
+                mCampanitasCounter[stateCamp] =  (TimeDelta - ifNotTime) * io.framesPerSecond()/ io.framesPerBuffer();
+            }
+        } else if (mPrevChaos < 0.3 && mChaos >= 0.3) {
 
+            std::cout << "EXIT campanitas stateCamp" << std::endl;
+            std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
+        }  else if (mPrevChaos > 0.15 && mChaos <= 0.15) {
+            std::cout << "EXIT campanitas stateCamp" << std::endl;
+            std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
+        }
+
+        if (std::find(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp) != mCampanitasStates.end()) {
+            mCampanitasCounter[stateCamp]++;
+            if (mCampanitasCounter[stateCamp] > TimeDelta * io.framesPerSecond()/ io.framesPerBuffer()) {
+                if (rnd::prob(0.7)) {
+                    std::cout << "CAMPANITAS 1 Launch" << std::endl;
+                    trigger1();
+                    mCampanitasCounter[stateCamp] = 0;
+                    std::cout << "campanitas 1" << std::endl;
+                } else {
+                    mCampanitasCounter[stateCamp] = (TimeDelta - ifNotTime) * io.framesPerSecond()/ io.framesPerBuffer();
+                }
+            }
+        }
+        // 2 --------------------
+        TimeDelta = 6;
+        ifNotTime = 2;
+        stateCamp = 2;
+        if (mPrevChaos > 0.2 && mChaos <= 0.2) {
+            mCampanitasStates.push_back(stateCamp);
+            std::cout << "ENTER campanitas stateCamp 2" << std::endl;
+            if (rnd::prob(0.5)) {
+                trigger2();
+                mCampanitasCounter[stateCamp] = 0;
+            } else {
+                mCampanitasCounter[stateCamp] =  (TimeDelta - ifNotTime) * io.framesPerSecond()/ io.framesPerBuffer();
+            }
+        } else if (mPrevChaos > 0.1 && mChaos <= 0.1) {
+            std::cout << "EXIT campanitas stateCamp " << std::endl;
+            std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
+        }  else if (mPrevChaos < 0.2 && mChaos >= 0.2) {
+            std::cout << "EXIT campanitas state " << std::endl;
+            std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
+        }
+
+        if (std::find(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp) != mCampanitasStates.end()) {
+            mCampanitasCounter[stateCamp]++;
+            if (mCampanitasCounter[stateCamp] > TimeDelta * io.framesPerSecond()/ io.framesPerBuffer()) {
+                if (rnd::prob(0.7)) {
+                    trigger2();
+                    mCampanitasCounter[stateCamp] = 0;
+                    std::cout << "campanitas 1" << std::endl;
+                } else {
+                    mCampanitasCounter[stateCamp] = (TimeDelta - ifNotTime) * io.framesPerSecond()/ io.framesPerBuffer();
+                }
+            }
+        }
+
+
+        // 22 simple bass --------------------
+        TimeDelta = 40;
+        ifNotTime = 2;
+        stateCamp = 22;
+        if (mPrevChaos < 0.5 && mChaos >= 0.5) {
+            mCampanitasStates.push_back(stateCamp);
+            std::cout << "ENTER campanitas stateCamp 22" << std::endl;
+            if (rnd::prob(0.5)) {
+                trigger22();
+                mCampanitasCounter[stateCamp] = 0;
+            } else {
+                mCampanitasCounter[stateCamp] =  (TimeDelta - ifNotTime) * io.framesPerSecond()/ io.framesPerBuffer();
+            }
+        } else if (mPrevChaos > 0.49 && mChaos <= 0.49) {
+            std::cout << "EXIT campanitas stateCamp 22" << std::endl;
+            std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
+        }/*  else if (mPrevChaos < 0.49 && mChaos >= 0.49) {
+            std::cout << "EXIT campanitas state " << std::endl;
+            std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
+        }*/
+
+        if (std::find(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp) != mCampanitasStates.end()) {
+            mCampanitasCounter[stateCamp]++;
+            if (mCampanitasCounter[stateCamp] > TimeDelta * io.framesPerSecond()/ io.framesPerBuffer()) {
+                if (rnd::prob(0.5)) {
+                    trigger22();
+                    mCampanitasCounter[stateCamp] = 0;
+                    std::cout << "campanitas 1" << std::endl;
+                } else {
+                    mCampanitasCounter[stateCamp] = (TimeDelta - ifNotTime) * io.framesPerSecond()/ io.framesPerBuffer();
+                }
+            }
+        }
+
+    }
 
 
     for (int i = 0; i < 3; i++) {
         addSynth[i].generateAudio(io);
         addSynth3[i].generateAudio(io);
+        addSynth4[i].generateAudio(io);
     }
     addSynth2.generateAudio(io);
     addSynthCampanas.generateAudio(io);
@@ -481,66 +571,12 @@ void AudioApp::onAudioCB(AudioIOData &io)
     /// Sequences
     ///
     ///
-    float rangeStart = 0.1;
-    float rangeEnd = 0.3;
-    if ((mPrevChaos < rangeStart &&  mChaos >= rangeStart)
-            || (mPrevChaos > rangeStart &&  mChaos <= rangeStart)
-            ) {
-        if (!mSequencer1a.running()) {
-            mSequencer2.stopSequence();
-            addSynth2.allNotesOff();
-            mSequencer1a.playSequence("Seq 1-1");
-            mSequencer1b.playSequence("Seq 1-2");
-            mSequencer1c.playSequence("Seq 1-3");
-            std::cout << "Seq 1" << std::endl;
-        }
-    }
-    rangeStart = 0.28;
-    rangeEnd = 0.5;
-    if ((mPrevChaos < rangeStart &&  mChaos >= rangeStart)
-            || (mPrevChaos > rangeStart &&  mChaos <= rangeStart)
-            ) {
-        if (!mSequencer2.running()) {
-            mSequencer1a.stopSequence();
-            mSequencer1b.stopSequence();
-            mSequencer1c.stopSequence();
-            addSynth[0].allNotesOff();
-            addSynth[1].allNotesOff();
-            addSynth[2].allNotesOff();
-            mSequencer3a.stopSequence();
-            mSequencer3b.stopSequence();
-            mSequencer3c.stopSequence();
-            addSynth3[0].allNotesOff();
-            addSynth3[1].allNotesOff();
-            addSynth3[2].allNotesOff();
-            mSequencer2.playSequence("Seq 2-1");
-            std::cout << "Seq 2" << std::endl;
-        }
-    }
+    float rangeStart;
+    float rangeEnd;
 
-    rangeStart = 0.2;
-    rangeEnd = 0.6;
-    if ((mPrevChaos < rangeStart &&  mChaos >= rangeStart)
-            || (mPrevChaos > rangeStart &&  mChaos <= rangeStart)
-            ) {
-        if (!mSequencer3a.running()) {
-            mSequencer2.stopSequence();
-            addSynth2.allNotesOff();
-            mSequencer4a.stopSequence();
-            mSequencer4b.stopSequence();
-            mSequencer4c.stopSequence();
-            addSynth3[0].allNotesOff();
-            addSynth3[1].allNotesOff();
-            addSynth3[3].allNotesOff();
-            mSequencer3a.playSequence("Seq 3-1");
-            mSequencer3b.playSequence("Seq 3-2");
-            mSequencer3c.playSequence("Seq 3-3");
-            std::cout << "Seq 3" << std::endl;
-        }
-    }
 
-    rangeStart = 0.6;
-    rangeEnd = 0.8;
+    rangeStart = 0.1;
+    rangeEnd = 0.2;
     if ((mPrevChaos < rangeStart &&  mChaos >= rangeStart)
             || (mPrevChaos > rangeEnd &&  mChaos <= rangeEnd)
             ) {
@@ -551,10 +587,90 @@ void AudioApp::onAudioCB(AudioIOData &io)
             addSynth3[0].allNotesOff();
             addSynth3[1].allNotesOff();
             addSynth3[2].allNotesOff();
+
+            mSequencer2.stopSequence();
+            addSynth2.allNotesOff();
+
+            mSequencer1a.stopSequence();
+            mSequencer1b.stopSequence();
+            mSequencer1c.stopSequence();
+            addSynth[0].allNotesOff();
+            addSynth[1].allNotesOff();
+            addSynth[2].allNotesOff();
             mSequencer4a.playSequence("Seq 4a-0");
             mSequencer4b.playSequence("Seq 4b-0");
             mSequencer4c.playSequence("Seq 4c-0");
             std::cout << "Seq 4" << std::endl;
+        }
+    }
+
+//    rangeStart = 0.25;
+////    rangeEnd = 0.5;
+//    if ((mPrevChaos < rangeStart &&  mChaos >= rangeStart)
+//            || (mPrevChaos > rangeStart &&  mChaos <= rangeStart)
+//            ) {
+//        if (!mSequencer2.running()) {
+//            mSequencer1a.stopSequence();
+//            mSequencer1b.stopSequence();
+//            mSequencer1c.stopSequence();
+//            addSynth[0].allNotesOff();
+//            addSynth[1].allNotesOff();
+//            addSynth[2].allNotesOff();
+//            mSequencer3a.stopSequence();
+//            mSequencer3b.stopSequence();
+//            mSequencer3c.stopSequence();
+//            addSynth3[0].allNotesOff();
+//            addSynth3[1].allNotesOff();
+//            addSynth3[2].allNotesOff();
+//            mSequencer2.playSequence("Seq 2-1");
+//            std::cout << "Seq 2" << std::endl;
+//        }
+//    }
+
+    rangeStart = 0.3;
+    rangeEnd = 0.4;
+    if ((mPrevChaos < rangeStart &&  mChaos >= rangeStart)
+            || (mPrevChaos > rangeEnd &&  mChaos <= rangeEnd)
+            ) {
+        if (!mSequencer3a.running()) {
+            mSequencer1a.stopSequence();
+            mSequencer1b.stopSequence();
+            mSequencer1c.stopSequence();
+            mSequencer2.stopSequence();
+            addSynth2.allNotesOff();
+            mSequencer4a.stopSequence();
+            mSequencer4b.stopSequence();
+            mSequencer4c.stopSequence();
+//            addSynth3[0].allNotesOff();
+//            addSynth3[1].allNotesOff();
+//            addSynth3[3].allNotesOff();
+            addSynth2.allNotesOff();
+            addSynth[0].allNotesOff();
+            addSynth[1].allNotesOff();
+            addSynth[2].allNotesOff();
+            addSynth4[0].allNotesOff();
+            addSynth4[1].allNotesOff();
+            addSynth4[2].allNotesOff();
+            mSequencer3a.playSequence("Seq 3-1");
+            mSequencer3b.playSequence("Seq 3-2");
+            mSequencer3c.playSequence("Seq 3-3");
+            std::cout << "Seq 3" << std::endl;
+        }
+    }
+
+    ///
+    rangeStart = 0.5;
+    rangeEnd = 0.6;
+    if ((mPrevChaos < rangeStart &&  mChaos >= rangeStart)
+            || (mPrevChaos > rangeEnd &&  mChaos <= rangeEnd)
+            ) {
+        if (!mSequencer1a.running()) {
+            mSequencer2.stopSequence();
+            addSynth2.allNotesOff();
+            mSequencer1a.playSequence("Seq 1-1");
+            mSequencer1b.playSequence("Seq 1-2");
+            mSequencer1c.playSequence("Seq 1-3");
+            std::cout << "Seq 1" << std::endl;
         }
     }
 
@@ -571,7 +687,9 @@ void AudioApp::onAudioCB(AudioIOData &io)
 //    }
 //    std::cout << std::endl;
 
-//    mDownMixer.process(io);
+#ifndef BUILDING_FOR_ALLOSPHERE
+    mDownMixer.process(io);
+#endif
 }
 
 int main(int argc, char *argv[] )
@@ -582,7 +700,7 @@ int main(int argc, char *argv[] )
 #ifdef BUILDING_FOR_ALLOSPHERE
     app.audioIO().device(AudioDevice("ECHO X5"));
 #endif
-    app.initAudio(44100, 512, outChans, 0);
+    app.initAudio(44100, 400, outChans, 0);
     gam::sampleRate(app.audioIO().fps());
 
 //    AudioDevice::printAll();

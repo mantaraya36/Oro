@@ -23,8 +23,6 @@
 /Amp7 f 0.115858
 /Amp8 f 0.097898
 /Amp9 f 0.084035
-/AmpModAttack f 2.000000
-/AmpModDepth f 1.000000
 /AmpModFreq1 f 3.881041
 /AmpModFreq10 f 4.099907
 /AmpModFreq11 f 1.135542
@@ -37,7 +35,7 @@
 /AmpModFreq18 f 10.662216
 /AmpModFreq19 f 3.869448
 /AmpModFreq2 f 2.659970
-/AmpModFreq20 f 7.809281
+/AmpModFreq20 f 7.809280
 /AmpModFreq21 f 4.583769
 /AmpModFreq22 f 3.400714
 /AmpModFreq23 f 9.800463
@@ -49,7 +47,6 @@
 /AmpModFreq7 f 2.933702
 /AmpModFreq8 f 10.735125
 /AmpModFreq9 f 9.231874
-/AmpModRelease f 5.000000
 /ArcSpan f 1.000000
 /ArcStart f 0.000000
 /Attack1 f 4.550002
@@ -103,7 +100,7 @@
 /Decay7 f 1.899999
 /Decay8 f 1.899999
 /Decay9 f 1.899999
-/Fundamental f 120.000000
+/Fundamental f 146.832382
 /Harm1 f 3.879241
 /Harm10 f 9.120541
 /Harm11 f 2.930065
@@ -128,7 +125,8 @@
 /Harm7 f 2.113441
 /Harm8 f 4.596239
 /Harm9 f 2.993700
-/Level f 0.250000
+/Layer f 0.000000
+/Level f 0.850000
 /Release1 f 2.000000
 /Release10 f 6.000000
 /Release11 f 6.000000
@@ -178,4 +176,8 @@
 /Sustain7 f 0.743064
 /Sustain8 f 0.750495
 /Sustain9 f 0.758000
+/modAttack f 10.000000
+/modDepth f 0.002400
+/modRelease f 6.000000
+/modType f 1.000000
 ::

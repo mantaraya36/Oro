@@ -306,9 +306,9 @@ void AudioApp::vocesCura(AudioIOData &io)
     float vocesGain = 0.0;
     const float vocesGainTarget = 1.0;
 
-    if (mChaos > 0.4) {
+    if (mChaos > 0.3) {
         vocesGain = vocesGainTarget * ((mChaos - 0.4)/ 0.25);
-    } else if (mChaos > 0.65) {
+    } else if (mChaos > 0.5) {
         vocesGain = vocesGainTarget;
     }
     for (int i = 0; i < mVoices.size(); i++) {
@@ -331,6 +331,12 @@ void AudioApp::vocesCura(AudioIOData &io)
 
 void AudioApp::chaosSynthAudio(AudioIOData &io)
 {
+
+    if (mChaos > 0.4) {
+        chaosSynth[0].mTrim = 0.5 + 0.8 * ((mChaos - 0.4)/ 0.6);
+    } else {
+        chaosSynth[0].mTrim = 0.5;
+    }
     ////// Rangos de chaos para chaos synth
     float rangeStart, rangeEnd;
     rangeStart = 0.4;
@@ -338,6 +344,7 @@ void AudioApp::chaosSynthAudio(AudioIOData &io)
     if ((mPrevChaos < rangeStart &&  mChaos >= rangeStart)
             || (mPrevChaos > rangeEnd &&  mChaos <= rangeEnd)
             ) {
+        std::cout << "trigger CHAOS 1" << std::endl;
         chaosSynth[0].mPresetHandler.recallPreset("12");
         chaosSynth[0].setOutputIndeces(rnd::uniform(47, 16),rnd::uniform(47, 16));
         chaosSynth[0].trigger(0);
@@ -352,9 +359,9 @@ void AudioApp::chaosSynthAudio(AudioIOData &io)
             ) {
         chaosSynth[0].mPresetHandler.recallPreset(0);
         chaosSynth[0].setOutputIndeces(rnd::uniform(47, 16),rnd::uniform(47, 16));
-        chaosSynth[0].trigger(0);
+//        chaosSynth[0].trigger(0);
     } else if (mPrevChaos > rangeStart &&  mChaos <= rangeStart) {
-        chaosSynth[0].release(0);
+//        chaosSynth[0].release(0);
     }
     ////////
     rangeStart = 0.6;
@@ -368,7 +375,7 @@ void AudioApp::chaosSynthAudio(AudioIOData &io)
         chaosSynth[0].setOutputIndeces(rnd::uniform(47, 16),rnd::uniform(47, 16));
         chaosSynth[0].trigger(0);
     } else if (mPrevChaos > rangeStart &&  mChaos <= rangeStart) {
-        chaosSynth[0].release(0);
+//        chaosSynth[0].release(0);
     }
     if (mChaos > rangeStart && mChaos < rangeEnd) {
         chaosCounter++;
@@ -408,7 +415,7 @@ void AudioApp::chaosSynthAudio(AudioIOData &io)
         chaosSynth[0].setOutputIndeces(rnd::uniform(47, 16),rnd::uniform(47, 16));
         chaosSynth[0].trigger(0);
 	} else if (mPrevChaos > rangeStart &&  mChaos <= rangeStart) {
-		chaosSynth[0].release(0);
+//		chaosSynth[0].release(0);
 	}
     if (mChaos > rangeStart && mChaos < rangeEnd) {
         chaosCounter++;
@@ -444,6 +451,7 @@ void AudioApp::chaosSynthAudio(AudioIOData &io)
             io.frame(0);
         }
     }
+    mPrevChaos = mChaos;
 }
 
 void AudioApp::onAudioCB(AudioIOData &io)
@@ -470,7 +478,9 @@ void AudioApp::onAudioCB(AudioIOData &io)
 //    }
 //    std::cout << std::endl;
 
-//    mDownMixer.process(io);
+#ifndef BUILDING_FOR_ALLOSPHERE
+    mDownMixer.process(io);
+#endif
 }
 
 int main(int argc, char *argv[] )
@@ -481,7 +491,7 @@ int main(int argc, char *argv[] )
 #ifdef BUILDING_FOR_ALLOSPHERE
     app.audioIO().device(AudioDevice("ECHO X5"));
 #endif
-    app.initAudio(44100, 512, outChans, 0);
+    app.initAudio(44100, 400, outChans, 0);
     gam::sampleRate(app.audioIO().fps());
 
 //    AudioDevice::printAll();

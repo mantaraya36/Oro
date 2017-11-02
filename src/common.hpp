@@ -20,6 +20,7 @@
 #include "Gamma/Envelope.h"
 
 #include "Gamma/ipl.h"
+#include "Gamma/scl.h"
 
 
 #include "Cuttlebone/Cuttlebone.hpp"
@@ -37,6 +38,11 @@ using namespace std;
 
 #define NUM_OFRENDAS 16
 #define NUM_CASAS 6
+
+#define LAGOON_Y 3.0
+
+// Wave function grid size
+static const int Nx = 180, Ny = Nx;
 
 #ifdef BUILDING_FOR_ALLOSPHERE
 
@@ -83,11 +89,6 @@ using namespace std;
 #define GRAPHICS_SLAVE_PORT 21000
 
 #endif
-
-#define LAGOON_Y 3.0
-
-// Wave function grid size
-static const int Nx = 180, Ny = Nx;
 
 struct Ofrenda {
     gam::Decay<float> envelope;
@@ -522,24 +523,29 @@ public:
 
         float fogStart = 2;
         float fogEnd = 30;
-		fogStart = 0.1;
-        fogEnd = 0.2;
-        if (state().chaos > 0.2 && state().chaos < 0.5) {
-			fogStart += (2 - 0.1) * (state().chaos - 0.1) / 0.3;
-			fogEnd += (30 - 0.2) * (state().chaos - 0.1) / 0.3;
+		fogStart = 1.0;
+        fogEnd = 10.0;
+
+        if (state().chaos > 0.1 && state().chaos < 0.4) {
+			fogStart += (2 - fogStart) * (state().chaos - 0.1) / 0.3;
+			fogEnd += (30 - fogEnd) * (state().chaos - 0.1) / 0.3;
 		} else if (state().chaos >= 0.4) {
 			fogStart = 2;
 			fogEnd = 30;
 		}
+
+		float wobble = 0.1 + sin(state().casasPhase*0.015);
+		float wobble2 = 0.1 + sin(state().casasPhase*0.012);
 
         g.fog(fogEnd, fogStart, Color(0,0,0, 0.2));
         shader().uniform("tint", Color{1, 1- state().chaos, 0}); // put in color here
 
 		g.pushMatrix();
 		g.scale(2);
-		g.translate(- GRID_SIZEX/2,- GRID_SIZEY/1.6, -4.0);
+		g.translate(wobble2 - GRID_SIZEX/2,- GRID_SIZEY/1.6, -4.0 + wobble);
 		unsigned int count = 0;
 		float *dev = state().dev;
+		float prevdev = 0;
 		for (int x = 0; x < GRID_SIZEX; x++) {
 			g.pushMatrix();
 			g.translate(x, 0, -*dev/2);
@@ -551,16 +557,17 @@ public:
 					g.translate(*dev/-2.0f, 0.0f, -z + *dev);
 					g.draw(mGrid[count]);
 					g.pushMatrix();
-					g.rotate(90, 0, 1, 0);
+					g.rotate(90, 0, 1, *dev* state().chaos );
 					g.translate(0, *dev, 0);
 					g.draw(mGridVertical[count]);
 					g.popMatrix();
 					g.pushMatrix();
 					g.rotate(90,1, 0, 0);
-					g.translate(*dev, *dev, 0);
+					g.translate(*dev, *dev - state().chaos, 0);
 					g.draw(mGridHorizontal[count]);
 					g.popMatrix();
 					g.popMatrix();
+					prevdev = *dev;
                     dev++;
 					count++;
 				}
@@ -623,15 +630,17 @@ public:
 		shader().uniform("texture", casasIndex);
 //        shader().uniform("enableFog", 1.0);
 		if (state().mouseDown) {
-			g.color(casasIndex, casasIndex, casasIndex, 0.5);
+			g.color(casasIndex, casasIndex, casasIndex, 0.8);
 		} else {
 			g.color(casasIndex* 0.2, 0.0, 0.0, 0.3);
 			shader().uniform("texture", casasIndex/3);
 		}
 		dev = state().dev;
+
 		g.pushMatrix();
 		g.rotate(180, 0, 1, 0);
 
+		/// Casas Atras
 		for (unsigned int i = 0; i < NUM_CASAS; i++) {
 			if (true) {
 				textureCasas[i].bind(0);
@@ -686,22 +695,23 @@ public:
             }
         }
 		g.popMatrix();
-        g.popMatrix();
-
-
 
 		if (mPreviousChaos > 0.3 && state().chaos <= 0.3) {
             mRenderTree.clear();
         }
 		shader().uniform("texture", 1.0);
+
+		shader().uniform("tint", Color{1, 1- state().chaos, 0}); // put in color here
 		mRenderTree.render(g);
+
+		shader().uniform("tint", Color{1, 1, 1}); // put in color here
 		g.blendOff();
 		mPreviousChaos = state().chaos;
 
 	}
 
 	virtual void onMessage(osc::Message &m) {
-		m.print();
+//		m.print();
 		if (m.addressPattern() == "/addBitcoinMarker" && m.typeTags() == "sff") {
 			string chars;
 			float x,y;

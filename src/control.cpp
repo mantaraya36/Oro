@@ -44,7 +44,8 @@ public:
 		nav().pullBack(2.1);
 
 		initWindow();
-		window(0).fullScreenToggle();
+
+//		window(0).fullScreenToggle();
 //        navControl().useMouse(false);
         window().remove(navControl());
         reset();

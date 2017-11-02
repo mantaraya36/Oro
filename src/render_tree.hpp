@@ -167,6 +167,10 @@ public:
 		}
 	}
 
+	void setUniform(std::string uniformName, float value) {
+		mUniformValues[uniformName] = value;
+	}
+
     virtual void executeCommand(std::string command, std::vector<std::string> arguments)
     {
         if (command == "setPosition") {
@@ -340,6 +344,7 @@ private:
     std::vector<std::shared_ptr<RenderModule>> mChildren;
     std::vector<std::shared_ptr<Behavior>> mBehaviors;
 	std::map<std::string, bool> mFlags;
+	std::map<std::string, float> mUniformValues;
 	u_int32_t mId {UINT32_MAX};
 };
 
@@ -905,7 +910,7 @@ public:
         if (mOSCsubPath.size() > 0) {
             basePath += "/" + mOSCsubPath;
         }
-		m.print();
+//		m.print();
         for(auto action : mOSCActions) {
             if (action->process(m)) {
                 return true;

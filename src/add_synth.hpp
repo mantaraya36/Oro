@@ -15,9 +15,9 @@
 #include "Gamma/Oscillator.h"
 #include "Gamma/Envelope.h"
 
-#define NUM_VOICES 24
+#define NUM_VOICES 22
 
-#define SYNTH_POLYPHONY 12
+#define SYNTH_POLYPHONY 11
 
 using namespace al;
 using namespace std;
@@ -131,12 +131,12 @@ public:
 					oscs.freq(fundamental  * freqfact + (ampmods() * modenv()));
 					float out = attenuation * oscs() * envs() * amp  * level;
 					*outbuf++ +=  out;
-					*swbuf++ +=  out * 0.3f;
+					*swbuf++ +=  out * 1.0f;
 				} else {
 					float out = attenuation * oscs() * envs() *  amp * level
 					        * (1 + ampmods() * modenv());;
 					*outbuf++ +=  out;
-					*swbuf++ +=  out * 0.3;
+					*swbuf++ +=  out * 1.0;
 				}
             }
 		}

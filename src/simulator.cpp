@@ -88,7 +88,7 @@ public:
 
         for (gam::Biquad<> &b:mFilters) {
             b.domain(mVideoDomain);
-            b.freq(0.3);
+            b.freq(0.4);
         }
 
         for (unsigned int i = 0; i < NUM_OFRENDAS; i++) {
@@ -119,6 +119,10 @@ public:
         mMouseSpeed = 5.0f * sqrt(x * x + y * y);
         mMouseX = x;
         mMouseY = y;
+    }
+
+    void adjustChaos(float change) {
+        state().chaos += change; std::cout << state().chaos << std::endl;
     }
 
     void reset() {
@@ -166,15 +170,21 @@ public:
 //        }
 
         // Calculate grid deviations
+//        if ()
+//        for (gam::Biquad<> &b:mFilters) {
+//            b.domain(mVideoDomain);
+//            b.freq(0.4);
+//        }
+
         float * dev_ = state().dev;
         unsigned int count = 0;
         for (int x = 0; x < GRID_SIZEX; x++) {
             for (int y = 0; y < GRID_SIZEY; y++) {
                 for (int z = 0; z < GRID_SIZEZ; z++) {
-                    if (mChaos.get() < 0.3f) {
+                    if (mChaos.get() < 0.18f) {
                         *dev_++ = 0.0;
                     } else {
-                        *dev_++ = mFilters[count](mNoise[count]() * (5.0f * (mChaos.get() - 0.3f)/0.7f));
+                        *dev_++ = mFilters[count](mNoise[count]() * (5.0f * (mChaos.get() - 0.18f)/0.82f));
                     }
                     count++;
                 }
@@ -212,27 +222,31 @@ public:
         int zprev = 1-zcurr;
         // Compute effects of trigger
 
-        float chaosSpeed = 0.1; //0.01
+        float chaosSpeed = 0.3; //0.01
 
         // Activate ofrendas
+        ;
         if (mDist > 0) {
             float dist = mDist;
             if (mDist > 0.1) {
                 dist /=20.0;
             }
-            if(state().chaos > 0.03 && state().chaos <= 0.4 && rnd::prob(0.012)) {
-                int randOffset = rnd::uniform(NUM_OFRENDAS);
-                for (unsigned int i = 0; i < NUM_OFRENDAS; i++) {
-                    int index = (randOffset + i)%NUM_OFRENDAS;
-                    if (!state().ofrendas[index]) {
-                        mOfrendas.ofrendas[index].envelope.reset();
-                        state().posOfrendas[index].x = rnd::gaussian()* 0.3;
-                        state().posOfrendas[index].y = -9.8 + LAGOON_Y;
-                        state().posOfrendas[index].z =  - 4 + i/(float)NUM_OFRENDAS;
-                        state().ofrendas[index] = true;
-                        sideSpeed[index] = 0;
-                        break;
+            if (mOfrendaHold++ > 2.0 * 20) {
+                if(state().chaos > 0.1 && state().chaos <= 0.4 && rnd::prob(0.012)) {
+                    int randOffset = rnd::uniform(NUM_OFRENDAS);
+                    for (unsigned int i = 0; i < NUM_OFRENDAS; i++) {
+                        int index = (randOffset + i)%NUM_OFRENDAS;
+                        if (!state().ofrendas[index]) {
+                            mOfrendas.ofrendas[index].envelope.reset();
+                            state().posOfrendas[index].x = rnd::gaussian()* 0.3;
+                            state().posOfrendas[index].y = -9.8 + LAGOON_Y;
+                            state().posOfrendas[index].z =  - 4 + i/(float)NUM_OFRENDAS;
+                            state().ofrendas[index] = true;
+                            sideSpeed[index] = 0;
+                            break;
+                        }
                     }
+                    mOfrendaHold = 0.0;
                 }
             }
             // Activate bitcoin markers
@@ -317,7 +331,13 @@ public:
         decay.set(0.93 + (state().chaos* 0.068));
 //        shininess.set(50 - (state().chaos* 20));
 
-        state().chaos = state().chaos * 0.9996f;
+        state().chaos = state().chaos - 0.00025;
+        if (state().chaos < 0.0) {
+            state().chaos = 0.0;
+        }
+        if (state().chaos > 1.0) {
+            state().chaos = 1.0;
+        }
         state().decay = decay.get();
         state().velocity = velocity.get();
         state().mouseDown = mMouseDown == 1.0;
@@ -362,6 +382,9 @@ public:
 
     Parameter decay {"decay", "", 0.96, "", 0.8, 0.999999};	// Decay factor of waves, in (0, 1]
     Parameter velocity{"velocity", "", 0.4999999, "", 0, 0.4999999};	// Velocity of wave propagation, in (0, 0.5]
+
+    // Ofrenda
+    int mOfrendaHold = 0;
 
     // Bitcoin
     std::string mHexChars {"0123456789ABCDEF"};
@@ -465,8 +488,8 @@ public:
 		switch(k.key()){
 
 		// For printable keys, we just use its character symbol:
-		case '1': printf("Pressed 1.\n"); break;
-		case 'y': printf("Pressed y.\n"); break;
+        case 't': printf("Pressed t.\n"); mSimulator.adjustChaos(0.03);  break;
+		case 'y': printf("Pressed y.\n"); mSimulator.adjustChaos(-0.03); break;
 		case 'n': printf("Pressed n.\n"); break;
 		case '.': printf("Pressed period.\n"); break;
         case 'r': mSimulator.reset();
