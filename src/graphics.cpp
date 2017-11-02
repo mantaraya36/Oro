@@ -93,11 +93,11 @@ uniform sampler2D texture_warp;
 // uniform sampler2D texture_blend;
 void main() {
     // float blend = texture2D(texture_blend, gl_TexCoord[0].st).r;
-    vec4 textureColor = texture2D(texture_warp, gl_TexCoord[0].st);
-    textureColor += vec4(1.0, 1.0, 1.0, 0.0);
-    textureColor *= vec4(0.5, 0.5, 0.5, 1.0);
-    textureColor.a = 1.0;
-    gl_FragColor = textureColor;
+    vec3 dir = texture2D(texture_warp, gl_TexCoord[0].st).rgb;
+    dir = normalize(dir);
+    dir += 1.0;
+    dir *= 0.5;
+    gl_FragColor = vec4(dir, 1.0);
 }
 )";
 }
@@ -252,27 +252,35 @@ uniform float time;
 uniform float radius;
 
 void main() {
-  vec4 textureColor = texture2D(texture0, gl_TexCoord[0].st);
-  vec4 wb = texture2D(wb_tex, gl_TexCoord[0].st);
-  wb.rgb *= 2.0;
-  wb.rgb -= 1.0;
-  vec4 space_time = vec4(radius * wb.rgb, time);
-  vec4 space_time2 = 2 * vec4(radius * wb.rgb, time);
-  float noise = snoise(space_time);
-  float noise2 = snoise(space_time2);
-  float n = (noise + 0.5 * noise2) / 1.5;
+  vec3 dir = texture2D(wb_tex, gl_TexCoord[0].st).rgb;
+  dir *= 2.0;
+  dir -= 1.0; // [0:1] to [-1:+1]
+
+  vec4 st1 = vec4(radius * dir, time); // dir in space + time
+  float n1 = snoise(st1);
+
+  vec4 st2 = 2 * vec4(radius * dir, time);
+  float n2 = snoise(st2);
+
+  vec4 st3 = 4 * vec4(radius * dir, time);
+  float n3 = snoise(st3);
+
+  float n = (n1 + 0.5 * n2 + 0.25 * n3) / (1.0 + 0.5 + 0.25);
   n += 1.0;
-  n *= 0.5;
-  textureColor.r *= 0.7 + 0.3 * n;
-  textureColor.g *= 0.75 + 0.25 * n;
-  textureColor.b *= 0.8 + 0.2 * n;
-  gl_FragColor = textureColor;
+  n *= 0.5; // [-1:+1] to [0:1]
+
+  vec4 textureColor = texture2D(texture0, gl_TexCoord[0].st);
+  float multiplier = 0.25 + 0.75 * n;
+  gl_FragColor = vec4(multiplier * textureColor.rgb, textureColor.a);
 }
 )";
 }
 
 struct Renderer : public OmniStereoGraphicsRenderer2 {
 public:
+
+  bool do_aftereffect = true;
+
     SharedState mState;
     SharedPainter mPainter;
 
@@ -420,10 +428,10 @@ public:
         mPainter.onDraw(g);
     }
 
-    float t = 0;
-
     void afterEffect(Graphics& g) override {
-        t += 0.02;
+
+        if (!do_aftereffect) return;
+
         // resize if needed
         capture_tex[0].resize(width(), height());
         capture_tex[1].resize(width(), height());
@@ -487,8 +495,8 @@ public:
         fbo.begin();
         g.blending(false);
         effectShader.begin();
-        effectShader.uniform("radius", 3.0);
-        effectShader.uniform("time", t);
+        effectShader.uniform("radius", 2.5);
+        effectShader.uniform("time", state().casasPhase * 0.1f);
         wb_tex.bind(1);
         temp_capture_tex.quadViewport(g);
         wb_tex.unbind(1);
@@ -508,7 +516,7 @@ public:
         // g.blending(true);
         // g.blendMode(Graphics::ONE, Graphics::ONE_MINUS_SRC_ALPHA, Graphics::FUNC_ADD);
         // g.blendTrans();
-        capture_tex[capture_idx].quadViewport(g, Color(1, 1, 1, 0.5));
+        capture_tex[capture_idx].quadViewport(g, Color(1, 1, 1, 1));
 
         // copy again composited result
         // capture_tex[capture_idx].copyFrameBuffer();
