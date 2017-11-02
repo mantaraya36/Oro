@@ -451,11 +451,14 @@ void AudioApp::onAudioCB(AudioIOData &io)
         }
     }
 
+    float TimeDelta;
+    float ifNotTime;
+    int stateCamp;
     if (!mSequencer1a.running() && !mSequencer2.running() && !mSequencer3a.running() && !mSequencer4a.running()) {
         // 1 --------------------
-        float TimeDelta = 8;
-        float ifNotTime = 2;
-        int stateCamp = 1;
+        TimeDelta = 8;
+        ifNotTime = 2;
+        stateCamp = 1;
         if (mPrevChaos < 0.15 && mChaos >= 0.15) {
             mCampanitasStates.push_back(stateCamp);
             std::cout << "ENTER campanitas stateCamp" << std::endl;
@@ -466,13 +469,16 @@ void AudioApp::onAudioCB(AudioIOData &io)
             } else {
                 mCampanitasCounter[stateCamp] =  (TimeDelta - ifNotTime) * io.framesPerSecond()/ io.framesPerBuffer();
             }
+            mPrevChaos = mChaos;
         } else if (mPrevChaos < 0.3 && mChaos >= 0.3) {
 
             std::cout << "EXIT campanitas stateCamp" << std::endl;
             std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
+            mPrevChaos = mChaos;
         }  else if (mPrevChaos > 0.15 && mChaos <= 0.15) {
             std::cout << "EXIT campanitas stateCamp" << std::endl;
             std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
+            mPrevChaos = mChaos;
         }
 
         if (std::find(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp) != mCampanitasStates.end()) {
@@ -501,12 +507,15 @@ void AudioApp::onAudioCB(AudioIOData &io)
             } else {
                 mCampanitasCounter[stateCamp] =  (TimeDelta - ifNotTime) * io.framesPerSecond()/ io.framesPerBuffer();
             }
+            mPrevChaos = mChaos;
         } else if (mPrevChaos > 0.1 && mChaos <= 0.1) {
             std::cout << "EXIT campanitas stateCamp " << std::endl;
             std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
+            mPrevChaos = mChaos;
         }  else if (mPrevChaos < 0.2 && mChaos >= 0.2) {
             std::cout << "EXIT campanitas state " << std::endl;
             std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
+            mPrevChaos = mChaos;
         }
 
         if (std::find(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp) != mCampanitasStates.end()) {
@@ -523,40 +532,44 @@ void AudioApp::onAudioCB(AudioIOData &io)
         }
 
 
-        // 22 simple bass --------------------
-        TimeDelta = 40;
-        ifNotTime = 2;
-        stateCamp = 22;
-        if (mPrevChaos < 0.5 && mChaos >= 0.5) {
-            mCampanitasStates.push_back(stateCamp);
-            std::cout << "ENTER campanitas stateCamp 22" << std::endl;
+
+
+    }
+    // 22 simple bass --------------------
+    TimeDelta = 40;
+    ifNotTime = 2;
+    stateCamp = 22;
+    if (mPrevChaos < 0.5 && mChaos >= 0.5) {
+        mCampanitasStates.push_back(stateCamp);
+        std::cout << "ENTER campanitas stateCamp 22" << std::endl;
+        if (rnd::prob(0.5)) {
+            trigger22();
+            mCampanitasCounter[stateCamp] = 0;
+        } else {
+            mCampanitasCounter[stateCamp] =  (TimeDelta - ifNotTime) * io.framesPerSecond()/ io.framesPerBuffer();
+        }
+        mPrevChaos = mChaos;
+    } else if (mPrevChaos > 0.49 && mChaos <= 0.49) {
+        std::cout << "EXIT campanitas stateCamp 22" << std::endl;
+        std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
+        mPrevChaos = mChaos;
+    }/*  else if (mPrevChaos < 0.49 && mChaos >= 0.49) {
+        std::cout << "EXIT campanitas state " << std::endl;
+        std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
+mPrevChaos = mChaos;
+    }*/
+
+    if (std::find(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp) != mCampanitasStates.end()) {
+        mCampanitasCounter[stateCamp]++;
+        if (mCampanitasCounter[stateCamp] > TimeDelta * io.framesPerSecond()/ io.framesPerBuffer()) {
             if (rnd::prob(0.5)) {
                 trigger22();
                 mCampanitasCounter[stateCamp] = 0;
+                std::cout << "campanitas 1" << std::endl;
             } else {
-                mCampanitasCounter[stateCamp] =  (TimeDelta - ifNotTime) * io.framesPerSecond()/ io.framesPerBuffer();
-            }
-        } else if (mPrevChaos > 0.49 && mChaos <= 0.49) {
-            std::cout << "EXIT campanitas stateCamp 22" << std::endl;
-            std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
-        }/*  else if (mPrevChaos < 0.49 && mChaos >= 0.49) {
-            std::cout << "EXIT campanitas state " << std::endl;
-            std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
-        }*/
-
-        if (std::find(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp) != mCampanitasStates.end()) {
-            mCampanitasCounter[stateCamp]++;
-            if (mCampanitasCounter[stateCamp] > TimeDelta * io.framesPerSecond()/ io.framesPerBuffer()) {
-                if (rnd::prob(0.5)) {
-                    trigger22();
-                    mCampanitasCounter[stateCamp] = 0;
-                    std::cout << "campanitas 1" << std::endl;
-                } else {
-                    mCampanitasCounter[stateCamp] = (TimeDelta - ifNotTime) * io.framesPerSecond()/ io.framesPerBuffer();
-                }
+                mCampanitasCounter[stateCamp] = (TimeDelta - ifNotTime) * io.framesPerSecond()/ io.framesPerBuffer();
             }
         }
-
     }
 
 
@@ -678,7 +691,6 @@ void AudioApp::onAudioCB(AudioIOData &io)
         *swBuffer++ *= 0.07;
     }
 
-    mPrevChaos = mChaos;
     msgQueue.advance(io.framesPerBuffer()/io.framesPerSecond());
 
 //    std::cout << "-------------" << std::endl;
