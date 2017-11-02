@@ -432,6 +432,7 @@ void AudioApp::onAudioCB(AudioIOData &io)
 {
     int bufferSize = io.framesPerBuffer();
     float *swBuffer = io.outBuffer(47);
+    bool consumeChaos = false;
 
     // Campanitas
 
@@ -469,16 +470,16 @@ void AudioApp::onAudioCB(AudioIOData &io)
             } else {
                 mCampanitasCounter[stateCamp] =  (TimeDelta - ifNotTime) * io.framesPerSecond()/ io.framesPerBuffer();
             }
-            mPrevChaos = mChaos;
+            consumeChaos = true;
         } else if (mPrevChaos < 0.3 && mChaos >= 0.3) {
 
             std::cout << "EXIT campanitas stateCamp" << std::endl;
             std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
-            mPrevChaos = mChaos;
+            consumeChaos = true;
         }  else if (mPrevChaos > 0.15 && mChaos <= 0.15) {
             std::cout << "EXIT campanitas stateCamp" << std::endl;
             std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
-            mPrevChaos = mChaos;
+            consumeChaos = true;
         }
 
         if (std::find(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp) != mCampanitasStates.end()) {
@@ -507,15 +508,15 @@ void AudioApp::onAudioCB(AudioIOData &io)
             } else {
                 mCampanitasCounter[stateCamp] =  (TimeDelta - ifNotTime) * io.framesPerSecond()/ io.framesPerBuffer();
             }
-            mPrevChaos = mChaos;
+            consumeChaos = true;
         } else if (mPrevChaos > 0.1 && mChaos <= 0.1) {
             std::cout << "EXIT campanitas stateCamp " << std::endl;
             std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
-            mPrevChaos = mChaos;
+            consumeChaos = true;
         }  else if (mPrevChaos < 0.2 && mChaos >= 0.2) {
             std::cout << "EXIT campanitas state " << std::endl;
             std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
-            mPrevChaos = mChaos;
+            consumeChaos = true;
         }
 
         if (std::find(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp) != mCampanitasStates.end()) {
@@ -548,15 +549,15 @@ void AudioApp::onAudioCB(AudioIOData &io)
         } else {
             mCampanitasCounter[stateCamp] =  (TimeDelta - ifNotTime) * io.framesPerSecond()/ io.framesPerBuffer();
         }
-        mPrevChaos = mChaos;
+        consumeChaos = true;
     } else if (mPrevChaos > 0.49 && mChaos <= 0.49) {
         std::cout << "EXIT campanitas stateCamp 22" << std::endl;
         std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
-        mPrevChaos = mChaos;
+        consumeChaos = true;
     }/*  else if (mPrevChaos < 0.49 && mChaos >= 0.49) {
         std::cout << "EXIT campanitas state " << std::endl;
         std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
-mPrevChaos = mChaos;
+consumeChaos = true;
     }*/
 
     if (std::find(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp) != mCampanitasStates.end()) {
@@ -693,6 +694,9 @@ mPrevChaos = mChaos;
 
     msgQueue.advance(io.framesPerBuffer()/io.framesPerSecond());
 
+    if (consumeChaos) {
+        mPrevChaos = mChaos;
+    }
 //    std::cout << "-------------" << std::endl;
 //    for (int i= 0; i < 60; i++) {
 //        std::cout << io.out(i, 0) << " ";
