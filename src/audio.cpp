@@ -531,8 +531,269 @@ void AudioApp::onAudioCB(AudioIOData &io)
                 }
             }
         }
-
-
+		// 9 Oh Boy Bottom row AM --------------------
+		TimeDelta = 30; // separacion entre notas
+		ifNotTime = 2; //
+		stateCamp = 9; //numero de preset
+		if (mPrevChaos > 0.4 && mChaos <= 0.4) { //umbral de entrada
+			mCampanitasStates.push_back(stateCamp);
+			std::cout << "ENTER 9 Oh Boy Bottom row AM" << std::endl;//print esto
+			mCampanitasCounter[stateCamp] = TimeDelta * io.framesPerSecond()/ io.framesPerBuffer();
+			consumeChaos = true;
+		} else if (mPrevChaos < 0.4 && mChaos >= 0.4) { //umbral de salida subiendo
+			std::cout << "EXIT 9 Oh boy bottom row AM" << std::endl;
+			std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
+			consumeChaos = true;
+		}  else if (mPrevChaos > 0.2 && mChaos <= 0.2) { //umbral de salida bajando
+			std::cout << "EXIT 9 Oh boy bottom row AM" << std::endl;
+			std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
+			consumeChaos = true;
+		}
+		
+		if (std::find(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp) != mCampanitasStates.end()) {
+			mCampanitasCounter[stateCamp]++;
+			if (mCampanitasCounter[stateCamp] > TimeDelta * io.framesPerSecond()/ io.framesPerBuffer()) {
+				if (rnd::prob(0.5)) { // prob
+					std::cout << "9 Oh boy bottom row AM Trigger" << std::endl;
+					addSynthCampanas.mPresetHandler.recallPresetSynchronous(9); // preset
+					int midinote = rnd::uniform(40,30); //rango de notas entre MIDI 36 y 20. Si es solo una es el numero despues del =
+					addSynthCampanas.mFundamental = midi2cps(midinote);
+					addSynthCampanas.mLevel = 1;// nivel
+					addSynthCampanas.trigger(midinote);
+					msgQueue.send(msgQueue.now() + 15, releaseAddSynth, &addSynthCampanas, midinote); // duracion
+					
+					mCampanitasCounter[stateCamp] = 0;
+					std::cout << "9 Oh boy bottom row AM" << std::endl;
+				} else {
+					mCampanitasCounter[stateCamp] = (TimeDelta - ifNotTime) * io.framesPerSecond()/ io.framesPerBuffer();
+				}
+			}
+		}
+		// 10 Oh Boy Bottom its FM 2 --------------------
+		TimeDelta = 12; // separacion entre notas
+		ifNotTime = 4; //
+		stateCamp = 10; //numero de preset
+		if (mPrevChaos < 0.55 && mChaos >= 0.55) { //umbral de entrada subiendo
+			mCampanitasStates.push_back(stateCamp);
+			std::cout << "ENTER 10 Oh Boy Its FM2" << std::endl;//print esto
+			mCampanitasCounter[stateCamp] = TimeDelta * io.framesPerSecond()/ io.framesPerBuffer();
+			consumeChaos = true;
+		} else if (mPrevChaos < 0.75 && mChaos >= 0.75) { //umbral de salida subiendo
+			std::cout << "EXIT 10 Oh Boy Its FM2" << std::endl;
+			std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
+			consumeChaos = true;
+		} else if (mPrevChaos > 0.55 && mChaos <= 0.55) { //umbral de entrada bajando
+			if (std::find(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp) == mCampanitasStates.end() ) {
+				mCampanitasStates.push_back(stateCamp);
+				std::cout << "ENTER 10 Oh Boy Its FM2" << std::endl;//print esto
+				mCampanitasCounter[stateCamp] = TimeDelta * io.framesPerSecond()/ io.framesPerBuffer();
+				consumeChaos = true;
+			}
+		}  else if (mPrevChaos > 0.47 && mChaos <= 0.47) { //umbral de salida bajando
+			std::cout << "EXIT 10 Oh Boy Its FM2" << std::endl;
+			std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
+			consumeChaos = true;
+		}
+		
+		if (std::find(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp) != mCampanitasStates.end()) {
+			mCampanitasCounter[stateCamp]++;
+			if (mCampanitasCounter[stateCamp] > TimeDelta * io.framesPerSecond()/ io.framesPerBuffer()) {
+				if (rnd::prob(0.2)) { // probabilidad
+					std::cout << "10 Oh Boy Its FM2 Trigger" << std::endl;
+					addSynthCampanas.mPresetHandler.recallPresetSynchronous(10); // preset
+					int midinote = rnd::uniform(76,24); //rango de notas entre MIDI 36 y 20. Si es solo una es el numero despues del =
+					addSynthCampanas.mFundamental = midi2cps(midinote);
+					addSynthCampanas.mLevel = 0.6;// nivel
+					addSynthCampanas.trigger(midinote);
+					msgQueue.send(msgQueue.now() + rnd::uniform(12,9), releaseAddSynth, &addSynthCampanas, midinote); // duracion
+					
+					mCampanitasCounter[stateCamp] = 0;
+					std::cout << "10 Oh Boy Its FM2" << std::endl;
+				} else {
+					mCampanitasCounter[stateCamp] = (TimeDelta - ifNotTime) * io.framesPerSecond()/ io.framesPerBuffer();
+				}
+			}
+		}
+		// 12 Bells 1 --------------------
+		TimeDelta = 0.05; // separacion entre notas
+		ifNotTime = 4; //
+		stateCamp = 12; //numero de preset
+		if (mPrevChaos < 0.55 && mChaos >= 0.55) { //umbral de entrada subiendo
+			mCampanitasStates.push_back(stateCamp);
+			std::cout << "ENTER 12 Bells 1" << std::endl;//print esto
+			mCampanitasCounter[stateCamp] = TimeDelta * io.framesPerSecond()/ io.framesPerBuffer();
+			consumeChaos = true;
+		} else if (mPrevChaos < 0.75 && mChaos >= 0.75) { //umbral de salida subiendo
+			std::cout << "EXIT 10 12 Bells 1" << std::endl;
+			std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
+			consumeChaos = true;
+		} else if (mPrevChaos > 0.55 && mChaos <= 0.55) { //umbral de entrada bajando
+			if (std::find(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp) == mCampanitasStates.end() ) {
+				mCampanitasStates.push_back(stateCamp);
+				std::cout << "ENTER 12 Bells 1" << std::endl;//print esto
+				mCampanitasCounter[stateCamp] = TimeDelta * io.framesPerSecond()/ io.framesPerBuffer();
+				consumeChaos = true;
+			}
+		}  else if (mPrevChaos > 0.3 && mChaos <= 0.3) { //umbral de salida bajando
+			std::cout << "EXIT 12 Bells 1" << std::endl;
+			std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
+			consumeChaos = true;
+		}
+		
+		if (std::find(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp) != mCampanitasStates.end()) {
+			mCampanitasCounter[stateCamp]++;
+			if (mCampanitasCounter[stateCamp] > TimeDelta * io.framesPerSecond()/ io.framesPerBuffer()) {
+				if (rnd::prob(0.4)) { // probabilidad
+					std::cout << "12 Bells 1 Trigger" << std::endl;
+					addSynthCampanas.mPresetHandler.recallPresetSynchronous(12); // preset
+					int midinote = rnd::uniform(110,63); //rango de notas entre MIDI 36 y 20. Si es solo una es el numero despues del =
+					addSynthCampanas.mFundamental = midi2cps(midinote);
+					addSynthCampanas.mLevel = 0.6;// nivel
+					addSynthCampanas.trigger(midinote);
+					msgQueue.send(msgQueue.now() + rnd::uniform(12,9), releaseAddSynth, &addSynthCampanas, midinote); // duracion
+					
+					mCampanitasCounter[stateCamp] = 0;
+					std::cout << "12 Bells 1" << std::endl;
+				} else {
+					mCampanitasCounter[stateCamp] = (TimeDelta - ifNotTime) * io.framesPerSecond()/ io.framesPerBuffer();
+				}
+			}
+		}
+		// 37 Is It a drop --------------------
+		TimeDelta = 10; // separacion entre notas
+		ifNotTime = 1; //
+		stateCamp = 37; //numero de preset
+		if (mPrevChaos < 0.65 && mChaos >= 0.65) { //umbral de entrada subiendo
+			mCampanitasStates.push_back(stateCamp);
+			std::cout << "ENTER 37 Is It  a   D R O P   ?" << std::endl;//print esto
+			mCampanitasCounter[stateCamp] = TimeDelta * io.framesPerSecond()/ io.framesPerBuffer();
+			consumeChaos = true;
+		} else if (mPrevChaos < 0.75 && mChaos >= 0.75) { //umbral de salida subiendo
+			std::cout << "EXIT 37 Is It  a   D R O P   ?" << std::endl;
+			std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
+			consumeChaos = true;
+		} else if (mPrevChaos > 0.75 && mChaos <= 0.75) { //umbral de entrada bajando
+			if (std::find(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp) == mCampanitasStates.end() ) {
+				mCampanitasStates.push_back(stateCamp);
+				std::cout << "ENTER 37 Is It  a   D R O P   ?" << std::endl;//print esto
+				mCampanitasCounter[stateCamp] = TimeDelta * io.framesPerSecond()/ io.framesPerBuffer();
+				consumeChaos = true;
+			}
+		}  else if (mPrevChaos > 0.65 && mChaos <= 0.65) { //umbral de salida bajando
+			std::cout << "EXIT 37 Is It  a   D R O P   ?" << std::endl;
+			std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
+			consumeChaos = true;
+		}
+		
+		if (std::find(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp) != mCampanitasStates.end()) {
+			mCampanitasCounter[stateCamp]++;
+			if (mCampanitasCounter[stateCamp] > TimeDelta * io.framesPerSecond()/ io.framesPerBuffer()) {
+				if (rnd::prob(0.4)) { // probabilidad
+					std::cout << "37 Is It  a   D R O P   ? Trigger" << std::endl;
+					addSynthCampanas.mPresetHandler.recallPresetSynchronous(37); // preset
+					int midinote = rnd::uniform(88,40); //rango de notas entre MIDI 36 y 20. Si es solo una es el numero despues del =
+					addSynthCampanas.mFundamental = midi2cps(midinote);
+					addSynthCampanas.mLevel = 0.9;// nivel
+					addSynthCampanas.trigger(midinote);
+					msgQueue.send(msgQueue.now() + 15, releaseAddSynth, &addSynthCampanas, midinote); // duracion. En este caso quiero que la duración se mayor que 15, no solo 15
+					
+					mCampanitasCounter[stateCamp] = 0;
+					std::cout << "37 Is It  a   D R O P   ?" << std::endl;
+				} else {
+					mCampanitasCounter[stateCamp] = (TimeDelta - ifNotTime) * io.framesPerSecond()/ io.framesPerBuffer();
+				}
+			}
+		}
+		// 38 Slow FM Bells --------------------
+		TimeDelta = 2; // separacion entre notas
+		ifNotTime = 2; //
+		stateCamp = 38; //numero de preset
+		if (mPrevChaos < 0.25 && mChaos >= 0.25) { //umbral de entrada subiendo
+			mCampanitasStates.push_back(stateCamp);
+			std::cout << "ENTER 38 Slow   F M   B  e l l s" << std::endl;//print esto
+			mCampanitasCounter[stateCamp] = TimeDelta * io.framesPerSecond()/ io.framesPerBuffer();
+			consumeChaos = true;
+		} else if (mPrevChaos < 0.50 && mChaos >= 0.50) { //umbral de salida subiendo
+			std::cout << "EXIT 38 Slow   F M   B  e l l s" << std::endl;
+			std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
+			consumeChaos = true;
+		} else if (mPrevChaos > 0.5 && mChaos <= 0.5) { //umbral de entrada bajando
+			if (std::find(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp) == mCampanitasStates.end() ) {
+				mCampanitasStates.push_back(stateCamp);
+				std::cout << "ENTER 38 Slow   F M   B  e l l s" << std::endl;//print esto
+				mCampanitasCounter[stateCamp] = TimeDelta * io.framesPerSecond()/ io.framesPerBuffer();
+				consumeChaos = true;
+			}
+		}  else if (mPrevChaos > 0.35 && mChaos <= 0.35) { //umbral de salida bajando
+			std::cout << "EXIT 38 Slow   F M   B  e l l s" << std::endl;
+			std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
+			consumeChaos = true;
+		}
+		
+		if (std::find(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp) != mCampanitasStates.end()) {
+			mCampanitasCounter[stateCamp]++;
+			if (mCampanitasCounter[stateCamp] > TimeDelta * io.framesPerSecond()/ io.framesPerBuffer()) {
+				if (rnd::prob(0.3)) { // probabilidad Quiero que sea diferente subiendo que bajando. Subiendo 30 bajando 10
+					std::cout << "38 Slow   F M   B  e l l s Trigger" << std::endl;
+					addSynthCampanas.mPresetHandler.recallPresetSynchronous(38); // preset
+					int midinote = rnd::uniform(70,28); //rango de notas entre MIDI 36 y 20. Si es solo una es el numero despues del =
+					addSynthCampanas.mFundamental = midi2cps(midinote);
+					addSynthCampanas.mLevel = 0.9;// nivel
+					addSynthCampanas.trigger(midinote);
+					msgQueue.send(msgQueue.now() + 2.5, releaseAddSynth, &addSynthCampanas, midinote); // duracion.
+					
+					mCampanitasCounter[stateCamp] = 0;
+					std::cout << "38 Slow   F M   B  e l l s" << std::endl;
+				} else {
+					mCampanitasCounter[stateCamp] = (TimeDelta - ifNotTime) * io.framesPerSecond()/ io.framesPerBuffer();
+				}
+			}
+		}
+		// 41 Slow FMs --------------------
+		TimeDelta = 12; // separacion entre notas
+		ifNotTime = 4; //
+		stateCamp = 41; //numero de preset
+		if (mPrevChaos < 0.55 && mChaos >= 0.55) { //umbral de entrada subiendo
+			mCampanitasStates.push_back(stateCamp);
+			std::cout << "ENTER 41 Slow   F M s" << std::endl;//print esto
+			mCampanitasCounter[stateCamp] = TimeDelta * io.framesPerSecond()/ io.framesPerBuffer();
+			consumeChaos = true;
+		} else if (mPrevChaos < 0.75 && mChaos >= 0.75) { //umbral de salida subiendo
+			std::cout << "EXIT 41 Slow   F M s" << std::endl;
+			std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
+			consumeChaos = true;
+		} else if (mPrevChaos > 0.75 && mChaos <= 0.75) { //umbral de entrada bajando
+			if (std::find(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp) == mCampanitasStates.end() ) {
+				mCampanitasStates.push_back(stateCamp);
+				std::cout << "ENTER 41 Slow   F M s" << std::endl;//print esto
+				mCampanitasCounter[stateCamp] = TimeDelta * io.framesPerSecond()/ io.framesPerBuffer();
+				consumeChaos = true;
+			}
+		}  else if (mPrevChaos > 0.55 && mChaos <= 0.55) { //umbral de salida bajando
+			std::cout << "EXIT 41 Slow   F M s" << std::endl;
+			std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
+			consumeChaos = true;
+		}
+		
+		if (std::find(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp) != mCampanitasStates.end()) {
+			mCampanitasCounter[stateCamp]++;
+			if (mCampanitasCounter[stateCamp] > TimeDelta * io.framesPerSecond()/ io.framesPerBuffer()) {
+				if (rnd::prob(0.15)) { // probabilidad
+					std::cout << "41 Slow   F M s Trigger" << std::endl;
+					addSynthCampanas.mPresetHandler.recallPresetSynchronous(41); // preset
+					int midinote = rnd::uniform(63,24); //rango de notas entre MIDI 36 y 20. Si es solo una es el numero despues del =
+					addSynthCampanas.mFundamental = midi2cps(midinote);
+					addSynthCampanas.mLevel = 0.9;// nivel
+					addSynthCampanas.trigger(midinote);
+					msgQueue.send(msgQueue.now() + 20, releaseAddSynth, &addSynthCampanas, midinote); // duracion.
+					
+					mCampanitasCounter[stateCamp] = 0;
+					std::cout << "41 Slow   F M s" << std::endl;
+				} else {
+					mCampanitasCounter[stateCamp] = (TimeDelta - ifNotTime) * io.framesPerSecond()/ io.framesPerBuffer();
+				}
+			}
+		}
 
 
     }
