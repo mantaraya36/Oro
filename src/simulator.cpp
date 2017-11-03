@@ -342,7 +342,7 @@ public:
         state().velocity = velocity.get();
         state().mouseDown = mMouseDown == 1.0;
 
-        state().casasPhase += 0.1 + state().chaos * 0.2;
+        state().casasPhase += 0.03 + state().chaos * 0.1;
 //		if (state().casasPhase > 360) { state().casasPhase -= 360;}
 
         mMaker.set(state());

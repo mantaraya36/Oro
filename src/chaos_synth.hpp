@@ -147,12 +147,6 @@ public:
     void generateAudio(AudioIOData &io) {
         float noise;
         float max = 0.0;
-		if (rnd::prob(changeProb.get()/1000.0)) {
-            freqDev1 = phsrFreq1 * changeDev.get() * 0.01 * rnd::uniform(1.0, -1.0);
-            freqDev2 = phsrFreq2 * changeDev.get() * 0.01 * rnd::uniform(1.0, -1.0);
-            mOsc1.freq(phsrFreq1 + freqDev1);
-            mOsc2.freq(phsrFreq2 + freqDev2);
-        }
         while (io()) {
             float outL, outR;
             float env = al::clip((mEnvOsc1() + mEnvOsc2()), 0.0, 1.0);
@@ -160,6 +154,12 @@ public:
 			float outerenv = mEnv();
             float basstone = (env * 0.5) * (mOsc1() + mOsc2()) * outerenv;
 
+			if (rnd::prob(changeProb.get()/1000.0)) {
+	            freqDev1 = phsrFreq1 * changeDev.get() * 0.01 * rnd::uniform(1.0, -1.0);
+	            freqDev2 = phsrFreq2 * changeDev.get() * 0.01 * rnd::uniform(1.0, -1.0);
+	            mOsc1.freq(phsrFreq1 + freqDev1);
+	            mOsc2.freq(phsrFreq2 + freqDev2);
+	        }
 			float revOutL, revOutR;
 			if(mSilenceDetect(basstone)) {
 				mBassChannel += rnd::uniform(-8, 8);

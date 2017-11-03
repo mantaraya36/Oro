@@ -437,6 +437,13 @@ void AudioApp::trigger22()
     msgQueue.send(msgQueue.now() + 25, releaseAddSynth, &addSynthCampanas, midinote);
 };
 
+static void turnoffSeq4(al_sec timestamp, AddSynth * addSynth4)
+{
+    addSynth4[0].allNotesOff();
+    addSynth4[1].allNotesOff();
+    addSynth4[2].allNotesOff();
+}
+
 void AudioApp::onAudioCB(AudioIOData &io)
 {
     int bufferSize = io.framesPerBuffer();
@@ -1028,9 +1035,8 @@ consumeChaos = true;
             addSynth[0].allNotesOff();
             addSynth[1].allNotesOff();
             addSynth[2].allNotesOff();
-            addSynth4[0].allNotesOff();
-            addSynth4[1].allNotesOff();
-            addSynth4[2].allNotesOff();
+
+            msgQueue.send(msgQueue.now() + 3.5, turnoffSeq4, addSynth4); // duracion.
             mSequencer3a.playSequence("Seq 3-1");
             mSequencer3b.playSequence("Seq 3-2");
             mSequencer3c.playSequence("Seq 3-3");
@@ -1061,6 +1067,10 @@ consumeChaos = true;
     }
 
     msgQueue.advance(io.framesPerBuffer()/io.framesPerSecond());
+
+    if (mChaos == 0 && mPrevChaos > 0.0) {
+        mCampanitasStates.clear();
+    }
 
     if (consumeChaos) {
         mPrevChaos = mChaos;

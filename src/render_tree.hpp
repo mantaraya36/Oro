@@ -169,6 +169,7 @@ public:
 
 	// FIXME this is a hack to pass the uniform number. We should be able to pass the uniform name instead
 	void setUniform(int program, int uniformName, float value) {
+		mProgram = program;
 		mUniformValues[uniformName] = value;
 	}
 
@@ -304,7 +305,10 @@ private:
 		std::lock_guard<std::mutex> locker(mModuleLock);
 		std::map<int, float> uniformCache;
 		for (auto uniValues: mUniformValues) {
-			glUniform1f(uniValues.first, 0.432);
+			float currentValue;
+			glGetUniformfv(mProgram, uniValues.first, &currentValue);
+			uniformCache[uniValues.first] = currentValue;
+			glUniform1f(uniValues.first, uniValues.second);
 		}
 //        We should do some form of depth sorting here? It might help with occlusion in many cases...
         g.blending(true);
@@ -337,6 +341,9 @@ private:
             mBehaviors.erase(std::find(mBehaviors.begin(),mBehaviors.end(), behavior));
         }
         mTicks++;
+		for (auto uniValues: uniformCache) {
+			glUniform1f(uniValues.first, uniValues.second);
+		}
     }
 
 	Relayer *mRelayer {nullptr};

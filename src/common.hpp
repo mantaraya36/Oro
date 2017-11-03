@@ -462,6 +462,8 @@ public:
     void onDraw(Graphics& g){
         // it is important that you set both
 
+		float chaos = state().chaos;
+
         g.cullFace(false);
         g.blending(true);
         g.blendModeTrans();
@@ -526,10 +528,10 @@ public:
 		fogStart = 1.0;
         fogEnd = 10.0;
 
-        if (state().chaos > 0.1 && state().chaos < 0.4) {
-			fogStart += (2 - fogStart) * (state().chaos - 0.1) / 0.3;
-			fogEnd += (30 - fogEnd) * (state().chaos - 0.1) / 0.3;
-		} else if (state().chaos >= 0.4) {
+        if (chaos > 0.1 && chaos < 0.4) {
+			fogStart += (2 - fogStart) * (chaos - 0.1) / 0.3;
+			fogEnd += (30 - fogEnd) * (chaos - 0.1) / 0.3;
+		} else if (chaos >= 0.4) {
 			fogStart = 2;
 			fogEnd = 30;
 		}
@@ -538,7 +540,7 @@ public:
 		float wobble2 = 0.1 + sin(state().casasPhase*0.012);
 
         g.fog(fogEnd, fogStart, Color(0,0,0, 0.2));
-        shader().uniform("tint", Color{1, 1- state().chaos, 0}); // put in color here
+        shader().uniform("tint", Color{1, 1- chaos, 0}); // put in color here
 
 		g.pushMatrix();
 		g.scale(2);
@@ -557,13 +559,13 @@ public:
 					g.translate(*dev/-2.0f, 0.0f, -z + *dev);
 					g.draw(mGrid[count]);
 					g.pushMatrix();
-					g.rotate(90, 0, 1, *dev* state().chaos );
+					g.rotate(90, 0, 1, *dev* chaos );
 					g.translate(0, *dev, 0);
 					g.draw(mGridVertical[count]);
 					g.popMatrix();
 					g.pushMatrix();
 					g.rotate(90,1, 0, 0);
-					g.translate(*dev, *dev - state().chaos, 0);
+					g.translate(*dev, *dev - chaos, 0);
 					g.draw(mGridHorizontal[count]);
 					g.popMatrix();
 					g.popMatrix();
@@ -589,14 +591,14 @@ public:
 
         g.fog(30, 2, Color(0,0,0, 0.2));
         g.pushMatrix();
-        g.translate(0, LAGOON_Y, -2.0);
+        g.translate(0, LAGOON_Y - chaos * 2.0, -3.0);
         g.rotate(90, 1, 0, 0);
         float waterScale = 4.5;
-        if (state().chaos > 0.6) {
-			waterScale += 2.0 * (state().chaos - 0.6) * 0.4;
+        if (chaos > 0.6) {
+			waterScale += 3.0 * (chaos - 0.6) * 0.4;
         }
         g.scale(1.4 * waterScale, 1.4 * waterScale, 0.4 * waterScale);
-        shader().uniform("tint", Color{1, 1- state().chaos, 0}); // put in color here
+        shader().uniform("tint", Color{1, 1- chaos, 0}); // put in color here
         g.draw(waterMesh);
         g.popMatrix();
         shader().uniform("tint", Color{1, 1, 1});
@@ -625,7 +627,7 @@ public:
         }
 
 //		g.lighting(true);
-		float casasIndex = state().chaos;
+		float casasIndex = chaos;
 		shader().uniform("lighting", 0.0);
 		shader().uniform("texture", casasIndex);
 //        shader().uniform("enableFog", 1.0);
@@ -648,7 +650,7 @@ public:
 					g.pushMatrix();
 					g.rotate(i*30 + j *180, 0, 0.1, 1);
 
-					g.translate(0.35 + state().chaos * 2, 0, -2 - 0.01 * i);
+					g.translate(0.35 + chaos * 2, 0, -2 - 0.01 * i);
 					float dev1 = *dev++;
 					float dev2 = *dev++;
 					g.translate(dev1* 0.04, 0, dev2* 0.1);
@@ -673,7 +675,7 @@ public:
 					float dev2 = *dev++;
 					g.translate(dev1* 0.1, dev2* 0.2, 0);
 					g.rotate(i*20 + j *140, 0.05, 0.1, 1);
-					g.translate(-0.1 + state().chaos* 1.2, 0, -2 + 0.01 * i);
+					g.translate(-0.1 + chaos* 1.2, 0, -2 + 0.01 * i);
 
 					g.rotate(i*20 + j *140,-1);
 
@@ -696,17 +698,17 @@ public:
         }
 		g.popMatrix();
 
-		if (mPreviousChaos > 0.3 && state().chaos <= 0.3) {
+		if (mPreviousChaos > 0.3 && chaos <= 0.3) {
             mRenderTree.clear();
         }
 		shader().uniform("texture", 1.0);
 
-		shader().uniform("tint", Color{1, 1- state().chaos, 0}); // put in color here
+//		shader().uniform("tint", Color{1, 1- chaos, 0}); // put in color here
 		mRenderTree.render(g);
 
-		shader().uniform("tint", Color{1, 1, 1}); // put in color here
+//		shader().uniform("tint", Color{1, 1, 1}); // put in color here
 		g.blendOff();
-		mPreviousChaos = state().chaos;
+		mPreviousChaos = chaos;
 
 	}
 
@@ -760,7 +762,9 @@ public:
 
 		std::shared_ptr<LineStripModule> lineStrip = mRenderTree.createModule<LineStripModule>();
 		lineStrip->setColor(Color(0.2, 0.6, 0.6, 0.5));
-		lineStrip->setUniform(shader().uniform("texture"), 0.0);
+		lineStrip->setUniform(shader().id(), shader().uniform("texture"), 0.0);
+		lineStrip->setUniform(shader().id(), shader().uniform("lighting"), 1.0);
+
 		for (auto bcHex: mBitcoinHexes) {
 			Vec3f pos = bcHex->getPosition();
 			if (pos.z < 0 ) {

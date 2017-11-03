@@ -45,7 +45,7 @@ public:
 
 		initWindow();
 
-//		window(0).fullScreenToggle();
+		window(0).fullScreenToggle();
 //        navControl().useMouse(false);
         window().remove(navControl());
         reset();
@@ -204,7 +204,7 @@ public:
         mesh.generateNormals();
 		mDist = 0;
 
-		if (chaos == 0.0 && mPreviousChaos != 0.0) {
+		if (chaos < 0.001 && mPreviousChaos >= 0.001) {
 			reset();
 		}
 
