@@ -270,7 +270,7 @@ void main() {
   n *= 0.5; // [-1:+1] to [0:1]
 
   vec4 textureColor = texture2D(texture0, gl_TexCoord[0].st);
-  float multiplier = 0.25 + 0.75 * n;
+  float multiplier = 0.75 + 0.25 * n; // 0.25 + 0.75 * n;
   gl_FragColor = vec4(multiplier * textureColor.rgb, textureColor.a);
 }
 )";

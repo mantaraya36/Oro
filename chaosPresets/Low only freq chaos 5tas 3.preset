@@ -1,0 +1,10 @@
+::Low only freq chaos 5tas 3
+/Level f 1.000000
+/changeDev f 1.446148
+/changeProb f 0.011400
+/envFreq1 f 1.049800
+/envFreq2 f 4.000000
+/noiseRnd f 0.000000
+/phsrFreq1 f 120.470825
+/phsrFreq2 f 180.500000
+::

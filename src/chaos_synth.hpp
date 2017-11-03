@@ -147,14 +147,14 @@ public:
     void generateAudio(AudioIOData &io) {
         float noise;
         float max = 0.0;
+		if (rnd::prob(changeProb.get()/1000.0)) {
+            freqDev1 = phsrFreq1 * changeDev.get() * 0.01 * rnd::uniform(1.0, -1.0);
+            freqDev2 = phsrFreq2 * changeDev.get() * 0.01 * rnd::uniform(1.0, -1.0);
+            mOsc1.freq(phsrFreq1 + freqDev1);
+            mOsc2.freq(phsrFreq2 + freqDev2);
+        }
         while (io()) {
             float outL, outR;
-            if (rnd::prob(changeProb.get()/1000.0)) {
-                freqDev1 = phsrFreq1 * changeDev.get() * 0.01 * rnd::uniform(1.0, -1.0);
-                freqDev2 = phsrFreq2 * changeDev.get() * 0.01 * rnd::uniform(1.0, -1.0);
-                mOsc1.freq(phsrFreq1 + freqDev1);
-                mOsc2.freq(phsrFreq2 + freqDev2);
-            }
             float env = al::clip((mEnvOsc1() + mEnvOsc2()), 0.0, 1.0);
             // basstone |
 			float outerenv = mEnv();
@@ -167,9 +167,9 @@ public:
 				if (mBassChannel < 0) {
 					mBassChannel += 60;
 				}
-				while (mNoiseChannel == 47
-				       || mNoiseChannel == 12 || mNoiseChannel == 13 || mNoiseChannel == 14 || mNoiseChannel == 15
-				       || mNoiseChannel == 46
+				while (mBassChannel == 47
+				       || mBassChannel == 12 || mBassChannel == 13 || mBassChannel == 14 || mBassChannel == 15
+				       || mBassChannel == 46
 				       ) {
 					mBassChannel += rnd::uniform(-8, 8);
 					mBassChannel %= 60;
@@ -178,9 +178,9 @@ public:
 					}
 				}
 			}
-            mReverb(basstone, revOutL, revOutR);
-			outL = mDCBlockL(revOutL);
-            outR = mDCBlockR(revOutR);
+//            mReverb(basstone, revOutL, revOutR);
+//			outL = mDCBlockL(revOutL);
+//            outR = mDCBlockR(revOutR);
 			outL = outL * mLevel * 0.05;
 			outR = outR * mLevel * 0.05;
 			if (mOsc1.freq() > 0.001 && mOsc2.freq() > 0.001) {
@@ -221,13 +221,14 @@ public:
             // output
 
 			io.out(mNoiseChannel) += noiseOut;
-			mReverbNoise(noiseOut, revOutL, revOutR);
+//			mReverbNoise(noiseOut, revOutL, revOutR);
 
 //			io.out(20) += revOutL * 0.1;
 //			io.out(26) += revOutR * 0.1;
 			io.out(47) += (/*revOutR + revOutL +*/ noiseOut) * 0.07 * mTrim;
 
         }
+
     }
 
     void resetNoisy()  {

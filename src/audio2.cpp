@@ -16,8 +16,7 @@
 #include "granulator.hpp"
 #include "downmixer.hpp"
 
-#define CHAOS_SYNTH_POLYPHONY 1
-#define ADD_SYNTH_POLYPHONY 1
+#define CHAOS_SYNTH_POLYPHONY 3
 
 using namespace std;
 using namespace al;
@@ -107,8 +106,8 @@ public:
         mFromSimulator.timeout(0.005);
         mFromSimulator.start();
         mVocesEnv.sustainPoint(1);
-        mVocesEnv.lengths()[1] = 1.2;
-        mVocesEnv.lengths()[2] = 1.2;
+//        mVocesEnv.lengths()[1] = 1.2;
+//        mVocesEnv.lengths()[2] = 1.2;
         mVocesEnv.release();
     }
 
@@ -179,7 +178,7 @@ private:
 //    "Cura 7Ch/Cura 7Ch.Ls.wav",  "Cura 7Ch/Cura 7Ch.Rs.wav"
     std::vector<int> mVoicesRouting = {38, 40, 36, 10, 7, 42, 34 };
     std::vector<std::shared_ptr<SoundFileBuffered>> mVoices;
-    gam::ADSR<> mVocesEnv {0.3, 0.3, 0.9, 2.0};
+    gam::ADSR<> mVocesEnv {0.3, 0.3, 1.0, 4.0};
 
     // Schedule Messages
     MsgQueue msgQueue;
@@ -232,7 +231,7 @@ void AudioApp::basesAudio(AudioIOData &io)
 
     ///// Bases ---------
 
-    std::vector<float> mCamasGains = {0.1, 0.1, 0.1, 0.1, 0.1};
+    std::vector<float> mCamasGains = {0.03, 0.05, 0.07, 0.1, 0.2};
 
     int fileIndex = 0;
     if (mChaos < 0.2) {
@@ -294,7 +293,6 @@ void AudioApp::basesAudio(AudioIOData &io)
     } else {
         fileIndex = 4;
         readFile(mCamaFiles[fileIndex], readBuffer, io, mCamasRouting, mCamasGains[fileIndex]);
-
     }
 }
 
@@ -304,11 +302,11 @@ void AudioApp::vocesCura(AudioIOData &io)
     float *swBuffer = io.outBuffer(47);
     // Voces atras
     float vocesGain = 0.0;
-    const float vocesGainTarget = 1.0;
+    const float vocesGainTarget = 0.8;
 
-    if (mChaos > 0.3) {
-        vocesGain = vocesGainTarget * ((mChaos - 0.4)/ 0.25);
-    } else if (mChaos > 0.5) {
+    if (mChaos > 0.45) {
+        vocesGain = vocesGainTarget * ((mChaos - 0.45)/ 0.25);
+    } else if (mChaos > 0.7) {
         vocesGain = vocesGainTarget;
     }
     for (int i = 0; i < mVoices.size(); i++) {
@@ -331,11 +329,12 @@ void AudioApp::vocesCura(AudioIOData &io)
 
 void AudioApp::chaosSynthAudio(AudioIOData &io)
 {
+    bool consumeChaos = false;
 
-    if (mChaos > 0.4) {
-        chaosSynth[0].mTrim = 0.5 + 0.8 * ((mChaos - 0.4)/ 0.6);
+    if (mChaos > 0.6) {
+        chaosSynth[0].mTrim = 0.2 + 2. * ((mChaos - 0.6)/ 0.4);
     } else {
-        chaosSynth[0].mTrim = 0.5;
+        chaosSynth[0].mTrim = 0.2;
     }
     ////// Rangos de chaos para chaos synth
     float rangeStart, rangeEnd;
@@ -346,22 +345,34 @@ void AudioApp::chaosSynthAudio(AudioIOData &io)
             ) {
         std::cout << "trigger CHAOS 1" << std::endl;
         chaosSynth[0].mPresetHandler.recallPreset("12");
+        chaosSynth[0].mTrim = 0.4;
         chaosSynth[0].setOutputIndeces(rnd::uniform(47, 16),rnd::uniform(47, 16));
         chaosSynth[0].trigger(0);
+        consumeChaos = true;
     } else if (mPrevChaos > rangeStart &&  mChaos <= rangeStart) {
+        chaosSynth[0].mPresetHandler.recallPreset("12");
+        chaosSynth[0].mTrim = 0.4;
         chaosSynth[0].release(0);
+        consumeChaos = true;
+    }
+    if (mPrevChaos > 0.65 &&  mChaos <= 0.65) { // Apagarlo cuando baja
+        chaosSynth[0].mPresetHandler.recallPreset("12");
+        chaosSynth[0].release(0);
+        consumeChaos = true;
     }
  ///////////////////////////
     rangeStart = 0.5;
-    rangeEnd = 0.6;
+    rangeEnd = 0.7;
     if ((mPrevChaos < rangeStart &&  mChaos >= rangeStart)
             || (mPrevChaos > rangeEnd &&  mChaos <= rangeEnd)
             ) {
         chaosSynth[0].mPresetHandler.recallPreset(0);
         chaosSynth[0].setOutputIndeces(rnd::uniform(47, 16),rnd::uniform(47, 16));
-//        chaosSynth[0].trigger(0);
+        chaosSynth[0].trigger(0);
+        consumeChaos = true;
     } else if (mPrevChaos > rangeStart &&  mChaos <= rangeStart) {
 //        chaosSynth[0].release(0);
+        consumeChaos = true;
     }
     ////////
     rangeStart = 0.6;
@@ -374,8 +385,10 @@ void AudioApp::chaosSynthAudio(AudioIOData &io)
         chaosSynth[0].mPresetHandler.recallPreset(0);
         chaosSynth[0].setOutputIndeces(rnd::uniform(47, 16),rnd::uniform(47, 16));
         chaosSynth[0].trigger(0);
+        consumeChaos = true;
     } else if (mPrevChaos > rangeStart &&  mChaos <= rangeStart) {
 //        chaosSynth[0].release(0);
+        consumeChaos = true;
     }
     if (mChaos > rangeStart && mChaos < rangeEnd) {
         chaosCounter++;
@@ -414,8 +427,10 @@ void AudioApp::chaosSynthAudio(AudioIOData &io)
         chaosSynth[0].mPresetHandler.recallPreset(0);
         chaosSynth[0].setOutputIndeces(rnd::uniform(47, 16),rnd::uniform(47, 16));
         chaosSynth[0].trigger(0);
+        consumeChaos = true;
 	} else if (mPrevChaos > rangeStart &&  mChaos <= rangeStart) {
 //		chaosSynth[0].release(0);
+        consumeChaos = true;
 	}
     if (mChaos > rangeStart && mChaos < rangeEnd) {
         chaosCounter++;
@@ -444,6 +459,76 @@ void AudioApp::chaosSynthAudio(AudioIOData &io)
         }
     }
 
+    // Segundo synth caos
+
+    if (mPrevChaos < 0.8 && mChaos >= 0.8) {
+        chaosSynth[1].mPresetHandler.recallPresetSynchronous(63);
+        chaosSynth[1].mPresetHandler.setMorphTime(3 + rnd::uniform(1.0, -1.0));
+        chaosSynth[1].trigger(0);
+        consumeChaos = true;
+    } else if (mPrevChaos < 0.86 && mChaos >= 0.86) {
+        chaosSynth[1].mPresetHandler.recallPresetSynchronous(24);
+        consumeChaos = true;
+    } else if (mPrevChaos < 0.88 && mChaos >= 0.88) {
+        chaosSynth[1].mPresetHandler.recallPresetSynchronous(25);
+        consumeChaos = true;
+    } else if (mPrevChaos < 0.9 && mChaos >= 0.9) {
+        chaosSynth[1].mPresetHandler.recallPresetSynchronous(26);
+        consumeChaos = true;
+    } else if (mPrevChaos < 0.94 && mChaos >= 0.94) {
+        chaosSynth[1].mPresetHandler.recallPresetSynchronous(27);
+        consumeChaos = true;
+    } else if (mPrevChaos < 0.96 && mChaos >= 0.96) {
+        chaosSynth[1].mPresetHandler.recallPresetSynchronous(28);
+        consumeChaos = true;
+    } else if (mPrevChaos < 0.98 && mChaos >= 0.98) {
+        chaosSynth[1].mPresetHandler.recallPresetSynchronous(36);
+        consumeChaos = true;
+    } else if (mPrevChaos < 0.99 && mChaos >= 0.99) {
+        chaosSynth[1].mPresetHandler.recallPresetSynchronous(37);
+        consumeChaos = true;
+    } else if (mPrevChaos > 0.88 && mChaos <= 0.88) {
+        chaosSynth[1].mPresetHandler.recallPresetSynchronous(24);
+        consumeChaos = true;
+    } else if (mPrevChaos > 0.9 && mChaos <= 0.9) {
+        chaosSynth[1].mPresetHandler.recallPresetSynchronous(25);
+        consumeChaos = true;
+    } else if (mPrevChaos > 0.94 && mChaos <= 0.94) {
+        chaosSynth[1].mPresetHandler.recallPresetSynchronous(26);
+        consumeChaos = true;
+    } else if (mPrevChaos > 0.96 && mChaos <= 0.96) {
+        chaosSynth[1].mPresetHandler.recallPresetSynchronous(27);
+        consumeChaos = true;
+    } else if (mPrevChaos > 0.98 && mChaos <= 0.98) {
+        chaosSynth[1].mPresetHandler.recallPresetSynchronous(28);
+        consumeChaos = true;
+    } else if (mPrevChaos > 0.99 && mChaos <= 0.99) {
+        chaosSynth[1].mPresetHandler.recallPresetSynchronous(36);
+        consumeChaos = true;
+    }
+
+    if (mPrevChaos > 0.86 && mChaos <= 0.86) {
+        chaosSynth[1].mPresetHandler.recallPresetSynchronous(63);
+        chaosSynth[1].mPresetHandler.setMorphTime(3 + rnd::uniform(1.0, -1.0));
+        chaosSynth[1].release(0);
+        consumeChaos = true;
+    }
+    if (mPrevChaos > 0.79 && mChaos <= 0.79) {
+        chaosSynth[1].mPresetHandler.recallPresetSynchronous(63);
+        chaosSynth[1].release(0);
+        consumeChaos = true;
+    }
+    // Tercer synth caos
+
+    if (mPrevChaos < 0.9 && mChaos >= 0.9) {
+        chaosSynth[2].mPresetHandler.recallPresetSynchronous(39);
+//        chaosSynth[2].mPresetHandler.setMorphTime(3 + rnd::uniform(1.0, -1.0));
+        chaosSynth[2].trigger(0);
+        consumeChaos = true;
+    } else if (mPrevChaos > 0.9 && mChaos <= 0.9) {
+        chaosSynth[2].release(0);
+        consumeChaos = true;
+    }
 
     for (int i = 0; i < CHAOS_SYNTH_POLYPHONY; i++) {
         if (!chaosSynth[i].done()) {
@@ -451,7 +536,10 @@ void AudioApp::chaosSynthAudio(AudioIOData &io)
             io.frame(0);
         }
     }
-    mPrevChaos = mChaos;
+
+    if (consumeChaos) {
+        mPrevChaos = mChaos;
+    }
 }
 
 void AudioApp::onAudioCB(AudioIOData &io)

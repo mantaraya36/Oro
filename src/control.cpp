@@ -204,6 +204,10 @@ public:
         mesh.generateNormals();
 		mDist = 0;
 
+		if (chaos == 0.0 && mPreviousChaos != 0.0) {
+			reset();
+		}
+
     }
 
     void onDraw(Graphics& g){
@@ -288,6 +292,7 @@ public:
         } else if (m.addressPattern() == "/reset") {
             reset();
         } else if (m.addressPattern() == "/chaos" && m.typeTags() == "f") {
+			mPreviousChaos = mChaos;
             m >> mChaos;
 			mChaosDisplay->setText(std::to_string(mChaos));
         } else if (m.addressPattern() == "/velocity" && m.typeTags() == "f") {
@@ -323,6 +328,7 @@ public:
 
     // Remote parameters
     float mChaos;
+	float mPreviousChaos;
 
     // Local parameters
     ParameterVec3 color{"color", "", Vec3f(0.1, 0.4, 0.1)};

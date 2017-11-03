@@ -167,7 +167,8 @@ public:
 		}
 	}
 
-	void setUniform(std::string uniformName, float value) {
+	// FIXME this is a hack to pass the uniform number. We should be able to pass the uniform name instead
+	void setUniform(int program, int uniformName, float value) {
 		mUniformValues[uniformName] = value;
 	}
 
@@ -301,6 +302,10 @@ private:
 
     void renderInternal(Graphics &g, float dt = -1.0) {
 		std::lock_guard<std::mutex> locker(mModuleLock);
+		std::map<int, float> uniformCache;
+		for (auto uniValues: mUniformValues) {
+			glUniform1f(uniValues.first, 0.432);
+		}
 //        We should do some form of depth sorting here? It might help with occlusion in many cases...
         g.blending(true);
         g.blendAdd();
@@ -344,7 +349,8 @@ private:
     std::vector<std::shared_ptr<RenderModule>> mChildren;
     std::vector<std::shared_ptr<Behavior>> mBehaviors;
 	std::map<std::string, bool> mFlags;
-	std::map<std::string, float> mUniformValues;
+	std::map<int, float> mUniformValues;
+	int mProgram; // hack to store shader program index
 	u_int32_t mId {UINT32_MAX};
 };
 

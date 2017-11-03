@@ -331,7 +331,7 @@ public:
         decay.set(0.93 + (state().chaos* 0.068));
 //        shininess.set(50 - (state().chaos* 20));
 
-        state().chaos = state().chaos - 0.00025;
+        state().chaos = state().chaos - 0.0002;
         if (state().chaos < 0.0) {
             state().chaos = 0.0;
         }

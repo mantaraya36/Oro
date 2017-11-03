@@ -50,9 +50,9 @@ public:
 		if(block){
             do {
                 c=getchar();
-                putchar (c);
-                if (c == 'q') {
-                    std::cout << "ip" << std::endl;
+//                putchar (c);
+                if (c == 's') {
+                   printStatus();
                 }
                 if (c == 'w') {
                     std::cout << "ip" << std::endl;
@@ -60,6 +60,8 @@ public:
               } while (c != '.');
 		}
 	}
+
+    virtual void printStatus() = 0;
 
 private:
 	AudioIO mAudioIO;
@@ -333,6 +335,13 @@ public:
             m >> mChaos;
         }
     }
+    virtual void printStatus() override {
+        std::cout << "On States: ";
+        for (int i : mCampanitasStates) {
+            std::cout << i <<  "  ";
+        }
+        std::cout << std::endl;
+    }
 
 private:
     // Synthesis
@@ -363,7 +372,7 @@ private:
 
     float mChaos {0};
     float mPrevChaos {0};
-    std::vector<int> mCampanitasStates;
+    std::list<int> mCampanitasStates;
     int mCampanitasCounter[45] {0};
 };
 
@@ -443,6 +452,7 @@ void AudioApp::onAudioCB(AudioIOData &io)
             std::cout << "trigger" << std::endl;
             addSynthCampanas.mPresetHandler.recallPresetSynchronous("34");
             addSynthCampanas.mLayer = rnd::uniform(3);
+            addSynthCampanas.mLevel = 0.09;
             addSynthCampanas.mArcSpan = rnd::uniform(0.5, 2.0);
             addSynthCampanas.mArcStart = rnd::uniform();
             addSynthCampanas.mCumulativeDelayRandomness = addSynthCampanas.mCumulativeDelayRandomness +rnd::uniform(0.2, -0.2);
@@ -474,11 +484,11 @@ void AudioApp::onAudioCB(AudioIOData &io)
         } else if (mPrevChaos < 0.3 && mChaos >= 0.3) {
 
             std::cout << "EXIT campanitas stateCamp" << std::endl;
-            std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
+            mCampanitasStates.remove(stateCamp);
             consumeChaos = true;
         }  else if (mPrevChaos > 0.15 && mChaos <= 0.15) {
             std::cout << "EXIT campanitas stateCamp" << std::endl;
-            std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
+            mCampanitasStates.remove(stateCamp);
             consumeChaos = true;
         }
 
@@ -511,11 +521,11 @@ void AudioApp::onAudioCB(AudioIOData &io)
             consumeChaos = true;
         } else if (mPrevChaos > 0.1 && mChaos <= 0.1) {
             std::cout << "EXIT campanitas stateCamp " << std::endl;
-            std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
+            mCampanitasStates.remove(stateCamp);
             consumeChaos = true;
-        }  else if (mPrevChaos < 0.2 && mChaos >= 0.2) {
+        }  else if (mPrevChaos > 0.22 && mChaos <= 0.22) {
             std::cout << "EXIT campanitas state " << std::endl;
-            std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
+            mCampanitasStates.remove(stateCamp);
             consumeChaos = true;
         }
 
@@ -542,11 +552,11 @@ void AudioApp::onAudioCB(AudioIOData &io)
 			consumeChaos = true;
 		} else if (mPrevChaos < 0.4 && mChaos >= 0.4) { //umbral de salida subiendo
 			std::cout << "EXIT 9 Oh boy bottom row AM" << std::endl;
-			std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
+			mCampanitasStates.remove(stateCamp);
 			consumeChaos = true;
 		}  else if (mPrevChaos > 0.2 && mChaos <= 0.2) { //umbral de salida bajando
 			std::cout << "EXIT 9 Oh boy bottom row AM" << std::endl;
-			std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
+			mCampanitasStates.remove(stateCamp);
 			consumeChaos = true;
 		}
 		
@@ -580,7 +590,7 @@ void AudioApp::onAudioCB(AudioIOData &io)
 			consumeChaos = true;
 		} else if (mPrevChaos < 0.75 && mChaos >= 0.75) { //umbral de salida subiendo
 			std::cout << "EXIT 10 Oh Boy Its FM2" << std::endl;
-			std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
+			mCampanitasStates.remove(stateCamp);
 			consumeChaos = true;
 		} else if (mPrevChaos > 0.55 && mChaos <= 0.55) { //umbral de entrada bajando
 			if (std::find(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp) == mCampanitasStates.end() ) {
@@ -591,7 +601,7 @@ void AudioApp::onAudioCB(AudioIOData &io)
 			}
 		}  else if (mPrevChaos > 0.47 && mChaos <= 0.47) { //umbral de salida bajando
 			std::cout << "EXIT 10 Oh Boy Its FM2" << std::endl;
-			std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
+			mCampanitasStates.remove(stateCamp);
 			consumeChaos = true;
 		}
 		
@@ -625,7 +635,7 @@ void AudioApp::onAudioCB(AudioIOData &io)
 			consumeChaos = true;
 		} else if (mPrevChaos < 0.75 && mChaos >= 0.75) { //umbral de salida subiendo
 			std::cout << "EXIT 10 12 Bells 1" << std::endl;
-			std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
+			mCampanitasStates.remove(stateCamp);
 			consumeChaos = true;
 		} else if (mPrevChaos > 0.55 && mChaos <= 0.55) { //umbral de entrada bajando
 			if (std::find(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp) == mCampanitasStates.end() ) {
@@ -636,7 +646,7 @@ void AudioApp::onAudioCB(AudioIOData &io)
 			}
 		}  else if (mPrevChaos > 0.3 && mChaos <= 0.3) { //umbral de salida bajando
 			std::cout << "EXIT 12 Bells 1" << std::endl;
-			std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
+			mCampanitasStates.remove(stateCamp);
 			consumeChaos = true;
 		}
 		
@@ -670,7 +680,7 @@ void AudioApp::onAudioCB(AudioIOData &io)
 			consumeChaos = true;
 		} else if (mPrevChaos < 0.75 && mChaos >= 0.75) { //umbral de salida subiendo
 			std::cout << "EXIT 37 Is It  a   D R O P   ?" << std::endl;
-			std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
+			mCampanitasStates.remove(stateCamp);
 			consumeChaos = true;
 		} else if (mPrevChaos > 0.75 && mChaos <= 0.75) { //umbral de entrada bajando
 			if (std::find(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp) == mCampanitasStates.end() ) {
@@ -681,7 +691,7 @@ void AudioApp::onAudioCB(AudioIOData &io)
 			}
 		}  else if (mPrevChaos > 0.65 && mChaos <= 0.65) { //umbral de salida bajando
 			std::cout << "EXIT 37 Is It  a   D R O P   ?" << std::endl;
-			std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
+			mCampanitasStates.remove(stateCamp);
 			consumeChaos = true;
 		}
 		
@@ -715,7 +725,7 @@ void AudioApp::onAudioCB(AudioIOData &io)
 			consumeChaos = true;
 		} else if (mPrevChaos < 0.50 && mChaos >= 0.50) { //umbral de salida subiendo
 			std::cout << "EXIT 38 Slow   F M   B  e l l s" << std::endl;
-			std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
+			mCampanitasStates.remove(stateCamp);
 			consumeChaos = true;
 		} else if (mPrevChaos > 0.5 && mChaos <= 0.5) { //umbral de entrada bajando
 			if (std::find(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp) == mCampanitasStates.end() ) {
@@ -726,7 +736,11 @@ void AudioApp::onAudioCB(AudioIOData &io)
 			}
 		}  else if (mPrevChaos > 0.35 && mChaos <= 0.35) { //umbral de salida bajando
 			std::cout << "EXIT 38 Slow   F M   B  e l l s" << std::endl;
-			std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
+			mCampanitasStates.remove(stateCamp);
+			consumeChaos = true;
+		}  else if (mPrevChaos > 0.24 && mChaos <= 0.24) { //umbral de salida bajando
+            std::cout << "EXIT 38 Slow   F M   B  e l l s" << std::endl;
+			mCampanitasStates.remove(stateCamp);
 			consumeChaos = true;
 		}
 		
@@ -760,18 +774,19 @@ void AudioApp::onAudioCB(AudioIOData &io)
 			consumeChaos = true;
 		} else if (mPrevChaos < 0.75 && mChaos >= 0.75) { //umbral de salida subiendo
 			std::cout << "EXIT 41 Slow   F M s" << std::endl;
-			std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
+			mCampanitasStates.remove(stateCamp);
 			consumeChaos = true;
-		} else if (mPrevChaos > 0.75 && mChaos <= 0.75) { //umbral de entrada bajando
+		}
+        if (mPrevChaos > 0.75 && mChaos <= 0.75) { //umbral de entrada bajando
 			if (std::find(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp) == mCampanitasStates.end() ) {
 				mCampanitasStates.push_back(stateCamp);
 				std::cout << "ENTER 41 Slow   F M s" << std::endl;//print esto
 				mCampanitasCounter[stateCamp] = TimeDelta * io.framesPerSecond()/ io.framesPerBuffer();
 				consumeChaos = true;
 			}
-		}  else if (mPrevChaos > 0.55 && mChaos <= 0.55) { //umbral de salida bajando
+		} else if (mPrevChaos > 0.54 && mChaos <= 0.54) { //umbral de salida bajando
 			std::cout << "EXIT 41 Slow   F M s" << std::endl;
-			std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
+			mCampanitasStates.remove(stateCamp);
 			consumeChaos = true;
 		}
 		
@@ -813,11 +828,11 @@ void AudioApp::onAudioCB(AudioIOData &io)
         consumeChaos = true;
     } else if (mPrevChaos > 0.49 && mChaos <= 0.49) {
         std::cout << "EXIT campanitas stateCamp 22" << std::endl;
-        std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
+        mCampanitasStates.remove(stateCamp);
         consumeChaos = true;
     }/*  else if (mPrevChaos < 0.49 && mChaos >= 0.49) {
         std::cout << "EXIT campanitas state " << std::endl;
-        std::remove(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp);
+        mCampanitasStates.remove(stateCamp);
 consumeChaos = true;
     }*/
 
@@ -827,13 +842,102 @@ consumeChaos = true;
             if (rnd::prob(0.5)) {
                 trigger22();
                 mCampanitasCounter[stateCamp] = 0;
-                std::cout << "campanitas 1" << std::endl;
+                std::cout << "campanitas" << stateCamp << std::endl;
             } else {
                 mCampanitasCounter[stateCamp] = (TimeDelta - ifNotTime) * io.framesPerSecond()/ io.framesPerBuffer();
             }
         }
     }
 
+
+    // 3,4,5 Beating --------------------
+    TimeDelta = 20;
+    ifNotTime = 2;
+    stateCamp = 3;
+    if (mPrevChaos < 0.8 && mChaos >= 0.8) {
+        mCampanitasStates.push_back(stateCamp);
+        std::cout << "ENTER beating" << std::endl;
+        mCampanitasCounter[stateCamp] =  io.framesPerSecond()/ io.framesPerBuffer();
+        consumeChaos = true;
+    } else if (mPrevChaos > 0.7 && mChaos <= 0.7) {
+        std::cout << "EXIT campanitas stateCamp 22" << std::endl;
+        mCampanitasStates.remove(stateCamp);
+        consumeChaos = true;
+    }
+
+    if (std::find(mCampanitasStates.begin(), mCampanitasStates.end(), stateCamp) != mCampanitasStates.end()) {
+        mCampanitasCounter[stateCamp]++;
+        if (mCampanitasCounter[stateCamp] > TimeDelta * io.framesPerSecond()/ io.framesPerBuffer()) {
+            if (rnd::prob(0.7)) {
+                float dur = rnd::uniform(20.0, 8.0);
+                std::cout << "41 Slow   F M s Trigger" << std::endl;
+
+                addSynthCampanas.mPresetHandler.recallPresetSynchronous(3); // preset
+                int midinote = 36; //rango de notas entre MIDI 36 y 20. Si es solo una es el numero despues del =
+                addSynthCampanas.mFundamental = midi2cps(midinote);
+                addSynthCampanas.mLevel = 0.9;// nivel
+                addSynthCampanas.trigger(midinote);
+                msgQueue.send(msgQueue.now() + dur, releaseAddSynth, &addSynthCampanas, midinote); // duracion.
+
+                midinote = 43;
+                addSynthCampanas.mFundamental = midi2cps(midinote);
+                addSynthCampanas.mLevel = 0.9;// nivel
+                addSynthCampanas.trigger(midinote);
+                msgQueue.send(msgQueue.now() + dur, releaseAddSynth, &addSynthCampanas, midinote); // duracion.
+
+                midinote = 50;
+                addSynthCampanas.mFundamental = midi2cps(midinote);
+                addSynthCampanas.mLevel = 0.9;// nivel
+                addSynthCampanas.trigger(midinote);
+                msgQueue.send(msgQueue.now() + dur, releaseAddSynth, &addSynthCampanas, midinote); // duracion.
+
+                addSynthCampanas.mPresetHandler.recallPresetSynchronous(4); // preset
+
+                midinote = 36; //rango de notas entre MIDI 36 y 20. Si es solo una es el numero despues del =
+                addSynthCampanas.mFundamental = midi2cps(midinote);
+                addSynthCampanas.mLevel = 0.9;// nivel
+                addSynthCampanas.trigger(midinote -12);
+                msgQueue.send(msgQueue.now() + dur, releaseAddSynth, &addSynthCampanas, midinote-12); // duracion.
+
+                midinote = 43;
+                addSynthCampanas.mFundamental = midi2cps(midinote);
+                addSynthCampanas.mLevel = 0.9;// nivel
+                addSynthCampanas.trigger(midinote -12);
+                msgQueue.send(msgQueue.now() + dur, releaseAddSynth, &addSynthCampanas, midinote -12); // duracion.
+
+                midinote = 50;
+                addSynthCampanas.mFundamental = midi2cps(midinote);
+                addSynthCampanas.mLevel = 0.9;// nivel
+                addSynthCampanas.trigger(midinote -12);
+                msgQueue.send(msgQueue.now() + dur, releaseAddSynth, &addSynthCampanas, midinote -12); // duracion.
+
+                addSynthCampanas.mPresetHandler.recallPresetSynchronous(5); // preset
+
+                midinote = 36; //rango de notas entre MIDI 36 y 20. Si es solo una es el numero despues del =
+                addSynthCampanas.mFundamental = midi2cps(midinote);
+                addSynthCampanas.mLevel = 0.9;// nivel
+                addSynthCampanas.trigger(midinote -24);
+                msgQueue.send(msgQueue.now() + dur, releaseAddSynth, &addSynthCampanas, midinote-24); // duracion.
+
+                midinote = 43;
+                addSynthCampanas.mFundamental = midi2cps(midinote);
+                addSynthCampanas.mLevel = 0.9;// nivel
+                addSynthCampanas.trigger(midinote -24);
+                msgQueue.send(msgQueue.now() + dur, releaseAddSynth, &addSynthCampanas, midinote -24); // duracion.
+
+                midinote = 50;
+                addSynthCampanas.mFundamental = midi2cps(midinote);
+                addSynthCampanas.mLevel = 0.9;// nivel
+                addSynthCampanas.trigger(midinote -24);
+                msgQueue.send(msgQueue.now() + dur, releaseAddSynth, &addSynthCampanas, midinote -24); // duracion.
+
+                mCampanitasCounter[stateCamp] = 0;
+                std::cout << "campanitas" << stateCamp << std::endl;
+            } else {
+                mCampanitasCounter[stateCamp] = (TimeDelta - ifNotTime) * io.framesPerSecond()/ io.framesPerBuffer();
+            }
+        }
+    }
 
     for (int i = 0; i < 3; i++) {
         addSynth[i].generateAudio(io);
@@ -876,6 +980,7 @@ consumeChaos = true;
             mSequencer4b.playSequence("Seq 4b-0");
             mSequencer4c.playSequence("Seq 4c-0");
             std::cout << "Seq 4" << std::endl;
+            consumeChaos = true;
         }
     }
 
@@ -930,6 +1035,7 @@ consumeChaos = true;
             mSequencer3b.playSequence("Seq 3-2");
             mSequencer3c.playSequence("Seq 3-3");
             std::cout << "Seq 3" << std::endl;
+            consumeChaos = true;
         }
     }
 
@@ -946,6 +1052,7 @@ consumeChaos = true;
             mSequencer1b.playSequence("Seq 1-2");
             mSequencer1c.playSequence("Seq 1-3");
             std::cout << "Seq 1" << std::endl;
+            consumeChaos = true;
         }
     }
 

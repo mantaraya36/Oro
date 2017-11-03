@@ -760,13 +760,16 @@ public:
 
 		std::shared_ptr<LineStripModule> lineStrip = mRenderTree.createModule<LineStripModule>();
 		lineStrip->setColor(Color(0.2, 0.6, 0.6, 0.5));
+		lineStrip->setUniform(shader().uniform("texture"), 0.0);
 		for (auto bcHex: mBitcoinHexes) {
 			Vec3f pos = bcHex->getPosition();
-			lineStrip->addVertex(pos.x, pos.y, pos.z-0.3);
-//			bcHex->addBehavior(std::make_shared<Timeout>(10 * fps));
-//			std::cout << pos.x << " _ " << pos.z << std::endl;
-			bcHex->clearBehaviors();
-			bcHex->addBehavior(std::make_shared<FadeOut>(4* fps,6* fps));
+			if (pos.z < 0 ) {
+				lineStrip->addVertex(pos.x, pos.y, pos.z-0.3);
+				//			bcHex->addBehavior(std::make_shared<Timeout>(10 * fps));
+				//			std::cout << pos.x << " _ " << pos.z << std::endl;
+				bcHex->clearBehaviors();
+				bcHex->addBehavior(std::make_shared<FadeOut>(4* fps,6* fps));
+			}
 		}
 //		lineStrip->addBehavior(std::make_shared<Timeout>(10 * fps));
 		lineStrip->addBehavior(std::make_shared<FadeOut>(4* fps,6* fps));
