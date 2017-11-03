@@ -171,6 +171,7 @@ public:
 	void setUniform(int program, int uniformName, float value) {
 		mProgram = program;
 		mUniformValues[uniformName] = value;
+		relay(moduleAddress() + "/uniform", mProgram, uniformName, value);
 	}
 
     virtual void executeCommand(std::string command, std::vector<std::string> arguments)
@@ -204,6 +205,9 @@ public:
 			setDone(true);
         } else if (command == "destroy") {
 			setDone(true);
+        } else if (command == "uniform") {
+			std::cout << "got uniform!!!" << std::endl;
+			setUniform(std::stoi(arguments[0]), std::stoi(arguments[1]), std::stod(arguments[2]));
         }/*else if (command == "setRotation") {
 
         }*/
@@ -563,8 +567,10 @@ public:
         mMesh.reset();
         mMesh.primitive(Graphics::TRIANGLE_STRIP);
         mMesh.vertices().resize(mMaxLen * 2);
-
-		mMesh.color(Color(1.0, 1.0, 1.0, 0.5));
+		mMesh.colors().resize(mMaxLen * 2);
+//		for (int i = 0; i < mMaxLen * 2; i++) {
+//			mMesh.colors()[i] = Color(1.0, 1.0, 1.0, 0.5);
+//		}
     }
 
     static std::shared_ptr<LineStripModule> create() { return std::make_shared<LineStripModule>();}
@@ -594,6 +600,7 @@ public:
         }
         mMesh.vertices()[mNumVertices++] =  {x, y, z};
         mMesh.vertices()[mNumVertices++] =  {x+ mThickness, y, z + mThickness};
+//		mMesh.generateNormals();
 		relay(moduleAddress() + "/addVertex", x, y, z);
     }
 

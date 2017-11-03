@@ -82,7 +82,7 @@ public:
         mChaosDisplay->setScale(0.4);
         mChaosDisplay->setPosition(Vec3d(-0.4, 0.5, 0.04999));
 
-		mChaosDisplay->setText("A");
+		mChaosDisplay->setText("");
     }
 
     void showBitcoinReport(std::string hash, bool isBitcoin) {
@@ -294,7 +294,7 @@ public:
         } else if (m.addressPattern() == "/chaos" && m.typeTags() == "f") {
 			mPreviousChaos = mChaos;
             m >> mChaos;
-			mChaosDisplay->setText(std::to_string(mChaos));
+//			mChaosDisplay->setText(std::to_string(mChaos));
         } else if (m.addressPattern() == "/velocity" && m.typeTags() == "f") {
             float val;
             m >> val;

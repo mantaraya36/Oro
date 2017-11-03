@@ -437,11 +437,11 @@ void AudioApp::trigger22()
     msgQueue.send(msgQueue.now() + 25, releaseAddSynth, &addSynthCampanas, midinote);
 };
 
-static void turnoffSeq4(al_sec timestamp, AddSynth * addSynth4)
+static void turnoffSeq(al_sec timestamp, AddSynth * addSynth)
 {
-    addSynth4[0].allNotesOff();
-    addSynth4[1].allNotesOff();
-    addSynth4[2].allNotesOff();
+    addSynth[0].allNotesOff();
+    addSynth[1].allNotesOff();
+    addSynth[2].allNotesOff();
 }
 
 void AudioApp::onAudioCB(AudioIOData &io)
@@ -951,7 +951,7 @@ consumeChaos = true;
         addSynth3[i].generateAudio(io);
         addSynth4[i].generateAudio(io);
     }
-    addSynth2.generateAudio(io);
+//    addSynth2.generateAudio(io);
     addSynthCampanas.generateAudio(io);
 
     /// Sequences
@@ -1024,19 +1024,19 @@ consumeChaos = true;
             mSequencer1b.stopSequence();
             mSequencer1c.stopSequence();
             mSequencer2.stopSequence();
-            addSynth2.allNotesOff();
+//            addSynth2.allNotesOff();
             mSequencer4a.stopSequence();
             mSequencer4b.stopSequence();
             mSequencer4c.stopSequence();
 //            addSynth3[0].allNotesOff();
 //            addSynth3[1].allNotesOff();
 //            addSynth3[3].allNotesOff();
-            addSynth2.allNotesOff();
+//            addSynth2.allNotesOff();
             addSynth[0].allNotesOff();
             addSynth[1].allNotesOff();
             addSynth[2].allNotesOff();
 
-            msgQueue.send(msgQueue.now() + 3.5, turnoffSeq4, addSynth4); // duracion.
+            msgQueue.send(msgQueue.now() + 3.5, turnoffSeq, addSynth4); // duracion.
             mSequencer3a.playSequence("Seq 3-1");
             mSequencer3b.playSequence("Seq 3-2");
             mSequencer3c.playSequence("Seq 3-3");
@@ -1052,8 +1052,12 @@ consumeChaos = true;
             || (mPrevChaos > rangeEnd &&  mChaos <= rangeEnd)
             ) {
         if (!mSequencer1a.running()) {
-            mSequencer2.stopSequence();
-            addSynth2.allNotesOff();
+//            mSequencer2.stopSequence();
+//            addSynth2.allNotesOff();
+            mSequencer3a.stopSequence();
+            mSequencer3b.stopSequence();
+            mSequencer3c.stopSequence();
+            msgQueue.send(msgQueue.now() + 2.0, turnoffSeq, addSynth3); // duracion.
             mSequencer1a.playSequence("Seq 1-1");
             mSequencer1b.playSequence("Seq 1-2");
             mSequencer1c.playSequence("Seq 1-3");

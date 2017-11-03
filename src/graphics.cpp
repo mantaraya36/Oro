@@ -270,7 +270,7 @@ void main() {
   n *= 0.5; // [-1:+1] to [0:1]
 
   vec4 textureColor = texture2D(texture0, gl_TexCoord[0].st);
-  float multiplier = 0.9 + 0.1 * n; // 0.25 + 0.75 * n;
+  float multiplier = 0.75 + 0.5 * n; // 0.25 + 0.75 * n;
   gl_FragColor = vec4(multiplier * textureColor.rgb, textureColor.a);
 }
 )";
@@ -279,7 +279,7 @@ void main() {
 struct Renderer : public OmniStereoGraphicsRenderer2 {
 public:
 
-  bool do_aftereffect = true;
+  bool do_aftereffect = false;
 
     SharedState mState;
     SharedPainter mPainter;
@@ -339,7 +339,9 @@ public:
 //        module->setText("Hello");
 //        module->setPosition(Vec3f(0, 0, -1));
 		std::cout << "Constructor done" << std::endl;
-
+//        displayMode(Window::STEREO_BUF);
+        omni().mode(OmniStereo::ACTIVE);
+        omni().stereo(true);
 	}
 
 	virtual bool onCreate() override {

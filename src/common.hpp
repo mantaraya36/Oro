@@ -556,7 +556,7 @@ public:
 				g.translate(0, y-*dev/2, 0);
 				for (int z = 0; z < GRID_SIZEZ; z++) {
 					g.pushMatrix();
-					g.translate(*dev/-2.0f, 0.0f, -z + *dev);
+					g.translate(*dev/-2.0f, 0.0f + prevdev * 2.0, -z + *dev);
 					g.draw(mGrid[count]);
 					g.pushMatrix();
 					g.rotate(90, 0, 1, *dev* chaos );
@@ -702,6 +702,7 @@ public:
             mRenderTree.clear();
         }
 		shader().uniform("texture", 1.0);
+//		shader().uniform("lighting", 0.5);
 
 //		shader().uniform("tint", Color{1, 1- chaos, 0}); // put in color here
 		mRenderTree.render(g);

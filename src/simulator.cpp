@@ -217,7 +217,6 @@ public:
 			state().lightPhase += 1./1800; if(state().lightPhase > 1) state().lightPhase -= 1;
 		}
 
-
         // Wave equation
         int zprev = 1-zcurr;
         // Compute effects of trigger
@@ -289,15 +288,49 @@ public:
                     float adjustedY = (mPosY* 9/16.0) + (0.5 * 5/16.0);
                     float y = Ny - adjustedY*(Ny - 8) + 4;
                     float v = 0.35*exp(-(i* i/16.0+j*j/16.0)/(0.5*0.5));
-                    state().wave[indexAt(x+i, y+j, zcurr)] += v * fabs(mDist)* 20;
-                    state().wave[indexAt(x+i, y+j, zprev)] += v * fabs(mDist)* 20;
+                    state().wave[indexAt(x+i, y+j, zcurr)] += v * fabs(mDist)* 40;
+                    state().wave[indexAt(x+i, y+j, zprev)] += v * fabs(mDist)* 40;
                     //                            std::cout << x << "  " << y << " "<< v << std::endl;
                 }
             }
             mPosX = mPosY = -100.0; // Must be last as mPosX and mPosY are used above
+        } else if (state().chaos < 0.3) {
+            if (rnd::prob(0.01)) {
+//                std::cout << "gotica"
+                float posx = rnd::uniform(1.0);
+                float posy = rnd::uniform(1.0);
+                float dist = 0.05;
+                for(int j=-4; j<=4; ++j){
+                    for(int i=-4; i<=4; ++i){
+                        float x = posx*(Nx - 8) + 4;
+                        float adjustedY = (posy* 9/16.0) + (0.5 * 5/16.0);
+                        float y = Ny - adjustedY*(Ny - 8) + 4;
+                        float v = 0.35*exp(-(i* i/16.0+j*j/16.0)/(0.5*0.5));
+                        state().wave[indexAt(x+i, y+j, zcurr)] += v * dist * 3;
+                        state().wave[indexAt(x+i, y+j, zprev)] += v * dist * 3;
+                        //                            std::cout << x << "  " << y << " "<< v << std::endl;
+                    }
+                }
+            }
+        } else if (state().chaos< 0.5) {
+            if (rnd::prob(0.02)) {
+                float posx = rnd::uniform(1.0);
+                float posy = rnd::uniform(1.0);
+                float dist = 0.3;
+                for(int j=-4; j<=4; ++j){
+                    for(int i=-4; i<=4; ++i){
+                        float x = posx*(Nx - 8) + 4;
+                        float adjustedY = (posy* 9/16.0) + (0.5 * 5/16.0);
+                        float y = Ny - adjustedY*(Ny - 8) + 4;
+                        float v = 0.35*exp(-(i* i/16.0+j*j/16.0)/(0.5*0.5));
+                        state().wave[indexAt(x+i, y+j, zcurr)] += v * dist * 5;
+                        state().wave[indexAt(x+i, y+j, zprev)] += v * dist * 5;
+                        //                            std::cout << x << "  " << y << " "<< v << std::endl;
+                    }
+                }
+            }
+
         }
-
-
 
         // Compute wave equation
         for(int j=0; j<Ny; ++j){
@@ -342,7 +375,7 @@ public:
         state().velocity = velocity.get();
         state().mouseDown = mMouseDown == 1.0;
 
-        state().casasPhase += 0.03 + state().chaos * 0.1;
+        state().casasPhase += 0.005 + state().chaos * 0.06;
 //		if (state().casasPhase > 360) { state().casasPhase -= 360;}
 
         mMaker.set(state());
@@ -371,6 +404,8 @@ public:
             mSenderToAudio.send("/mouseDown", mMouseDown);
             mSenderToAudio2.send("/mouseDown", mMouseDown);
 //            std::cout << mMouseDown << std::endl;
+        } else if (m.addressPattern() == "/reset") {
+            reset();
         }
     }
 
